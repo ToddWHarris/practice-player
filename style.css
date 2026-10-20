@@ -25,3 +25,4 @@ summary{padding:10px 0;font-size:18px}input[type=number]{font-size:17px;backgrou
 #customRow{display:flex;align-items:center;gap:12px;font-size:17px}#customColor{width:72px;height:56px;border:0;background:none;padding:0}
 details summary{color:var(--ac)}
 .acc{color:var(--ac)}
+.ver{color:#6b7280;font-size:14px;text-align:center;margin:24px 0 8px}
