@@ -1,0 +1,10 @@
+const DB={_d:null,open(){return this._d||(this._d=new Promise((res,rej)=>{const r=indexedDB.open('practice-player',1);r.onupgradeneeded=()=>{const d=r.result;d.createObjectStore('songs',{keyPath:'id'});d.createObjectStore('blobs');d.createObjectStore('kv')};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))},
+async tx(s,m,f){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction(s,m);let out;Promise.resolve(f(t)).then(v=>out=v);t.oncomplete=()=>res(out);t.onerror=()=>rej(t.error)})},
+req(r){return new Promise((a,b)=>{r.onsuccess=()=>a(r.result);r.onerror=()=>b(r.error)})},
+async allSongs(){return this.tx('songs','readonly',t=>this.req(t.objectStore('songs').getAll()))},
+async putSong(meta,blob){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').put(meta);t.objectStore('blobs').put(blob,meta.id)})},
+async blob(id){return this.tx('blobs','readonly',t=>this.req(t.objectStore('blobs').get(id)))},
+async delSong(id){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').delete(id);t.objectStore('blobs').delete(id)})},
+async clear(){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').clear();t.objectStore('blobs').clear()})},
+async get(k){return this.tx('kv','readonly',t=>this.req(t.objectStore('kv').get(k)))},
+async set(k,v){return this.tx('kv','readwrite',t=>{t.objectStore('kv').put(v,k)})}};

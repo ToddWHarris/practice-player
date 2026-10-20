@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#0b0f17">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-180.png">
+<title>Practice Player</title><link rel="stylesheet" href="style.css"></head><body>
+<nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="help">Help</button></nav>
+<main>
+<section id="lib" class="tab on">
+ <div class="row"><label class="btn">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
+ <label class="btn">Import files<input id="inFiles" type="file" accept="audio/*,.mp3" multiple hidden></label></div>
+ <div class="row"><button id="clearLib" class="btn danger">Remove all</button></div>
+ <div id="crumbs"></div><ul id="tree" class="list"></ul>
+</section>
+<section id="pls" class="tab">
+ <div class="row"><button id="newPl" class="btn">New playlist</button></div>
+ <ul id="plList" class="list"></ul><div id="plDetail"></div>
+</section>
+<section id="help" class="tab"><div id="helpBody"></div><button id="share" class="btn big">Share this app</button></section>
+</main>
+<footer id="player">
+ <div id="now">Nothing playing</div>
+ <div id="seekWrap"><div id="mA" class="mk"></div><div id="mB" class="mk"></div><div id="abBand"></div><input id="seek" type="range" min="0" max="1000" value="0"></div>
+ <div id="times"><span id="tCur">0:00</span><span id="tDur">0:00</span></div>
+ <div class="row ctl"><button id="prev">⏮</button><button id="play" class="big">▶</button><button id="next">⏭</button></div>
+ <div class="row ctl"><button id="shuf">Shuffle: off</button><button id="rep">Repeat: off</button></div>
+ <details id="abBox"><summary>A-B loop <span id="abState"></span></summary>
+  <div class="row"><button id="setA">Set A</button><button id="aM">A −0.5</button><button id="aP">A +0.5</button></div>
+  <div class="row"><button id="setB">Set B</button><button id="bM">B −0.5</button><button id="bP">B +0.5</button></div>
+  <div class="row"><button id="abOn">Start loop</button><button id="abClear">Clear</button></div>
+  <div class="row"><label><input type="checkbox" id="autoRep"> Auto repeat, gap <input id="gap" type="number" min="0" max="60" value="2" style="width:4em"> s</label></div>
+  <div id="listen" hidden><div id="listenTxt">Listening...</div><button id="again" class="btn huge">Again</button><button id="abStop" class="btn danger">Stop loop</button></div>
+ </details>
+</footer>
+<audio id="audio" preload="metadata"></audio>
+<script src="db.js"></script><script src="logic.js"></script><script src="app.js"></script></body></html>
