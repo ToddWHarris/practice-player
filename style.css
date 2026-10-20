@@ -16,3 +16,4 @@ footer{background:#111827;padding:10px 10px calc(10px + env(safe-area-inset-bott
 #listenTxt{text-align:center;font-size:26px;color:#22d3ee;margin:10px;animation:p 1s infinite alternate}@keyframes p{to{opacity:.4}}
 summary{padding:10px 0;font-size:18px}input[type=number]{font-size:17px;background:#1f2937;color:#fff;border:1px solid #374151;border-radius:8px}
 #helpBody h2{color:#22d3ee}#helpBody li{margin:6px 0}
+#from{color:#22d3ee;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
