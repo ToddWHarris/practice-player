@@ -26,3 +26,4 @@ summary{padding:10px 0;font-size:18px}input[type=number]{font-size:17px;backgrou
 details summary{color:var(--ac)}
 .acc{color:var(--ac)}
 .ver{color:#6b7280;font-size:14px;text-align:center;margin:24px 0 8px}
+[hidden]{display:none!important}
