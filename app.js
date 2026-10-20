@@ -1,3 +1,4 @@
+const APP_VERSION=5;
 const $=id=>document.getElementById(id),L=Logic,au=$('audio');
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
 async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;S.Q=(await DB.get('queue'))||null;if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}}
@@ -5,7 +6,7 @@ const saveSet=()=>DB.set('settings',{shuffle:S.shuffle,repeat:S.repeat,autoRep:$
 const savePls=()=>DB.set('playlists',S.pls);
 function tab(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id===t))}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
-async function importFiles(list){let n=0;for(const f of list){if(!/\.(mp3|m4a|aac|wav)$/i.test(f.name)&&!/^audio\//.test(f.type))continue;const path=f.webkitRelativePath||f.name;const id=L.songId(path,f.size);await DB.putSong({id,path,name:f.name.replace(/\.[^.]+$/,''),size:f.size,type:f.type||'audio/mpeg',added:Date.now()},f);n++}S.songs=await DB.allSongs();renderAll();alert('Imported '+n+' song(s).')}
+async function importFiles(list){let n=0;for(const f of list){if(!/\.(mp3|m4a|aac|wav)$/i.test(f.name)&&!/^audio\//.test(f.type))continue;const path=f.webkitRelativePath||f.name;const id=L.songId(path,f.size);const data=new Blob([await f.arrayBuffer()],{type:f.type||'audio/mpeg'});await DB.putSong({id,path,name:f.name.replace(/\.[^.]+$/,''),size:f.size,type:f.type||'audio/mpeg',added:Date.now()},data);n++}S.songs=await DB.allSongs();renderAll();alert('Imported '+n+' song(s).')}
 $('inDir').onchange=e=>{importFiles([...e.target.files]);e.target.value=''};$('inFiles').onchange=e=>{importFiles([...e.target.files]);e.target.value=''};
 $('clearLib').onclick=async()=>{if(!confirm('Remove all songs from this device?'))return;await DB.clear();S.songs=[];S.pls.forEach(p=>p.ids=[]);savePls();S.cwd=[];renderAll()};
 function el(tag,txt,cls){const e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e}
@@ -33,12 +34,14 @@ const cur=()=>S.Q&&S.Q.list[S.Q.qi];
 const saveQ=()=>DB.set('queue',S.Q);
 function playList(ids,i,ctx){const q=L.makeQueue(ctx||{type:'all',name:'All songs'},ids,i,S.shuffle,byId);if(!q)return;S.Q=q;saveQ();loadCur(true)}
 function renderFrom(){$('from').textContent=S.Q?'Playing from: '+S.Q.ctx.name:''}
-async function loadCur(play){const s=byId(cur());if(!s)return;exitAB();clearAB();const b=await DB.blob(s.id);if(S.url)URL.revokeObjectURL(S.url);S.url=URL.createObjectURL(b);au.src=S.url;$('now').textContent=s.name;renderFrom();
+async function loadCur(play){const s=byId(cur());if(!s)return;const tok=S.loadTok=(S.loadTok||0)+1;exitAB();clearAB();$('now').textContent=s.name;renderFrom();let b=null;try{b=await DB.blob(s.id)}catch(e){}if(tok!==S.loadTok)return;
+ if(!b||!b.size){S.loadFailed=true;$('now').textContent=s.name+' (could not read file, please import it again)';return}S.loadFailed=false;if(S.url)URL.revokeObjectURL(S.url);S.url=URL.createObjectURL(b);au.src=S.url;renderFrom();
  if('mediaSession' in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:s.name,album:s.path.split('/').slice(0,-1).join(' / '),artwork:[{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'}]})}
- if(play)au.play().catch(()=>{});renderLib()}
+ if(play)au.play().catch(playBlocked);renderLib()}
 function step(dir,auto){const n=L.stepQueue(S.Q,dir,S.repeat,auto);if(n<0){au.pause();return}saveQ();loadCur(true)}
 au.onended=()=>{if(S.repeat==='one'){au.currentTime=0;au.play();return}step(1,true)};
-$('play').onclick=()=>{if(!au.src){if(S.songs.length)playList(S.songs.map(s=>s.id),0);return}au.paused?au.play():au.pause()};
+$('play').onclick=()=>{if(!au.src||S.loadFailed){if(S.Q&&byId(cur()))loadCur(true);else if(S.songs.length)playList(S.songs.map(s=>s.id),0);return}au.paused?au.play().catch(playBlocked):au.pause()};
+function playBlocked(e){if(e&&e.name==='NotAllowedError')$('now').textContent=(byId(cur())||{}).name+' (tap Play to start)'}
 $('prev').onclick=()=>{if(au.currentTime>3)au.currentTime=0;else step(-1)};$('next').onclick=()=>step(1);
 $('shuf').onclick=()=>{S.shuffle=!S.shuffle;if(S.Q){L.setShuffle(S.Q,S.shuffle);saveQ()}saveSet();renderCtl()};
 $('rep').onclick=()=>{S.repeat={off:'all',all:'one',one:'off'}[S.repeat];saveSet();renderCtl()};
@@ -77,7 +80,7 @@ $('helpBody').innerHTML=`<h2>Welcome</h2><p>This is a simple practice player. Yo
 <h2>Quick setup</h2><ol><li>Open this page in Safari on your iPhone.</li><li>Tap the Share icon, then <b>Add to Home Screen</b>.</li><li>Open the app from your Home Screen.</li><li>Go to Library and tap <b>Import folder</b> or <b>Import files</b>. Pick your MP3s from the Files app.</li><li>Tap a song to play it. Make playlists in the Playlists tab.</li></ol>
 <h2>Android setup</h2><ol><li>Open this page in Chrome.</li><li>Tap the three dot menu, then <b>Add to Home screen</b> or <b>Install app</b>.</li><li>Open the app and import songs. If Import folder does not work on your phone, use Import files and select several songs at once.</li></ol><h2>A-B practice loop</h2><ol><li>Play a song. Tap <b>Set A</b> where the part starts and <b>Set B</b> where it ends. Use the +0.5 and -0.5 buttons to fine tune.</li><li>Tap <b>Start loop</b>. At B the music pauses and the app shows Listening.</li><li>Say <b>go</b>, <b>again</b>, <b>repeat</b> or <b>yes</b> to hear it again. Say <b>stop</b> to end the loop. You can always tap the big Again button instead.</li><li>Prefer no voice? Turn on Auto repeat and choose a gap in seconds.</li></ol>
 <h2>iPhone and Android limits</h2><ul><li>Songs must be imported into the app. It cannot read your Apple Music library.</li><li>Songs are saved inside this app on this device. If you clear Safari website data, or iOS frees up space, you may need to import them again.</li><li>The microphone only works while the app is open on screen, and only when the page is loaded over HTTPS.</li><li>Voice commands depend on the browser speech support (Safari or Chrome) and may need an internet connection. If it does not work, use the Again button.</li><li>Lock screen controls work for play, pause and skip. The A-B voice cue needs the app open.</li><li>Each person who uses the app imports their own music. Nothing is shared between devices.</li></ul>`;
-{const v=el('p','Version '+4,'ver');$('help').append(v)}
+{const v=el('p','Version '+APP_VERSION,'ver');$('help').append(v)}
 $('share').onclick=async()=>{const url=location.href.split('#')[0];try{if(navigator.share)await navigator.share({title:'Practice Player',text:'A simple music practice player. Add it to your Home Screen.',url});else{await navigator.clipboard.writeText(url);alert('Link copied: '+url)}}catch(e){}};
 function applyAccent(c,save=true){c=L.normHex(c)||L.PRESETS[0][1];const r=document.documentElement.style;r.setProperty('--ac',c);r.setProperty('--on-ac',L.textOn(c));r.setProperty('--ac-soft',c+'55');
  document.querySelector('meta[name=theme-color]').setAttribute('content',c);$('customColor').value=c;document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('sel',b.dataset.c===c));try{localStorage.setItem('accent',c)}catch(e){}if(save)DB.set('accent',c)}
@@ -85,7 +88,7 @@ L.PRESETS.forEach(([n,c])=>{const b=el('button',n,'sw');b.dataset.c=c;b.style.ba
 $('customColor').oninput=e=>applyAccent(e.target.value);
 try{const c=localStorage.getItem('accent');if(c)applyAccent(c,false)}catch(e){}
 function syncTog(){$('shuf').classList.toggle('tog',S.shuffle);$('rep').classList.toggle('tog',S.repeat!=='off');$('abOn').classList.toggle('tog',S.ab)}
-const APP_VERSION=4;
+
 if('serviceWorker' in navigator){const sw=navigator.serviceWorker;const hadCtl=!!sw.controller;
  sw.register('sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})})}).catch(()=>{});
  sw.addEventListener('controllerchange',()=>{if(!hadCtl)return;const k='pp-reloaded-v';if(sessionStorage.getItem(k)===String(Date.now()/60000|0))return;sessionStorage.setItem(k,String(Date.now()/60000|0));location.reload()})}
