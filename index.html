@@ -1,13 +1,13 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#0b0f17">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#22c55e">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>Practice Player</title><link rel="stylesheet" href="style.css"></head><body>
-<nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="help">Help</button></nav>
+<nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="help">Settings</button></nav>
 <main>
 <section id="lib" class="tab on">
- <div class="row"><label class="btn">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
+ <div class="row"><label class="btn primary">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
  <label class="btn">Import files<input id="inFiles" type="file" accept="audio/*,.mp3" multiple hidden></label></div>
  <div class="row"><button id="clearLib" class="btn danger">Remove all</button></div>
  <div id="crumbs"></div><ul id="tree" class="list"></ul>
@@ -16,7 +16,7 @@
  <div class="row"><button id="newPl" class="btn">New playlist</button></div>
  <ul id="plList" class="list"></ul><div id="plDetail"></div>
 </section>
-<section id="help" class="tab"><div id="helpBody"></div><button id="share" class="btn big">Share this app</button></section>
+<section id="help" class="tab"><h2 class="acc">Color</h2><p>Pick a highlight color. It is saved on this device.</p><div id="swatches"></div><div id="customRow"><input type="color" id="customColor" value="#22c55e"><label for="customColor">Custom color</label></div><div id="helpBody"></div><button id="share" class="btn big">Share this app</button></section>
 </main>
 <footer id="player">
  <div id="now">Nothing playing</div><div id="from"></div>
