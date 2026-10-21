@@ -1,6 +1,7 @@
-const APP_VERSION=24;
+const APP_VERSION=25;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 25:['New Custom Clips start cleanly without a click. Clips you already saved are not changed; save them again to get the fix.','The Welcome back greeting now shows larger, in the middle of the screen.'],
  24:['Share a playlist: swipe a playlist left in Playlists and tap Share. It sends the songs, their order, and speed and pitch in one file.','Import playlist, in Settings and at the top of Playlists, adds a shared playlist. Songs you already have are not copied twice, and new songs go in the Library folder Shared.'],
  23:['New Custom Clips playlist. Set an A-B loop and tap Save Custom Clip to save that part of the song as its own MP3. Your original song is not changed.','In Custom Clips, swipe a clip left to Save In another playlist, Send it, or Delete it.','New Backup section in Settings. Back up all your songs, clips, playlists and settings to the Files app, and restore them later.','Deleting the app from your Home Screen erases its songs and playlists. The app now reminds you to back up.'],
  22:['The Home Screen icon now uses a darker green. Icons already on your Home Screen keep their old color.','The welcome message now ends with an exclamation mark, like Welcome back, Todd!'],
