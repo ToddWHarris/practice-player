@@ -17,6 +17,9 @@ const Logic={
  normHex(h){h=String(h||'').trim().toLowerCase();if(/^#[0-9a-f]{3}$/.test(h))h='#'+[...h.slice(1)].map(c=>c+c).join('');return /^#[0-9a-f]{6}$/.test(h)?h:null},
  lum(h){const c=[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255).map(v=>v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4));return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2]},
  textOn(h){const L=Logic.lum(h);return (L+0.05)/0.05>=1.05/(L+0.05)?'#000000':'#ffffff'},
+ // Loop editor helpers
+ editorWindow(a,b,dur,pre,post){dur=dur||b||0;return[Math.max(0,a-pre),Math.min(dur,b+post)]},
+ dragHandle(which,t,a,b,dur){t=Math.round(t);dur=dur||Math.max(b,t);if(which==='A'){const hi=Math.floor(b-1);a=Math.max(0,Math.min(t,hi));if(a>b-1)a=Math.max(0,b-1);return[a,b]}const lo=Math.ceil(a+1);b=Math.min(Math.max(t,lo),dur);if(b<a+1)b=Math.min(dur,a+1);return[a,b]},
  songId(path,size){return path+'|'+size}
 };
 if(typeof module!=='undefined')module.exports=Logic;

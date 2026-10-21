@@ -27,3 +27,20 @@ details summary{color:var(--ac)}
 .acc{color:var(--ac)}
 .ver{color:#6b7280;font-size:14px;text-align:center;margin:24px 0 8px}
 [hidden]{display:none!important}
+
+#ed{position:fixed;inset:0;z-index:50;background:#000;display:flex;align-items:stretch;justify-content:center;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#ed .panel{width:100%;max-width:700px;padding:14px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.edHead{display:flex;align-items:center;justify-content:space-between}.edHead h2{margin:0}
+#edInfo{display:flex;justify-content:space-between;font-size:20px;gap:8px}#edInfo b{color:var(--ac)}
+#edTl{position:relative;cursor:ew-resize;height:160px;background:#111827;border:1px solid #374151;border-radius:14px;touch-action:none;user-select:none;-webkit-user-select:none;margin:0 22px}
+#edBand{position:absolute;top:0;bottom:0;background:var(--ac-soft)}
+#edHead{position:absolute;top:0;bottom:0;width:2px;background:#fff;pointer-events:none}
+.hd{position:absolute;top:-10px;bottom:-10px;width:44px;margin-left:-22px;touch-action:none;pointer-events:none;display:flex;justify-content:center}
+.hd::before{content:'';position:absolute;top:0;bottom:0;left:19px;width:6px;background:var(--ac);border-radius:3px}
+.hd span{position:relative;margin-top:auto;margin-bottom:-6px;background:var(--ac);color:var(--on-ac);font-weight:700;border-radius:10px;padding:6px 10px;font-size:18px}
+.hd.drag::before{box-shadow:0 0 0 6px var(--ac-soft)}
+#edScale{display:flex;justify-content:space-between;color:#9ca3af;font-size:14px;margin:0 22px}
+#edStatus{min-height:1.4em;text-align:center;color:var(--ac);font-size:18px}.edTip{color:#9ca3af;font-size:15px;margin:0}
+@media (orientation:landscape){#ed .panel{max-width:none;padding:8px 16px;gap:8px}#edTl{height:120px}.edHead h2{font-size:20px}#ed .row{flex-wrap:nowrap}}
+@media (orientation:portrait){#edTl{height:180px}}
+.setrow{display:flex;gap:12px;align-items:center;margin:8px 0;font-size:17px}.setrow input{width:5em;font-size:18px;padding:6px}

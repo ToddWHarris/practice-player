@@ -28,9 +28,19 @@
   <div class="row"><button id="setA">Set A</button><button id="aM">A −0.5</button><button id="aP">A +0.5</button></div>
   <div class="row"><button id="setB">Set B</button><button id="bM">B −0.5</button><button id="bP">B +0.5</button></div>
   <div class="row"><button id="abOn">Start loop</button><button id="abClear">Clear</button></div>
+  <div class="row"><button id="edOpen" class="btn primary" hidden>Loop editor</button></div>
   <div class="row"><label><input type="checkbox" id="autoRep"> Auto repeat, gap <input id="gap" type="number" min="0" max="60" value="2" style="width:4em"> s</label></div>
   <div id="listen" hidden><div id="listenTxt">Listening...</div><button id="again" class="btn huge">Again</button><button id="tapListen" class="btn" hidden>Tap to listen</button></div>
  </details>
 </footer>
+<div id="ed" hidden role="dialog" aria-label="Loop editor"><div class="panel">
+ <div class="edHead"><h2 class="acc">Loop editor</h2><button id="edDone" class="btn primary">Done</button></div>
+ <div id="edInfo"><span>A <b id="edA">0:00</b></span><span>B <b id="edB">0:00</b></span><span>Length <b id="edLen">0 s</b></span></div>
+ <div id="edTl"><div id="edBand"></div><div id="edHead"></div><div id="hA" class="hd" aria-label="A handle"><span>A</span></div><div id="hB" class="hd" aria-label="B handle"><span>B</span></div></div>
+ <div id="edScale"><span id="edWs">0:00</span><span id="edWe">0:00</span></div>
+ <div id="edStatus"></div>
+ <div class="row"><button id="edPlay" class="btn">Play loop from A</button><button id="edAgain" class="btn" hidden>Again</button></div>
+ <p class="edTip">Drag the A and B handles. They move in whole seconds.</p>
+</div></div>
 <audio id="audio" preload="metadata"></audio>
 <script src="db.js"></script><script src="logic.js"></script><script src="app.js"></script></body></html>
