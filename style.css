@@ -44,3 +44,12 @@ details summary{color:var(--ac)}
 @media (orientation:landscape){#ed .panel{max-width:none;padding:8px 16px;gap:8px}#edTl{height:120px}.edHead h2{font-size:20px}#ed .row{flex-wrap:nowrap}}
 @media (orientation:portrait){#edTl{height:180px}}
 .setrow{display:flex;gap:12px;align-items:center;margin:8px 0;font-size:17px}.setrow input{width:5em;font-size:18px;padding:6px}
+
+#card{display:flex;gap:12px;align-items:center;margin:8px 10px 0;padding:10px;background:#0f1520;border:1px solid #1f2937;border-left:4px solid var(--ac);border-radius:14px;min-height:76px}
+#cArt{flex:0 0 72px;height:72px;border-radius:10px;background:var(--ac-soft);display:flex;align-items:center;justify-content:center;overflow:hidden}
+#cArt span{font-size:38px;color:var(--ac)}#cArt img{width:100%;height:100%;object-fit:cover}
+.cInfo{flex:1;min-width:0;line-height:1.25}.cInfo>div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#now{font-weight:700;font-size:18px}#cSub{color:#e5e7eb;font-size:15px}#cMeta,#cPath{color:#9ca3af;font-size:13px}#from{font-size:13px}
+#card.empty #cSub,#card.empty #cMeta,#card.empty #cPath,#card.empty #from{display:none}#card.empty #now{color:#9ca3af;font-weight:600}
+#libCount{color:#9ca3af}
+@media (orientation:landscape) and (max-height:500px){#cArt{flex-basis:56px;height:56px}#card{min-height:60px;padding:6px 10px}#cPath{display:none}}

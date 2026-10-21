@@ -7,4 +7,6 @@ async blob(id){return this.tx('blobs','readonly',t=>this.req(t.objectStore('blob
 async delSong(id){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').delete(id);t.objectStore('blobs').delete(id)})},
 async clear(){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').clear();t.objectStore('blobs').clear()})},
 async get(k){return this.tx('kv','readonly',t=>this.req(t.objectStore('kv').get(k)))},
+async del(k){return this.tx('kv','readwrite',t=>{t.objectStore('kv').delete(k)})},
+async clearMeta(){return this.tx('kv','readwrite',async t=>{const st=t.objectStore('kv');const ks=await this.req(st.getAllKeys());ks.filter(k=>String(k).startsWith('meta:')).forEach(k=>st.delete(k))})},
 async set(k,v){return this.tx('kv','readwrite',t=>{t.objectStore('kv').put(v,k)})}};
