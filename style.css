@@ -113,3 +113,5 @@ body.modalOpen{overflow:hidden}
 .bkBanner{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#1f2937;border-left:4px solid var(--ac);border-radius:12px;padding:10px 12px;margin:0 0 10px;font-size:16px}.bkBanner>span:first-child{flex:1 1 200px}.bkBannerBtns{display:flex;gap:8px}
 .plsInfo{font-size:22px;font-weight:700;margin:6px 0}.plsWarn{background:#422006;color:#fde68a;border-radius:10px;padding:10px 12px;font-size:16px}
 #plList .prow .pfg button{min-height:44px}
+.acts>.pfav{background:#374151;color:#fff;font-size:15px;line-height:1.1}.acts>.pfav.on{background:#4b5563}
+.favck{color:var(--ac);font-weight:800;font-size:20px;margin:0 4px}

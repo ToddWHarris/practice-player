@@ -1,6 +1,7 @@
-const APP_VERSION=25;
+const APP_VERSION=26;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 26:['New Favorites. Swipe a song or a Custom Clip left and tap Favorite. Tap Unfavorite to take it back off.','Favorites show a check mark in the Library and in your playlists, in your highlight color.','New Favorites playlist, right under Custom Clips. It holds every song and clip you mark as a favorite. Removing one from Favorites also unfavorites it.','Favorites are saved with your backup.'],
  25:['New Custom Clips start cleanly without a click. Clips you already saved are not changed; save them again to get the fix.','The Welcome back greeting now shows larger, in the middle of the screen.'],
  24:['Share a playlist: swipe a playlist left in Playlists and tap Share. It sends the songs, their order, and speed and pitch in one file.','Import playlist, in Settings and at the top of Playlists, adds a shared playlist. Songs you already have are not copied twice, and new songs go in the Library folder Shared.'],
  23:['New Custom Clips playlist. Set an A-B loop and tap Save Custom Clip to save that part of the song as its own MP3. Your original song is not changed.','In Custom Clips, swipe a clip left to Save In another playlist, Send it, or Delete it.','New Backup section in Settings. Back up all your songs, clips, playlists and settings to the Files app, and restore them later.','Deleting the app from your Home Screen erases its songs and playlists. The app now reminds you to back up.'],
@@ -54,7 +55,7 @@ function renderLib(){setTimeout(saveNav,0);if(S.viewRemoved)return renderRemoved
  if(songs.length){const li=el('li');li.append(el('span','Play all in this folder','n'));li.onclick=()=>playList(songs.map(s=>s.id),0,fctx());ul.append(li)}
  songs.forEach((s,i)=>{const li=el('li',null,'prow lrow'+(cur()===s.id?' cur':''));li._ox=-208;
   const ad=el('button','Add to list','padd');ad.onclick=e=>{e.stopPropagation();closeRow();addToPl(s.id)};const dl=el('button','Remove','prm');dl.onclick=e=>{e.stopPropagation();softRemove(s)};
-  const fg=el('div',null,'pfg');fg.append(el('span','♪ '+s.name,'n'));prBadge(fg,s.id);rowActs(li,[ad,sendBtn(()=>[s.id],s.name),dl],s.id);li._pre=()=>preSend([s.id]);li.append(fg);
+  const fg=el('div',null,'pfg');fg.append(el('span','♪ '+s.name,'n'));favMark(fg,s.id);prBadge(fg,s.id);rowActs(li,[favBtn(s.id),ad,sendBtn(()=>[s.id],s.name),dl],s.id);li._pre=()=>preSend([s.id]);li.append(fg);
   fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(songs.map(x=>x.id),i,fctx())});attachRow(li,null);ul.append(li)});
  if(!S.cwd.length&&gone.length){const li=el('li',null,'remfolder');li.append(el('span','🗑 Removed ('+gone.length+')','n'));li.onclick=()=>{S.viewRemoved=true;closeRow();renderLib()};ul.append(li)}}
 const inDir=(s,fp)=>s.path.startsWith(fp+'/');
@@ -79,7 +80,7 @@ async function restoreSong(s){PG.open=null;delete s.removed;delete s.removedAt;d
 async function deleteForever(s){if(!confirm('Delete '+s.name+' forever? This erases it from the app and from your playlists.'))return;await eraseSong(s);savePls();renderAll()}
 async function eraseSong(s){PG.open=null;if(S.pr[s.id]){delete S.pr[s.id];await DB.del('pr:'+s.id)}await DB.delSong(s.id);await DB.del('meta:'+s.id);delete S.meta[s.id];
  S.songs=S.songs.filter(x=>x.id!==s.id);S.pls.forEach(p=>{const idx=[];p.ids.forEach((x,k)=>{if(x===s.id)idx.push(k)});idx.reverse().forEach(k=>{p.ids.splice(k,1);plSyncQ(p,q=>L.plRemove(q,k))})});if(S.Q){L.qRemoveId(S.Q,s.id);saveQ()}}
-function addToPl(id){const many=Array.isArray(id)?id:[id];if(!many.length){alert('No songs to add.');return}const PL=S.pls.filter(x=>!isClips(x));if(!PL.length){alert('Create a playlist first in the Playlists tab.');return}const names=PL.map((p,i)=>(i+1)+'. '+p.name).join('\n');const k=prompt('Add to which playlist? Enter number:\n'+names,'1');const p=PL[(+k)-1];if(p){p.ids.push(...many);savePls();renderPls();if(many.length>1)alert('Added '+many.length+' songs to '+p.name+'.')}}
+function addToPl(id){const many=Array.isArray(id)?id:[id];if(!many.length){alert('No songs to add.');return}const PL=S.pls.filter(x=>!isBuiltin(x));if(!PL.length){alert('Create a playlist first in the Playlists tab.');return}const names=PL.map((p,i)=>(i+1)+'. '+p.name).join('\n');const k=prompt('Add to which playlist? Enter number:\n'+names,'1');const p=PL[(+k)-1];if(p){p.ids.push(...many);savePls();renderPls();if(many.length>1)alert('Added '+many.length+' songs to '+p.name+'.')}}
 const fctx=()=>({type:'folder',id:S.cwd.join('/'),name:S.cwd.length?'Folder '+S.cwd.join(' / '):'Library'});
 const playable=id=>{const x=S.songs.find(s=>s.id===id);return !!x&&!x.removed};
 const byId=id=>S.songs.find(s=>s.id===id);
@@ -88,23 +89,32 @@ const CLIPS_ID='clips';const libSongs=()=>S.songs.filter(s=>!s.clip);const isCli
 function ensureClipsPl(){let p=clipsPl();let ch=false;if(!p){p={id:CLIPS_ID,name:'Custom Clips',ids:[],builtin:true};S.pls.unshift(p);ch=true}
  if(p.name!=='Custom Clips'){p.name='Custom Clips';ch=true}p.builtin=true;if(S.pls[0]!==p){S.pls=[p,...S.pls.filter(x=>x!==p)];ch=true}
  // a clip that is in no playlist comes back to Custom Clips, so a clip file is never lost or hidden
- S.songs.filter(x=>x.clip).forEach(x=>{if(!S.pls.some(q=>q.ids.includes(x.id))){p.ids.push(x.id);ch=true}});
- p.ids=p.ids.filter(id=>{const x=byId(id);return x&&x.clip});return ch}
+ S.songs.filter(x=>x.clip).forEach(x=>{if(!S.pls.some(q=>!isFav(q)&&q.ids.includes(x.id))){p.ids.push(x.id);ch=true}});
+ p.ids=p.ids.filter(id=>{const x=byId(id);return x&&x.clip});if(ensureFavPl())ch=true;return ch}
+// v26 Favorites: the built-in Favorites playlist is the saved list of favorite ids
+const FAV_ID='favs';const isFav=p=>p&&p.id===FAV_ID;const favPl=()=>S.pls.find(isFav);const isBuiltin=p=>isClips(p)||isFav(p);
+function ensureFavPl(){let f=favPl(),ch=false;const was=S.pls.indexOf(f);if(!f){f={id:FAV_ID,name:'Favorites',ids:[],builtin:true};ch=true}else S.pls=S.pls.filter(x=>x!==f);
+ if(f.name!=='Favorites'){f.name='Favorites';ch=true}f.builtin=true;const i=S.pls.findIndex(isClips);S.pls.splice(i+1,0,f);if(was!==i+1)ch=true;
+ const seen=new Set();const ids=f.ids.filter(id=>byId(id)&&!seen.has(id)&&seen.add(id));if(ids.length!==f.ids.length){f.ids=ids;ch=true}return ch}
+const faved=id=>{const f=favPl();return !!f&&f.ids.includes(id)};
+function toggleFav(id){PG.open=null;ensureFavPl();const f=favPl();const i=f.ids.indexOf(id);if(i>=0){f.ids.splice(i,1);plSyncQ(f,q=>L.plRemove(q,i))}else f.ids.push(id);savePls();renderAll();const s=byId(id);toast((i>=0?'Removed from':'Added to')+' Favorites')}
+function favBtn(id){const on=faved(id);const b=el('button',on?'Unfavorite':'Favorite','pfav'+(on?' on':''));b.setAttribute('aria-label',on?'Unfavorite':'Favorite');b.onclick=e=>{e.stopPropagation();closeRow();toggleFav(id)};return b}
+function favMark(fg,id){if(faved(id)){const m=el('span','✓','favck');m.setAttribute('aria-label','Favorite');m.title='Favorite';fg.append(m)}}
 function renderPls(){setTimeout(saveNav,0);const ul=$('plList');ul.innerHTML='';S.pls.forEach(p=>{const li=el('li',null,'prow plrow');const fg=el('div',null,'pfg');fg.append(el('span',p.name+' ('+p.ids.length+')','n'));
  const sh=el('button','Share','padd');sh.onclick=e=>{e.stopPropagation();closeRow();openPlShare(p.id)};rowActs(li,[sh],null);li.append(fg);
  fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}S.openPl=p.id;renderPls()});attachRow(li,null);
  li.append=(...a)=>fg.append(...a);
- if(isClips(p)){li.classList.add('builtinPl');li.append(btn('▶',()=>playList(p.ids,0,{type:'pl',id:p.id,name:p.name})));ul.append(li);return}
+ if(isBuiltin(p)){li.classList.add('builtinPl');li.append(btn('▶',()=>playList(p.ids,0,{type:'pl',id:p.id,name:p.name})));ul.append(li);return}
  li.append(btn('▶',()=>playList(p.ids,0,{type:'pl',id:p.id,name:p.name})),btn('Rename',()=>{const n=prompt('New name',p.name);if(n){p.name=n;if(S.Q&&S.Q.ctx.id===p.id){S.Q.ctx.name=n;saveQ();renderFrom()}savePls();renderPls()}}),btn('Delete',()=>{if(confirm('Delete playlist '+p.name+'?')){S.pls=S.pls.filter(x=>x!==p);ensureClipsPl();savePls();renderPls()}}));ul.append(li)});
  const d=$('plDetail');d.innerHTML='';const p=S.pls.find(x=>x.id===S.openPl);if(!p)return;d.append(el('h3',p.name));const l=el('ul',null,'list');
  p.ids.forEach((id,i)=>{const s=byId(id);const li=el('li',null,'prow'+(S.Q&&S.Q.ctx.id===p.id&&cur()===id&&S.Q.items[S.Q.play[S.Q.qi]].k===i?' cur':''));li.dataset.i=i;
-  const rm=el('button',isClips(p)?'Delete':'Remove','prm');rm.setAttribute('aria-label',isClips(p)?'Delete clip':'Remove from playlist');rm.onclick=e=>{e.stopPropagation();if(isClips(p))deleteClip(id);else{plRemoveAt(p,i);if(s&&s.clip&&ensureClipsPl()){savePls();renderPls();toast('The clip is in no other playlist, so it went back to Custom Clips')}}};
-  const fg=el('div',null,'pfg');fg.append(el('span',s?s.name+(s.removed?' (removed)':''):'(missing)','n'));if(s&&s.removed)li.classList.add('gone');if(s)prBadge(fg,id);const g=el('span','≡','grip');g.setAttribute('aria-label','Drag to reorder');fg.append(g);
-  const acts=[sendBtn(()=>[id],(byId(id)||{}).name),rm];if(s&&s.clip){if(isClips(p)){const sv=el('button','Save In','padd');sv.onclick=e=>{e.stopPropagation();closeRow();saveClipIn(id)};acts.unshift(sv)}else{const ad=el('button','Add to list','padd');ad.onclick=e=>{e.stopPropagation();closeRow();addToPl(id)};acts.unshift(ad)}}
+  const rm=el('button',isClips(p)?'Delete':'Remove','prm');rm.setAttribute('aria-label',isClips(p)?'Delete clip':isFav(p)?'Remove from Favorites':'Remove from playlist');rm.onclick=e=>{e.stopPropagation();if(isClips(p))deleteClip(id);else{plRemoveAt(p,i);if(s&&s.clip&&ensureClipsPl()){savePls();renderPls();toast('The clip is in no other playlist, so it went back to Custom Clips')}}};
+  const fg=el('div',null,'pfg');fg.append(el('span',s?s.name+(s.removed?' (removed)':''):'(missing)','n'));if(s&&s.removed)li.classList.add('gone');if(s){favMark(fg,id);prBadge(fg,id)}const g=el('span','≡','grip');g.setAttribute('aria-label','Drag to reorder');fg.append(g);
+  const acts=[sendBtn(()=>[id],(byId(id)||{}).name),rm];if(s&&!isFav(p))acts.unshift(favBtn(id));if(s&&s.clip){if(isClips(p)){const sv=el('button','Save In','padd');sv.onclick=e=>{e.stopPropagation();closeRow();saveClipIn(id)};acts.unshift(sv)}else{const ad=el('button','Add to list','padd');ad.onclick=e=>{e.stopPropagation();closeRow();addToPl(id)};acts.unshift(ad)}}
   rowActs(li,acts,id);li._pre=()=>preSend([id]);li.append(fg);fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(p.ids,i,{type:'pl',id:p.id,name:p.name})});attachRow(li,p);l.append(li)});
- if(!p.ids.length)l.append(el('li',isClips(p)?'No clips yet. Set an A-B loop on a song, then tap Save Custom Clip in the Loop editor or in Loop and practice settings.':'Empty. In the Library, swipe a song left and tap Add to list.'));else d.append(el('p',isClips(p)?'Drag ≡ to reorder. Swipe a clip left to Save In another playlist, Send or Delete it.':'Drag ≡ to reorder. Swipe a song left to remove it.','hint'));d.append(l)}
+ if(!p.ids.length)l.append(el('li',isFav(p)?'No favorites yet. Swipe a song or clip left and tap Favorite.':isClips(p)?'No clips yet. Set an A-B loop on a song, then tap Save Custom Clip in the Loop editor or in Loop and practice settings.':'Empty. In the Library, swipe a song left and tap Add to list.'));else d.append(el('p',isFav(p)?'Drag ≡ to reorder. Swipe left and tap Remove to unfavorite.':isClips(p)?'Drag ≡ to reorder. Swipe a clip left to Save In another playlist, Send or Delete it.':'Drag ≡ to reorder. Swipe a song left to remove it.','hint'));d.append(l)}
 $('newPl').onclick=()=>{const n=prompt('Playlist name','Playlist '+(S.pls.length+1));if(n){S.pls.push({id:'p'+Date.now(),name:n,ids:[]});savePls();renderPls()}};
-function saveClipIn(id){const PL=S.pls.filter(x=>!isClips(x));if(!PL.length){alert('Create a playlist first in the Playlists tab, then use Save In to move the clip there.');return}
+function saveClipIn(id){const PL=S.pls.filter(x=>!isBuiltin(x));if(!PL.length){alert('Create a playlist first in the Playlists tab, then use Save In to move the clip there.');return}
  const k=prompt('Move this clip to which playlist? Enter number:\n'+PL.map((p,i)=>(i+1)+'. '+p.name).join('\n'),'1');const p=PL[(+k)-1];if(!p)return;
  if(!p.ids.includes(id))p.ids.push(id);const c=clipsPl();const i=c.ids.indexOf(id);if(i>=0){PG.open=null;c.ids.splice(i,1);plSyncQ(c,q=>L.plRemove(q,i))}savePls();renderPls();toast('Moved to '+p.name)}
 async function deleteClip(id){const s=byId(id);if(!s)return;if(!confirm('Delete the clip "'+s.name+'" for good? This deletes the clip file. The original song is not changed.'))return;await eraseSong(s);savePls();renderAll();toast('Clip deleted')}
@@ -168,7 +178,7 @@ async function bkRestore(fileList){const ents={};let meta=null;const parts=[];
  for(const rec of meta.songs){n++;$('bkStatus').textContent='Restoring '+n+' of '+meta.songs.length+'...';if(have.has(rec.id)){skipped++;continue}const x=ents[rec.file];if(!x){missing++;continue}
   const r=Object.assign({},rec);delete r.file;const data=new Blob([await x.blob.arrayBuffer()],{type:r.type||'audio/mpeg'});await DB.putSong(r,data);have.add(r.id);added++}
  S.songs=await DB.allSongs();
- for(const p of meta.playlists||[]){const ex=S.pls.find(q=>q.id===p.id);if(ex){const extra=ex.ids.filter(id=>!p.ids.includes(id));ex.ids=p.ids.filter(id=>byId(id)).concat(extra)}else S.pls.push({id:p.id,name:p.name,ids:p.ids.slice(),builtin:p.builtin})}
+ for(const p of meta.playlists||[]){const ex=S.pls.find(q=>q.id===p.id);if(ex){const extra=ex.ids.filter(id=>!p.ids.includes(id));ex.ids=p.ids.filter(id=>byId(id)).concat(extra.filter(id=>!p.ids.includes(id)))}else S.pls.push({id:p.id,name:p.name,ids:p.ids.slice(),builtin:p.builtin})}
  S.pls.forEach(p=>{p.ids=p.ids.filter(id=>byId(id))});ensureClipsPl();await savePls();
  for(const [id,st] of Object.entries(meta.pr||{})){if(!S.pr[id]&&byId(id)){S.pr[id]=st;await savePR(id)}}
  if(meta.settings&&!(await DB.get('settings'))){await DB.set('settings',meta.settings)}
@@ -327,7 +337,7 @@ function sendSongs(ids,label){ids=ids.filter(id=>{const s=byId(id);return s&&!s.
 function sendFallback(files){try{files.forEach((f,i)=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.className='sendDl';document.body.append(a);setTimeout(()=>{a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)},i*400)});toast(files.length>1?'Sharing not supported here. Downloading '+files.length+' files':'Sharing not supported here. Downloading the file')}catch(e){toast('Sending files is not supported in this browser')}}
 function rowActs(li,btns,id){const st=S.pr[id];if(st){const t=el('button',null,'ptog'+(st.enabled?' on':''));t.innerHTML='<b>Speed '+(st.enabled?'On':'Off')+'</b><small>'+prFmt(st.speed,st.pitch).replace(/ · /g,' ').replace(/ st$/,'')+'</small>';
   t.setAttribute('aria-label','Speed and pitch for this song: '+(st.enabled?'on':'off')+'. Tap to turn '+(st.enabled?'off':'on'));t.onclick=e=>{e.stopPropagation();togglePR(id)};btns=[t,...btns]}
- const bw=btns.length>=3?86:104;const box=el('div',null,'acts');box.style.setProperty('--bw',bw+'px');btns.forEach(b=>box.append(b));li.append(box);li._ox=-bw*btns.length;li.style.setProperty('--ox',(bw*btns.length)+'px')}
+ const bw=btns.length>=5?72:btns.length>=4?80:btns.length>=3?86:104;const box=el('div',null,'acts');box.style.setProperty('--bw',bw+'px');btns.forEach(b=>box.append(b));li.append(box);li._ox=-bw*btns.length;li.style.setProperty('--ox',(bw*btns.length)+'px')}
 async function savePR(id){const st=S.pr[id];if(st)await DB.set('pr:'+id,st);else await DB.del('pr:'+id)}
 async function togglePR(id){const st=S.pr[id];if(!st)return;st.enabled=!st.enabled;PG.open=null;await savePR(id);if(cur()===id)prApplySong(id);renderLib();renderPls()}
 function prApplySong(id){const st=id&&S.pr[id];const sp=st&&st.enabled?st.speed:1,pi=st&&st.enabled?st.pitch:0;setSpeed(sp);if(pi!==PR.pitch||PR.ctx)setPitch(pi);else renderPR()}
@@ -385,7 +395,7 @@ var PG={open:null,suppress:false,g:null};
 const OPEN_X=-104;
 function closeRow(){if(PG.open){const f=PG.open.querySelector('.pfg');f.style.transition='transform .2s';f.style.transform='';PG.open.classList.remove('open');PG.open=null}}
 function plSyncQ(p,fn){if(S.Q&&S.Q.ctx&&S.Q.ctx.type==='pl'&&S.Q.ctx.id===p.id&&S.Q.items&&S.Q.items.every(it=>it.k!=null)){fn(S.Q);saveQ();renderCard()}}
-function plRemoveAt(p,i){PG.open=null;p.ids.splice(i,1);plSyncQ(p,q=>L.plRemove(q,i));savePls();renderPls()}
+function plRemoveAt(p,i){PG.open=null;p.ids.splice(i,1);plSyncQ(p,q=>L.plRemove(q,i));savePls();if(isFav(p))renderAll();else renderPls()}
 function plMoveTo(p,from,to){if(from===to)return;const [x]=p.ids.splice(from,1);p.ids.splice(to,0,x);plSyncQ(p,q=>L.plMove(q,from,to));savePls()}
 document.addEventListener('touchmove',e=>{if(PG.g&&(PG.g.mode==='drag'||PG.g.mode==='swipe'))e.preventDefault()},{passive:false});
 document.addEventListener('pointerdown',e=>{PG.suppress=false;clearTimeout(PG.st);if(PG.open&&!PG.open.contains(e.target)){closeRow();PG.suppress=true;clearTimeout(PG.st);PG.st=setTimeout(()=>PG.suppress=false,600)}},true);
