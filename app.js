@@ -1,6 +1,7 @@
-const APP_VERSION=21;
+const APP_VERSION=22;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 22:['The Home Screen icon now uses a darker green. Icons already on your Home Screen keep their old color.','The welcome message now ends with an exclamation mark, like Welcome back, Todd!'],
  21:['The What\'s new window shows again after every update. Tap Close to dismiss it.','Music now stays paused when a phone call, a voice chat or another app takes over the sound. It starts again when you come back to the app, or you can tap play on the lock screen or CarPlay.','Screen lock and CarPlay keep playing as before.','The app can greet you by name. It asks for your first name once (you can skip), and you can change it in Settings. Your name stays on this device.'],
  20:['The app now remembers where you were. It opens on the same Library folder or playlist, and on Library or Playlists, that you had open last time.','If that folder or playlist is gone, it opens the nearest folder that still exists, or your list of playlists.','Nothing starts playing by itself when the app opens.'],
  19:['Music keeps playing when you switch apps, go to the Home Screen or lock your phone.','Songs with no pitch change now play as plain audio, which iPhone allows in the background.','If the phone pauses the music while the app is hidden, it picks up again when you come back.','App updates now wait until the music is paused, so an update never cuts off a song.','Better with CarPlay: after Siri, a navigation prompt or a call, the music tries to start again by itself. Pausing from CarPlay or the lock screen still pauses.','An A-B loop keeps repeating while the app is in the background, because the mic cannot listen there.'],
@@ -334,7 +335,7 @@ function closeName(save){if(save){const v=$('nameIn').value.trim().slice(0,40);t
 $('nameSave').onclick=()=>closeName(true);$('nameSkip').onclick=()=>closeName(false);
 $('nameIn').addEventListener('keydown',e=>{if(e.key==='Enter')closeName(true)});
 $('nameModal').addEventListener('click',e=>{if(e.target===$('nameModal'))closeName(false)});
-function greet(){const w=firstWord(getName());if(!w)return false;const h=$('hello');h.textContent='Welcome back, '+w;h.hidden=false;h.classList.remove('out');S.greeting=true;
+function greet(){const w=firstWord(getName());if(!w)return false;const h=$('hello');h.textContent='Welcome back, '+w+'!';h.hidden=false;h.classList.remove('out');S.greeting=true;
  const done=()=>{if(!S.greeting)return;S.greeting=false;clearTimeout(S.helloT);h.classList.add('out');setTimeout(()=>{h.hidden=true;h.classList.remove('out')},350);maybeWN()};
  h.onclick=done;S.helloT=setTimeout(done,2000);return true}
 function startGreeting(){let asked=null;try{asked=localStorage.getItem(ASK_K)}catch(e){}nameSum();if(!asked){openName();return}greet()}
