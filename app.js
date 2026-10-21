@@ -1,11 +1,24 @@
-const APP_VERSION=18;
+const APP_VERSION=19;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 19:['Music keeps playing when you switch apps, go to the Home Screen or lock your phone.','Songs with no pitch change now play as plain audio, which iPhone allows in the background.','If the phone pauses the music while the app is hidden, it picks up again when you come back.','App updates now wait until the music is paused, so an update never cuts off a song.','Better with CarPlay: after Siri, a navigation prompt or a call, the music tries to start again by itself. Pausing from CarPlay or the lock screen still pauses.','An A-B loop keeps repeating while the app is in the background, because the mic cannot listen there.'],
  18:['Removed the Open Help button from Settings. Help is still in its own tab.','Send is now only for individual songs, not folders.','Loop and practice settings now show the song you are changing, on the Settings card and at the top of the popup.','A Play/Pause button in the Loop and practice popup, so you can listen while you adjust speed and pitch.'],
  17:['Loop and practice settings now open in a popup.','Speed control from 50% to 150% that keeps the pitch.','Pitch control from -6 to +6 semitones.','Speed and pitch are saved per song, with an on/off toggle when you swipe left on a song and a badge on songs that have settings.','A Send button when you swipe left on a song or folder, to share the MP3 files with AirDrop, Messages or Mail.','This What\'s new button.']
 };
 var ED={open:false,ws:0,we:0,drag:null};
-const $=id=>document.getElementById(id),L=Logic,au=$('audio');
+const $=id=>document.getElementById(id),L=Logic;let au=$('audio');
+// v19: remember every listener on the audio element so it can be swapped for a fresh,
+// plain <audio> when pitch goes back to 0 (an element routed into Web Audio can never be un-routed,
+// and iOS stops Web Audio in the background).
+const AUL=[],AUP=['onended','onloadedmetadata','onplay','onpause','ontimeupdate','onerror'];
+function wireAudio(el){const add=el.addEventListener.bind(el);el.addEventListener=(t,f,o)=>{AUL.push([t,f,o]);add(t,f,o)};
+ const pause=el.pause.bind(el);el.pause=()=>{S.intentPause=Date.now();return pause()}}
+wireAudio(au);
+function swapAudio(){const old=au,n=document.createElement('audio');n.id='audio';n.preload='metadata';wireAudio(n);
+ const was=!old.paused&&!old.ended,t=old.currentTime,src=old.getAttribute('src')||old.src||old.currentSrc;AUP.forEach(p=>{n[p]=old[p]});
+ const L2=AUL.splice(0);L2.forEach(([ty,f,o])=>n.addEventListener(ty,f,o));AUP.forEach(p=>{old[p]=null});L2.forEach(([ty,f,o])=>{try{HTMLMediaElement.prototype.removeEventListener.call(old,ty,f,o)}catch(e){}});
+ try{HTMLMediaElement.prototype.pause.call(old)}catch(e){}old.replaceWith(n);au=n;
+ if(src){n.src=src;const go=()=>{try{n.currentTime=t}catch(e){}if(typeof applyRate==='function')applyRate();if(was)n.play().catch(()=>{})};if(n.readyState>=1)go();else HTMLMediaElement.prototype.addEventListener.call(n,'loadedmetadata',go,{once:true})}}
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
 async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}}
 const saveSet=()=>DB.set('settings',{shuffle:S.shuffle,repeat:S.repeat,autoRep:$('autoRep').checked,gap:+$('gap').value});
@@ -129,10 +142,13 @@ function startRec(){const SR=SRC();if(!SR)throw new Error('unsupported');stopRec
  r.onresult=e=>{if(S.rec!==r)return;for(let i=e.resultIndex||0;i<e.results.length;i++){const tr=e.results[i][0].transcript||'',u=S.used[i];const fresh=(u&&tr.startsWith(u))?tr.slice(u.length):tr;const c=L.cue(fresh);if(!c)continue;S.used[i]=tr;if(!S.waiting)continue;c==='stop'?exitAB():again();return}};
  r.onstart=()=>{S.voiceErr=null;S.recFails=0;if(S.waiting)setListen('Listening... say "again" or "stop"')};
  r.onerror=e=>{const code=e.error||'unknown';if(code==='no-speech'||code==='aborted')return;S.voiceErr=code;if(code==='not-allowed'||code==='service-not-allowed'||code==='audio-capture'){S.rec=null;if(S.waiting){showErr(code);$('tapListen').hidden=false}}else if(S.waiting)showErr(code)};
- r.onend=()=>{if(S.rec!==r||!S.ab)return;S.used={};if(++S.recFails>5){S.rec=null;if(S.waiting){showErr(S.voiceErr||'aborted');$('tapListen').hidden=false}return}
+ r.onend=()=>{if(S.rec!==r||!S.ab)return;if(document.hidden){S.rec=null;return}// can't listen in background; keep waiting, restart on return
+ S.used={};if(++S.recFails>5){S.rec=null;if(S.waiting){showErr(S.voiceErr||'aborted');$('tapListen').hidden=false}return}
   setTimeout(()=>{if(S.rec!==r||!S.ab)return;try{r.start()}catch(err){S.rec=null;S.voiceErr='not-allowed';if(S.waiting){showErr('not-allowed');$('tapListen').hidden=false}}},200)};
  r.start()}
 function waitCue(){S.waiting=true;$('abBox').open=true;$('listen').hidden=false;$('tapListen').hidden=true;
+ if(document.hidden&&!$('autoRep').checked){// mic can't listen in the background (CarPlay, locked): keep the loop going instead of going silent
+  const g=Math.max(1,+$('gap').value||0);setListen('App in background, repeating in '+g+'s...');S.timer=setTimeout(again,g*1000);return}
  if($('autoRep').checked){const g=Math.max(0,+$('gap').value||0);setListen('Repeating in '+g+'s...');S.timer=setTimeout(again,g*1000);return}
  if(!SRC()){showErr('unsupported');return}
  if(S.rec&&!S.voiceErr){setListen('Listening... say "again" or "stop"');return}
@@ -143,7 +159,7 @@ function stopRec(){const r=S.rec;S.rec=null;if(r)try{r.abort()}catch(e){}}
 function again(){clearTimeout(S.timer);S.waiting=false;$('listen').hidden=true;if(!S.ab)return;au.currentTime=S.A;au.play().catch(playBlocked)}
 function exitAB(){clearTimeout(S.timer);stopRec();S.voiceErr=null;S.ab=false;S.waiting=false;$('listen').hidden=true;renderMarks()}
 $('again').onclick=again;
-if('mediaSession' in navigator){const m=navigator.mediaSession;[['play',()=>au.play()],['pause',()=>au.pause()],['previoustrack',()=>$('prev').onclick()],['nexttrack',()=>step(1)],['seekto',d=>{au.currentTime=d.seekTime}]].forEach(([a,f])=>{try{m.setActionHandler(a,f)}catch(e){}})}
+if('mediaSession' in navigator){const m=navigator.mediaSession;[['play',()=>{S.bgWant=false;if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});if(S.waiting&&typeof again==='function'){again();return}au.play().catch(()=>{})}],['pause',()=>{S.bgWant=false;au.pause()}],['stop',()=>{S.bgWant=false;au.pause()}],['seekbackward',d=>{au.currentTime=Math.max(0,au.currentTime-((d&&d.seekOffset)||10))}],['seekforward',d=>{au.currentTime=Math.min(au.duration||1e9,au.currentTime+((d&&d.seekOffset)||10))}],['previoustrack',()=>$('prev').onclick()],['nexttrack',()=>step(1)],['seekto',d=>{au.currentTime=d.seekTime}]].forEach(([a,f])=>{try{m.setActionHandler(a,f)}catch(e){}})}
 // Help + share
 
 {const ab=el('div',null,'setCard about');ab.id='aboutCard';ab.innerHTML=`<h3>About</h3><p><b>Practice Player</b><br>Created by Todd W Harris, Hamler, Ohio<br>Version ${APP_VERSION}<br>© 2026 Todd W Harris</p><p class="muted">Your songs and playlists stay on this device. They are not part of the app and are never uploaded.</p>`;const wn=el('button',null,'btn colorBtn');wn.id='wnBtn';wn.setAttribute('aria-haspopup','dialog');wn.innerHTML='<span class="csw prIcon">★</span><span class="clab">What\'s new in Version '+APP_VERSION+'<small>See what changed in this update</small></span><span class="chev">›</span>';wn.onclick=()=>openWN();$('set').append(wn,ab);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
@@ -216,8 +232,9 @@ function prApplySong(id){const st=id&&S.pr[id];const sp=st&&st.enabled?st.speed:
 au.addEventListener('play',()=>{if(PR.pend)applyPitch()});
 function applyRate(){au.defaultPlaybackRate=PR.speed;au.playbackRate=PR.speed;au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true}
 async function ensureGraph(){if(PR.ready)return PR.ready;const AC=window.AudioContext||window.webkitAudioContext;if(!AC||!(AC.prototype&&'audioWorklet' in AC.prototype)){PR.err='Pitch shift is not available in this browser.';return null}
- PR.ready=(async()=>{const ctx=new AC();PR.ctx=ctx;await ctx.audioWorklet.addModule('pitch-worklet.js');PR.src=ctx.createMediaElementSource(au);PR.node=new AudioWorkletNode(ctx,'pitch-shift',{outputChannelCount:[2]});PR.node.connect(ctx.destination);return ctx})().catch(e=>{PR.err='Pitch shift could not start.';PR.ready=null;return null});return PR.ready}
-async function applyPitch(){const st=PR.pitch;if(!st&&!PR.ctx){return}if(!PR.ctx&&au.paused&&!PR.live){PR.pend=true;return}PR.pend=false;// pitch 0 and no graph yet: leave plain playback alone
+ PR.ready=(async()=>{const ctx=new AC();PR.ctx=ctx;ctx.onstatechange=()=>{if(PR.ctx===ctx&&(ctx.state==='suspended'||ctx.state==='interrupted')&&!au.paused)ctx.resume().catch(()=>{})};await ctx.audioWorklet.addModule('pitch-worklet.js');PR.src=ctx.createMediaElementSource(au);PR.node=new AudioWorkletNode(ctx,'pitch-shift',{outputChannelCount:[2]});PR.node.connect(ctx.destination);return ctx})().catch(e=>{PR.err='Pitch shift could not start.';PR.ready=null;return null});return PR.ready}
+async function teardownGraph(){const c=PR.ctx;PR.ctx=null;PR.ready=null;PR.src=null;PR.node=null;PR.pend=false;swapAudio();if(c)try{await c.close()}catch(e){}}
+async function applyPitch(){const st=PR.pitch;if(!st&&!PR.ctx){return}if(!st&&PR.ctx&&!PR.live){await teardownGraph();return}/* pitch 0: back to plain audio, no Web Audio at all */if(!PR.ctx&&au.paused&&!PR.live){PR.pend=true;return}PR.pend=false;// pitch 0 and no graph yet: leave plain playback alone
  const ctx=await ensureGraph();if(!ctx){if(st){PR.pitch=0;renderPR();toast&&toast(PR.err||'Pitch shift not available')}return}
  try{PR.src.disconnect()}catch(e){}if(PR.pitch){PR.src.connect(PR.node);PR.node.port.postMessage({semitones:PR.pitch})}else PR.src.connect(ctx.destination);if(ctx.state!=='running')ctx.resume().catch(()=>{})}
 function prLabel(){const parts=[];if(PR.speed!==1)parts.push(Math.round(PR.speed*100)+'%');if(PR.pitch)parts.push((PR.pitch>0?'+':'')+PR.pitch+' st');return parts.join(' · ')}
@@ -235,8 +252,22 @@ function prSyncPlay(){const b=$('prPlay');if(!b)return;const cs=byId(cur()),ok=!
 $('prPlay').onclick=async()=>{const cs=byId(cur());if(!cs)return;if(!au.src){await loadCur(false)}
  if(au.paused){if(S.waiting&&typeof again==='function'){again();return}if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});au.play().catch(()=>{})}else au.pause()};
 ['play','pause','timeupdate','loadedmetadata','ended','emptied'].forEach(ev=>au.addEventListener(ev,prSyncPlay));
+// v19: losing focus never pauses. If iOS paused us while hidden (not our own pause), resume on return.
+S.bgWant=false;
+au.addEventListener('pause',()=>{if(document.hidden&&!au.ended&&Date.now()-(S.intentPause||0)>300&&!S.waiting){S.bgWant=true;bgRetry(0)}});
+// iOS / CarPlay interruptions (Siri, navigation prompts, calls, route changes) pause the element without our code asking.
+// Try again a few times while hidden; a pause from our UI or the lock screen / CarPlay controls never sets bgWant.
+const BG_RETRY=[1000,3000,6000,12000,30000];
+function bgRetry(i){clearTimeout(S.bgT);if(i>=BG_RETRY.length)return;S.bgT=setTimeout(()=>{if(!S.bgWant||!au.paused||!au.src)return;if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});au.play().then(()=>{S.bgWant=false}).catch(()=>bgRetry(i+1))},BG_RETRY[i])}
+function msPos(){try{if(navigator.mediaSession&&navigator.mediaSession.setPositionState&&isFinite(au.duration)&&au.duration>0)navigator.mediaSession.setPositionState({duration:au.duration,playbackRate:au.playbackRate||1,position:Math.min(au.currentTime,au.duration)})}catch(e){}}
+['loadedmetadata','ratechange','seeked','play','pause'].forEach(t=>au.addEventListener(t,msPos));
+au.addEventListener('play',()=>{S.bgWant=false;clearTimeout(S.bgT)});
+function onReturn(){if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});if(document.hidden)return;
+ if(S.bgWant&&au.paused&&au.src){S.bgWant=false;au.play().catch(()=>{})}
+ if(S.ab&&S.waiting&&!S.rec&&!$('autoRep').checked&&typeof startRec==='function'){S.recFails=0;try{startRec()}catch(e){}}}
+document.addEventListener('visibilitychange',onReturn);window.addEventListener('pageshow',onReturn);window.addEventListener('focus',onReturn);
 function openPR(){PR.live=true;PR.orig={speed:PR.speed,pitch:PR.pitch,id:cur()};PR.resetPending=false;$('ctxPre').value=ctxGet('pp-pre');$('ctxPost').value=ctxGet('pp-post');renderPR();$('prModal').hidden=false;document.body.classList.add('modalOpen');if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{})}
-async function closePR(keep){PR.live=false;if($('prModal').hidden)return;if($('set').classList.contains('on')&&!au.paused)au.pause();$('prModal').hidden=true;document.body.classList.remove('modalOpen');
+async function closePR(keep){PR.live=false;if($('prModal').hidden)return;setTimeout(()=>{if(!PR.pitch&&PR.ctx&&!PR.live)teardownGraph()},0);if($('set').classList.contains('on')&&!au.paused)au.pause();$('prModal').hidden=true;document.body.classList.remove('modalOpen');
  if(keep){const cl=id=>Math.max(0,Math.min(120,Math.round(+$(id).value||0)));localStorage.setItem('pp-pre',cl('ctxPre'));localStorage.setItem('pp-post',cl('ctxPost'));if(ED.open){edWin();edRender()}
   const id=PR.orig.id;if(id&&id===cur()){const changed=PR.speed!==PR.orig.speed||PR.pitch!==PR.orig.pitch;
    if(PR.resetPending&&PR.speed===1&&!PR.pitch){delete S.pr[id];await savePR(id)}
@@ -288,6 +319,6 @@ $('wnClose').onclick=closeWN;$('wnModal').addEventListener('click',e=>{if(e.targ
 (function(){let last=null;try{last=localStorage.getItem('pp-lastVersion');localStorage.setItem('pp-lastVersion',String(APP_VERSION))}catch(e){}if(last&&last!==String(APP_VERSION))setTimeout(openWN,400)})();
 if('serviceWorker' in navigator){const sw=navigator.serviceWorker;const hadCtl=!!sw.controller;
  sw.register('sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})})}).catch(()=>{});
- sw.addEventListener('controllerchange',()=>{if(!hadCtl)return;const k='pp-reloaded-v';if(sessionStorage.getItem(k)===String(Date.now()/60000|0))return;sessionStorage.setItem(k,String(Date.now()/60000|0));location.reload()})}
+ sw.addEventListener('controllerchange',()=>{if(!hadCtl)return;const k='pp-reloaded-v';if(sessionStorage.getItem(k)===String(Date.now()/60000|0))return;sessionStorage.setItem(k,String(Date.now()/60000|0));const go=()=>location.reload();if(au.paused&&!document.hidden)go();else{const w=()=>{if(au.paused&&!document.hidden){au.removeEventListener('pause',w);document.removeEventListener('visibilitychange',w);go()}};au.addEventListener('pause',w);document.addEventListener('visibilitychange',w)}})}
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 load();
