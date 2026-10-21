@@ -1,6 +1,7 @@
-const APP_VERSION=17;
+const APP_VERSION=18;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 18:['Removed the Open Help button from Settings. Help is still in its own tab.','Send is now only for individual songs, not folders.','Loop and practice settings now show the song you are changing, on the Settings card and at the top of the popup.','A Play/Pause button in the Loop and practice popup, so you can listen while you adjust speed and pitch.'],
  17:['Loop and practice settings now open in a popup.','Speed control from 50% to 150% that keeps the pitch.','Pitch control from -6 to +6 semitones.','Speed and pitch are saved per song, with an on/off toggle when you swipe left on a song and a badge on songs that have settings.','A Send button when you swipe left on a song or folder, to share the MP3 files with AirDrop, Messages or Mail.','This What\'s new button.']
 };
 var ED={open:false,ws:0,we:0,drag:null};
@@ -20,7 +21,7 @@ function renderLib(){if(S.viewRemoved)return renderRemoved();const live=S.songs.
  const ul=$('tree');ul.innerHTML='';if(!live.length&&!gone.length)ul.append(el('li','No songs yet. Open Settings and tap Import folder or Import files under Your music to add songs from the Files app.'));
  Object.keys(node.dirs).sort().forEach(d=>{const fp=[...S.cwd,d].join('/');const li=el('li',null,'prow lrow frow');li._ox=-208;
   const ad=el('button','Add to list','padd');ad.onclick=e=>{e.stopPropagation();closeRow();addToPl(folderIds(fp))};const rm=el('button','Remove','prm');rm.onclick=e=>{e.stopPropagation();removeFolder(fp)};
-  const fg=el('div',null,'pfg');fg.append(el('span','📁 '+d,'n'));const sd=sendBtn(()=>folderIds(fp),d);rowActs(li,[ad,sd,rm],null);li._pre=()=>preSend(folderIds(fp));li.append(fg);
+  const fg=el('div',null,'pfg');fg.append(el('span','📁 '+d,'n'));rowActs(li,[ad,rm],null);li.append(fg);
   fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}S.cwd.push(d);renderLib()});attachRow(li,null);ul.append(li)});
  const songs=node.songs.sort((a,b)=>a.path.localeCompare(b.path));
  if(songs.length){const li=el('li');li.append(el('span','Play all in this folder','n'));li.onclick=()=>playList(songs.map(s=>s.id),0,fctx());ul.append(li)}
@@ -78,7 +79,7 @@ async function getMeta(s){const k='meta:'+s.id;let m=null;try{m=await DB.get(k)}
  try{await DB.set(k,m)}catch(e){}return m}
 function fmtSize(n){return n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB'}
 let artUrl=null,artFor=null;
-function renderCard(){const s=byId(cur());const c=$('card');if(!s){c.classList.add('empty');if(!S.loadFailed)$('now').textContent='Nothing playing';setArt(null,null);return}
+function renderCard(){if(typeof renderPR==="function"&&$("prModal").hidden)try{renderPR()}catch(e){}const s=byId(cur());const c=$('card');if(!s){c.classList.add('empty');if(!S.loadFailed)$('now').textContent='Nothing playing';setArt(null,null);return}
  c.classList.remove('empty');const m=S.meta[s.id];const status=$('now').dataset.status;$('now').textContent=((m&&m.title)||s.name)+(status?' ('+status+')':'');
  $('cSub').textContent=m?[m.artist,m.album,m.year].filter(Boolean).join(' · '):'';
  const parts=[];if(m&&m.track)parts.push('Track '+m.track.split('/')[0]);if(S.Q)parts.push((S.Q.qi+1)+' of '+S.Q.list.length);if(au.duration&&isFinite(au.duration)&&au.src)parts.push(L.fmt(au.duration));if(s.size)parts.push(fmtSize(s.size));if(m&&m.kbps)parts.push(m.kbps+' kbps'+(m.vbr?' VBR':''));
@@ -146,7 +147,7 @@ if('mediaSession' in navigator){const m=navigator.mediaSession;[['play',()=>au.p
 // Help + share
 
 {const ab=el('div',null,'setCard about');ab.id='aboutCard';ab.innerHTML=`<h3>About</h3><p><b>Practice Player</b><br>Created by Todd W Harris, Hamler, Ohio<br>Version ${APP_VERSION}<br>© 2026 Todd W Harris</p><p class="muted">Your songs and playlists stay on this device. They are not part of the app and are never uploaded.</p>`;const wn=el('button',null,'btn colorBtn');wn.id='wnBtn';wn.setAttribute('aria-haspopup','dialog');wn.innerHTML='<span class="csw prIcon">★</span><span class="clab">What\'s new in Version '+APP_VERSION+'<small>See what changed in this update</small></span><span class="chev">›</span>';wn.onclick=()=>openWN();$('set').append(wn,ab);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
-$('helpVer').textContent=APP_VERSION;document.querySelectorAll('.verNum').forEach(x=>x.textContent=APP_VERSION);$('openHelp').onclick=()=>{tab('help');document.querySelector('main').scrollTop=0};
+$('helpVer').textContent=APP_VERSION;document.querySelectorAll('.verNum').forEach(x=>x.textContent=APP_VERSION);
 {const toc=$('toc');document.querySelectorAll('#helpBody h2[id]').forEach(h=>{if(h.id==='h-top')return;const b=el('button',h.textContent,'tocb');b.onclick=()=>{h.scrollIntoView({block:'start'})};toc.append(b);const up=el('button','Back to topics','toTop');up.onclick=()=>$('h-top').scrollIntoView({block:'start'});let n=h.nextElementSibling;while(n&&!(n.tagName==='H2'||n.classList.contains('hintline')))n=n.nextElementSibling;h.parentNode.insertBefore(up,n||null)})}
 const SHARE={title:'Practice Player',text:'A free music practice player with A-B loop and voice cues. Open this link in Safari on iPhone (or Chrome on Android), then add it to your Home Screen.',url:'https://toddwharris.github.io/practice-player/'};
 function toast(msg){let t=document.getElementById('toast');if(!t){t=el('div',null,'toast');t.id='toast';t.setAttribute('role','status');document.body.append(t)}t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2500)}
@@ -222,11 +223,20 @@ async function applyPitch(){const st=PR.pitch;if(!st&&!PR.ctx){return}if(!PR.ctx
 function prLabel(){const parts=[];if(PR.speed!==1)parts.push(Math.round(PR.speed*100)+'%');if(PR.pitch)parts.push((PR.pitch>0?'+':'')+PR.pitch+' st');return parts.join(' · ')}
 function renderPR(){const cs=byId(cur()),m=cs&&S.meta[cs.id];$('prSong').textContent=cs?((m&&m.title)||cs.name):'';$('prSect').disabled=!cs;$('prNoSong').hidden=!!cs;$('prSongLine').hidden=!cs;const pct=Math.round(PR.speed*100);$('spdVal').textContent=pct+'%';$('spd').value=pct;$('pitVal').textContent=(PR.pitch>0?'+':'')+PR.pitch+' st';$('pit').value=PR.pitch;
  document.querySelectorAll('.spdq').forEach(b=>b.classList.toggle('tog',+b.dataset.v===pct));const ind=$('prInd'),l=cs?prLabel():'';ind.hidden=!l;ind.textContent=l;
- $('prSum').textContent=(cs?'This song: '+pct+'%, '+(PR.pitch>0?'+':'')+PR.pitch+' st · ':'')+'Loop view '+ctxGet('pp-pre')+' s / '+ctxGet('pp-post')+' s'}
+ const ttl=cs?((m&&m.title)||cs.name):'',art=m&&m.artist;$('prFor').textContent=cs?'Settings for: '+ttl+(art?' by '+art:''):'No song selected';prSyncPlay();
+ $('prSum').textContent=(cs?ttl+': '+pct+'%, '+(PR.pitch>0?'+':'')+PR.pitch+' st · ':'No song selected · ')+'Loop view '+ctxGet('pp-pre')+' s / '+ctxGet('pp-post')+' s'}
 function setSpeed(v){PR.speed=Math.max(0.5,Math.min(1.5,Math.round(v*20)/20));applyRate();renderPR()}
 function setPitch(v){PR.pitch=Math.max(-6,Math.min(6,Math.round(v)));renderPR();applyPitch()}
+
+// Play/Pause inside the Loop and practice popup (allowed while Settings is open)
+function prT(t){t=Math.max(0,Math.floor(t||0));return Math.floor(t/60)+':'+String(t%60).padStart(2,'0')}
+function prSyncPlay(){const b=$('prPlay');if(!b)return;const cs=byId(cur()),ok=!!cs&&!S.loadFailed;b.disabled=!ok;const playing=ok&&!au.paused;b.textContent=ok?(playing?'❚❚':'▶'):'No song selected';b.classList.toggle('none',!ok);b.setAttribute('aria-label',playing?'Pause':'Play');b.setAttribute('aria-pressed',playing?'true':'false');
+ $('prTime').textContent=ok?prT(au.currentTime)+(isFinite(au.duration)?' / '+prT(au.duration):''):'';$('prTime').hidden=!ok}
+$('prPlay').onclick=async()=>{const cs=byId(cur());if(!cs)return;if(!au.src){await loadCur(false)}
+ if(au.paused){if(S.waiting&&typeof again==='function'){again();return}if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});au.play().catch(()=>{})}else au.pause()};
+['play','pause','timeupdate','loadedmetadata','ended','emptied'].forEach(ev=>au.addEventListener(ev,prSyncPlay));
 function openPR(){PR.live=true;PR.orig={speed:PR.speed,pitch:PR.pitch,id:cur()};PR.resetPending=false;$('ctxPre').value=ctxGet('pp-pre');$('ctxPost').value=ctxGet('pp-post');renderPR();$('prModal').hidden=false;document.body.classList.add('modalOpen');if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{})}
-async function closePR(keep){PR.live=false;if($('prModal').hidden)return;$('prModal').hidden=true;document.body.classList.remove('modalOpen');
+async function closePR(keep){PR.live=false;if($('prModal').hidden)return;if($('set').classList.contains('on')&&!au.paused)au.pause();$('prModal').hidden=true;document.body.classList.remove('modalOpen');
  if(keep){const cl=id=>Math.max(0,Math.min(120,Math.round(+$(id).value||0)));localStorage.setItem('pp-pre',cl('ctxPre'));localStorage.setItem('pp-post',cl('ctxPost'));if(ED.open){edWin();edRender()}
   const id=PR.orig.id;if(id&&id===cur()){const changed=PR.speed!==PR.orig.speed||PR.pitch!==PR.orig.pitch;
    if(PR.resetPending&&PR.speed===1&&!PR.pitch){delete S.pr[id];await savePR(id)}
