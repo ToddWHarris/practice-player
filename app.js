@@ -1,4 +1,4 @@
-const APP_VERSION=15;
+const APP_VERSION=16;
 var ED={open:false,ws:0,we:0,drag:null};
 const $=id=>document.getElementById(id),L=Logic,au=$('audio');
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
@@ -141,8 +141,8 @@ $('again').onclick=again;
 if('mediaSession' in navigator){const m=navigator.mediaSession;[['play',()=>au.play()],['pause',()=>au.pause()],['previoustrack',()=>$('prev').onclick()],['nexttrack',()=>step(1)],['seekto',d=>{au.currentTime=d.seekTime}]].forEach(([a,f])=>{try{m.setActionHandler(a,f)}catch(e){}})}
 // Help + share
 
-{const v=el('p','Version '+APP_VERSION,'ver');$('set').append(v);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
-$('helpVer').textContent=APP_VERSION;$('openHelp').onclick=()=>{tab('help');document.querySelector('main').scrollTop=0};
+{const ab=el('div',null,'setCard about');ab.id='aboutCard';ab.innerHTML=`<h3>About</h3><p><b>Practice Player</b><br>Created by Todd W Harris, Hamler, Ohio<br>Version ${APP_VERSION}<br>© 2026 Todd W Harris</p><p class="muted">Your songs and playlists stay on this device. They are not part of the app and are never uploaded.</p>`;$('set').append(ab);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
+$('helpVer').textContent=APP_VERSION;document.querySelectorAll('.verNum').forEach(x=>x.textContent=APP_VERSION);$('openHelp').onclick=()=>{tab('help');document.querySelector('main').scrollTop=0};
 {const toc=$('toc');document.querySelectorAll('#helpBody h2[id]').forEach(h=>{if(h.id==='h-top')return;const b=el('button',h.textContent,'tocb');b.onclick=()=>{h.scrollIntoView({block:'start'})};toc.append(b);const up=el('button','Back to topics','toTop');up.onclick=()=>$('h-top').scrollIntoView({block:'start'});let n=h.nextElementSibling;while(n&&!(n.tagName==='H2'||n.classList.contains('hintline')))n=n.nextElementSibling;h.parentNode.insertBefore(up,n||null)})}
 const SHARE={title:'Practice Player',text:'A free music practice player with A-B loop and voice cues. Open this link in Safari on iPhone (or Chrome on Android), then add it to your Home Screen.',url:'https://toddwharris.github.io/practice-player/'};
 function toast(msg){let t=document.getElementById('toast');if(!t){t=el('div',null,'toast');t.id='toast';t.setAttribute('role','status');document.body.append(t)}t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2500)}
@@ -151,9 +151,15 @@ async function shareApp(){if(navigator.share){try{await navigator.share(SHARE);r
  try{if(!navigator.clipboard||!navigator.clipboard.writeText)throw new Error('no clipboard');await navigator.clipboard.writeText(SHARE.url);toast('Link copied')}catch(e){showLink()}}
 document.querySelectorAll('.shareBtn').forEach(b=>b.onclick=shareApp);
 function applyAccent(c,save=true){c=L.normHex(c)||L.PRESETS[0][1];const r=document.documentElement.style;r.setProperty('--ac',c);r.setProperty('--on-ac',L.textOn(c));r.setProperty('--ac-soft',c+'55');
- document.querySelector('meta[name=theme-color]').setAttribute('content',c);$('customColor').value=c;document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('sel',b.dataset.c===c));try{localStorage.setItem('accent',c)}catch(e){}if(save)DB.set('accent',c)}
-L.PRESETS.forEach(([n,c])=>{const b=el('button',n,'sw');b.dataset.c=c;b.style.background=c;b.style.color=L.textOn(c);b.setAttribute('aria-label',n+' color');b.onclick=()=>applyAccent(c);$('swatches').append(b)});
-$('customColor').oninput=e=>applyAccent(e.target.value);
+ document.querySelector('meta[name=theme-color]').setAttribute('content',c);$('customColor').value=c;document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('sel',b.dataset.c===c));if(save){try{localStorage.setItem('accent',c)}catch(e){}DB.set('accent',c)}const pr=L.PRESETS.find(x=>x[1]===c);$('colorSw').style.background=c;$('colorName').textContent=pr?pr[0]:'Custom '+c}
+L.PRESETS.forEach(([n,c])=>{const b=el('button',n,'sw');b.dataset.c=c;b.style.background=c;b.style.color=L.textOn(c);b.setAttribute('aria-label',n+' color');b.onclick=()=>applyAccent(c,false);$('swatches').append(b)});
+$('customColor').oninput=e=>applyAccent(e.target.value,false);
+const CM={orig:null};function curAccent(){return getComputedStyle(document.documentElement).getPropertyValue('--ac').trim()}
+function openColor(){CM.orig=curAccent();$('colorModal').hidden=false;document.body.classList.add('modalOpen');const sel=document.querySelector('.sw.sel')||document.querySelector('.sw');sel&&sel.focus()}
+function closeColor(keep){if($('colorModal').hidden)return;if(keep)applyAccent(curAccent(),true);else applyAccent(CM.orig,false);$('colorModal').hidden=true;document.body.classList.remove('modalOpen');$('colorBtn').focus()}
+$('colorBtn').onclick=openColor;$('colorDone').onclick=()=>closeColor(true);$('colorCancel').onclick=()=>closeColor(false);
+$('colorModal').addEventListener('click',e=>{if(e.target===$('colorModal'))closeColor(false)});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('colorModal').hidden)closeColor(false)});
 try{const c=localStorage.getItem('accent');if(c)applyAccent(c,false)}catch(e){}
 function syncTog(){$('shuf').classList.toggle('tog',S.shuffle);$('rep').classList.toggle('tog',S.repeat!=='off');$('abOn').classList.toggle('tog',S.ab)}
 
@@ -177,7 +183,7 @@ $('edPlay').onclick=()=>{if(!S.ab)$('abOn').click();else again()};$('edAgain').o
   [S.A,S.B]=L.dragHandle(ED.drag,tAt(e.clientX),S.A,S.B,au.duration);renderMarks()});
  const up=()=>{if(!ED.drag)return;ED.drag=null;$('hA').classList.remove('drag');$('hB').classList.remove('drag');edWin();renderMarks()};tl.addEventListener('pointerup',up);tl.addEventListener('pointercancel',up)})();
 (function(){const box=el('div');box.innerHTML='<h2 class="acc">Loop editor</h2><p>Time shown before and after the loop in the Loop editor.</p><div class="setrow"><label>Before <input id="ctxPre" type="number" min="0" max="120" step="1"> s</label><label>After <input id="ctxPost" type="number" min="0" max="120" step="1"> s</label></div>';
- const sw=$('customRow');sw.after(box);[['ctxPre','pp-pre'],['ctxPost','pp-post']].forEach(([id,k])=>{const i=$(id);i.value=ctxGet(k);i.onchange=()=>{const v=Math.max(0,Math.min(120,Math.round(+i.value||0)));i.value=v;localStorage.setItem(k,v);if(ED.open){edWin();edRender()}}})})();
+ $('colorBtn').after(box);[['ctxPre','pp-pre'],['ctxPost','pp-post']].forEach(([id,k])=>{const i=$(id);i.value=ctxGet(k);i.onchange=()=>{const v=Math.max(0,Math.min(120,Math.round(+i.value||0)));i.value=v;localStorage.setItem(k,v);if(ED.open){edWin();edRender()}}})})();
 addEventListener('resize',()=>edRender());
 // Playlist rows: drag to reorder (grip or long press), swipe left to reveal Remove
 var PG={open:null,suppress:false,g:null};

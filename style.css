@@ -76,3 +76,14 @@ details summary{color:var(--ac)}
 .toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--ac);color:var(--on-ac);padding:12px 22px;border-radius:24px;font-weight:700;opacity:0;pointer-events:none;transition:all .25s;z-index:100}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #shareUrl{width:100%;font-size:16px;padding:10px;background:#111827;color:#fff;border:1px solid var(--ac);border-radius:8px}
+.colorBtn{width:100%;justify-content:flex-start;gap:14px;padding:10px 14px;min-height:64px;text-align:left}
+.csw{width:40px;height:40px;border-radius:50%;background:var(--ac);border:2px solid #fff;flex:0 0 40px}
+.clab{flex:1;display:flex;flex-direction:column;font-size:17px}.clab small{color:#9ca3af;font-size:14px}.chev{font-size:28px;color:#9ca3af}
+.modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:#0f1520;border:1px solid #374151;border-bottom:0;border-radius:20px 20px 0 0;width:100%;max-width:640px;max-height:88vh;max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:14px 14px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.6)}
+.sheetHead{display:flex;align-items:center;justify-content:space-between;gap:8px;position:sticky;top:-14px;background:#0f1520;padding:4px 0 8px;z-index:1}.sheetHead h2{margin:0;font-size:19px;text-align:center;flex:1}
+.preview{display:flex;gap:14px;align-items:center;margin-top:12px}.preview .btn{flex:0 0 auto}
+body.modalOpen{overflow:hidden}
+@media (orientation:landscape) and (max-height:500px){.modal{align-items:center}.sheet{border-radius:16px;max-height:94vh;max-height:94dvh;border:1px solid #374151}#swatches{grid-template-columns:repeat(8,1fr)}.sw{height:52px}}
+.setCard{background:#0f1520;border:1px solid #1f2937;border-left:4px solid var(--ac);border-radius:14px;padding:14px;margin:24px 0 12px}
+.setCard h3{margin-top:0;margin-bottom:8px;color:var(--ac)}.setCard p{margin:0 0 8px;line-height:1.5}.setCard .muted{color:#9ca3af;font-size:14px;margin:0}

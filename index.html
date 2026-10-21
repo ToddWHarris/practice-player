@@ -1,4 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="author" content="Todd W Harris">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#22c55e">
@@ -17,7 +18,7 @@
 <section id="set" class="tab"><div class="shareBox"><button class="btn primary big shareBtn" id="shareSet">Share this app</button><p class="hintline">Sends a link to the app only. Your songs and playlists are never shared.</p></div><h2 class="acc">Your music</h2><p>Copy songs from the Files app into this app. <span id="libCount"></span></p>
  <div class="row"><label class="btn primary">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
  <label class="btn">Import files<input id="inFiles" type="file" accept="audio/*,.mp3" multiple hidden></label></div>
-<h2 class="acc">Color</h2><p>Pick a highlight color. It is saved on this device.</p><div id="swatches"></div><div id="customRow"><input type="color" id="customColor" value="#22c55e"><label for="customColor">Custom color</label></div><div class="row"><button id="openHelp" class="btn">Open Help</button></div></section>
+<h2 class="acc">Color</h2><button id="colorBtn" class="btn colorBtn" aria-haspopup="dialog"><span id="colorSw" class="csw"></span><span class="clab">Highlight color<small id="colorName">Green</small></span><span class="chev">›</span></button><div class="row"><button id="openHelp" class="btn">Open Help</button></div></section>
 <section id="help" class="tab"><div id="helpBody">
 <h2 class="acc" id="h-top">Help</h2>
 <p class="hintline">Tap a topic to jump to it. Music keeps playing while you read.</p>
@@ -75,7 +76,7 @@
 <ul><li>Once A and B are set, tap <b>Loop editor</b> in the A-B section for a big, zoomed in view of your loop.</li><li>Drag the A and B handles with your finger. They move in whole seconds (1 s steps). A always stays at least 1 second before B.</li><li>The view also shows some of the song before and after the loop, 10 seconds each by default. Change this in <b>Settings</b>, <b>Loop editor</b>, Before and After. When you let go of a handle, the view adjusts so you can drag further. Near the start of a song you can drag A all the way to 0:00.</li><li>Turn your phone sideways for a wider timeline. If it does not turn, switch off Portrait Orientation Lock in Control Center.</li><li>Tap <b>Play loop from A</b> to hear it. Voice cues, Auto repeat and the Again button work here too. Tap <b>Done</b> when finished.</li></ul>
 
 <h2 id="h-settings">Settings, color and updates</h2>
-<ul><li><b>Highlight color:</b> in Settings, tap one of the colors or pick your own with <b>Custom color</b>. Button text switches between black and white so it stays readable. It is saved on this device.</li><li><b>Opening Settings pauses the music</b> and ends any loop. Tap Play when you come back. Reading Help does not pause the music.</li><li><b>Version number:</b> shown at the top and bottom of Settings.</li><li><b>Updates</b> download by themselves when you are online. If the version number has not changed, close the app fully (swipe up from the bottom, then swipe the app away) and open it again. Sometimes it takes two tries.</li></ul>
+<ul><li><b>Highlight color:</b> in Settings, tap <b>Highlight color</b>. It shows your current color and its name. A window opens with all the colors and <b>Custom color</b> to pick your own. Tap a color to try it, and the whole app changes right away. Tap <b>Done</b> to keep it. Tap <b>Cancel</b> or tap outside the window to go back to the color you had. Button text switches between black and white so it stays readable. Your choice is saved on this device.</li><li><b>Opening Settings pauses the music</b> and ends any loop. Tap Play when you come back. Reading Help does not pause the music.</li><li><b>Version number:</b> shown at the top and bottom of Settings.</li><li><b>Updates</b> download by themselves when you are online. If the version number has not changed, close the app fully (swipe up from the bottom, then swipe the app away) and open it again. Sometimes it takes two tries.</li></ul>
 
 <h2 id="h-trouble">Troubleshooting</h2>
 <ul><li><b>Voice: not-allowed.</b> The mic is blocked. Allow it in iPhone Settings, Apps, Safari, Microphone, then tap <b>Tap to listen</b>.</li><li><b>Voice: service-not-allowed.</b> Turn on Dictation in iPhone Settings, General, Keyboard.</li><li><b>Voice: no-speech.</b> Nothing was heard. The app keeps listening. Speak a little louder or closer.</li><li><b>Voice: network.</b> Speech needs an internet connection. Use the Again button instead.</li><li><b>Voice: audio-capture.</b> No microphone was found, or another app is using it. Close that app and try again.</li><li><b>Voice: unsupported.</b> This browser has no voice support. Use the Again button or Auto repeat.</li><li><b>"Tap Play to start"</b> means the phone wants a tap before it plays. Tap Play.</li><li><b>"Could not read file, please import it again"</b> means the app's copy of that song is damaged or missing. Import it again from Settings, Your music.</li><li><b>The update did not show.</b> Close the app fully and open it again, maybe twice, then check the version number in Settings.</li><li><b>Songs are gone.</b> Deleting the app icon, clearing Safari website data, or a very full iPhone can erase the app's copies. Import them again.</li></ul>
@@ -108,6 +109,12 @@
  <div id="edStatus"></div>
  <div class="row"><button id="edPlay" class="btn">Play loop from A</button><button id="edAgain" class="btn" hidden>Again</button></div>
  <p class="edTip">Drag the A and B handles. They move in whole seconds.</p>
+</div></div>
+<div id="colorModal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="colorTitle">
+ <div class="sheetHead"><button id="colorCancel" class="btn">Cancel</button><h2 id="colorTitle" class="acc">Highlight color</h2><button id="colorDone" class="btn primary">Done</button></div>
+ <p class="hintline">Tap a color to try it. The whole app changes right away. Tap Done to keep it.</p>
+ <div id="swatches"></div><div id="customRow"><input type="color" id="customColor" value="#22c55e"><label for="customColor">Custom color</label></div>
+ <div class="preview"><button class="btn primary" tabindex="-1">Sample button</button><span class="acc">Sample text</span></div>
 </div></div>
 <audio id="audio" preload="metadata"></audio>
 <script src="db.js"></script><script src="logic.js"></script><script src="app.js"></script></body></html>
