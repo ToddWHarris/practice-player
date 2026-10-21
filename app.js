@@ -1,8 +1,12 @@
-const APP_VERSION=16;
+const APP_VERSION=17;
+// Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
+const RELEASE_NOTES={
+ 17:['Loop and practice settings now open in a popup.','Speed control from 50% to 150% that keeps the pitch.','Pitch control from -6 to +6 semitones.','Speed and pitch are saved per song, with an on/off toggle when you swipe left on a song and a badge on songs that have settings.','A Send button when you swipe left on a song or folder, to share the MP3 files with AirDrop, Messages or Mail.','This What\'s new button.']
+};
 var ED={open:false,ws:0,we:0,drag:null};
 const $=id=>document.getElementById(id),L=Logic,au=$('audio');
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
-async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}}
+async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}}
 const saveSet=()=>DB.set('settings',{shuffle:S.shuffle,repeat:S.repeat,autoRep:$('autoRep').checked,gap:+$('gap').value});
 const savePls=()=>DB.set('playlists',S.pls);
 function tab(t){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id===t));const set=t==='set',hide=set||t==='help';$('player').hidden=hide;$('card').hidden=hide;if(set){if(typeof exitAB=='function'&&(S.ab||S.waiting))exitAB();if(!au.paused)au.pause()}}
@@ -16,13 +20,13 @@ function renderLib(){if(S.viewRemoved)return renderRemoved();const live=S.songs.
  const ul=$('tree');ul.innerHTML='';if(!live.length&&!gone.length)ul.append(el('li','No songs yet. Open Settings and tap Import folder or Import files under Your music to add songs from the Files app.'));
  Object.keys(node.dirs).sort().forEach(d=>{const fp=[...S.cwd,d].join('/');const li=el('li',null,'prow lrow frow');li._ox=-208;
   const ad=el('button','Add to list','padd');ad.onclick=e=>{e.stopPropagation();closeRow();addToPl(folderIds(fp))};const rm=el('button','Remove','prm');rm.onclick=e=>{e.stopPropagation();removeFolder(fp)};
-  const fg=el('div',null,'pfg');fg.append(el('span','📁 '+d,'n'));li.append(ad,rm,fg);
+  const fg=el('div',null,'pfg');fg.append(el('span','📁 '+d,'n'));const sd=sendBtn(()=>folderIds(fp),d);rowActs(li,[ad,sd,rm],null);li._pre=()=>preSend(folderIds(fp));li.append(fg);
   fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}S.cwd.push(d);renderLib()});attachRow(li,null);ul.append(li)});
  const songs=node.songs.sort((a,b)=>a.path.localeCompare(b.path));
  if(songs.length){const li=el('li');li.append(el('span','Play all in this folder','n'));li.onclick=()=>playList(songs.map(s=>s.id),0,fctx());ul.append(li)}
  songs.forEach((s,i)=>{const li=el('li',null,'prow lrow'+(cur()===s.id?' cur':''));li._ox=-208;
   const ad=el('button','Add to list','padd');ad.onclick=e=>{e.stopPropagation();closeRow();addToPl(s.id)};const dl=el('button','Remove','prm');dl.onclick=e=>{e.stopPropagation();softRemove(s)};
-  const fg=el('div',null,'pfg');fg.append(el('span','♪ '+s.name,'n'));li.append(ad,dl,fg);
+  const fg=el('div',null,'pfg');fg.append(el('span','♪ '+s.name,'n'));prBadge(fg,s.id);rowActs(li,[ad,sendBtn(()=>[s.id],s.name),dl],s.id);li._pre=()=>preSend([s.id]);li.append(fg);
   fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(songs.map(x=>x.id),i,fctx())});attachRow(li,null);ul.append(li)});
  if(!S.cwd.length&&gone.length){const li=el('li',null,'remfolder');li.append(el('span','🗑 Removed ('+gone.length+')','n'));li.onclick=()=>{S.viewRemoved=true;closeRow();renderLib()};ul.append(li)}}
 const inDir=(s,fp)=>s.path.startsWith(fp+'/');
@@ -45,7 +49,7 @@ async function deleteMany(ss,what){if(!confirm('Delete '+what+' forever? This er
 async function softRemove(s){PG.open=null;s.removed=true;s.removedAt=Date.now();await DB.putMeta(s);if(S.Q){L.qRemoveId(S.Q,s.id);saveQ()}renderAll()}
 async function restoreSong(s){PG.open=null;delete s.removed;delete s.removedAt;delete s.removedGroup;await DB.putMeta(s);renderAll()}
 async function deleteForever(s){if(!confirm('Delete '+s.name+' forever? This erases it from the app and from your playlists.'))return;await eraseSong(s);savePls();renderAll()}
-async function eraseSong(s){PG.open=null;await DB.delSong(s.id);await DB.del('meta:'+s.id);delete S.meta[s.id];
+async function eraseSong(s){PG.open=null;if(S.pr[s.id]){delete S.pr[s.id];await DB.del('pr:'+s.id)}await DB.delSong(s.id);await DB.del('meta:'+s.id);delete S.meta[s.id];
  S.songs=S.songs.filter(x=>x.id!==s.id);S.pls.forEach(p=>{const idx=[];p.ids.forEach((x,k)=>{if(x===s.id)idx.push(k)});idx.reverse().forEach(k=>{p.ids.splice(k,1);plSyncQ(p,q=>L.plRemove(q,k))})});if(S.Q){L.qRemoveId(S.Q,s.id);saveQ()}}
 function addToPl(id){const many=Array.isArray(id)?id:[id];if(!many.length){alert('No songs to add.');return}if(!S.pls.length){alert('Create a playlist first in the Playlists tab.');return}const names=S.pls.map((p,i)=>(i+1)+'. '+p.name).join('\n');const k=prompt('Add to which playlist? Enter number:\n'+names,'1');const p=S.pls[(+k)-1];if(p){p.ids.push(...many);savePls();renderPls();if(many.length>1)alert('Added '+many.length+' songs to '+p.name+'.')}}
 const fctx=()=>({type:'folder',id:S.cwd.join('/'),name:S.cwd.length?'Folder '+S.cwd.join(' / '):'Library'});
@@ -56,8 +60,8 @@ function renderPls(){const ul=$('plList');ul.innerHTML='';S.pls.forEach(p=>{cons
  const d=$('plDetail');d.innerHTML='';const p=S.pls.find(x=>x.id===S.openPl);if(!p)return;d.append(el('h3',p.name));const l=el('ul',null,'list');
  p.ids.forEach((id,i)=>{const s=byId(id);const li=el('li',null,'prow'+(S.Q&&S.Q.ctx.id===p.id&&cur()===id&&S.Q.items[S.Q.play[S.Q.qi]].k===i?' cur':''));li.dataset.i=i;
   const rm=el('button','Remove','prm');rm.setAttribute('aria-label','Remove from playlist');rm.onclick=e=>{e.stopPropagation();plRemoveAt(p,i)};
-  const fg=el('div',null,'pfg');fg.append(el('span',s?s.name+(s.removed?' (removed)':''):'(missing)','n'));if(s&&s.removed)li.classList.add('gone');const g=el('span','≡','grip');g.setAttribute('aria-label','Drag to reorder');fg.append(g);
-  li.append(rm,fg);fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(p.ids,i,{type:'pl',id:p.id,name:p.name})});attachRow(li,p);l.append(li)});
+  const fg=el('div',null,'pfg');fg.append(el('span',s?s.name+(s.removed?' (removed)':''):'(missing)','n'));if(s&&s.removed)li.classList.add('gone');if(s)prBadge(fg,id);const g=el('span','≡','grip');g.setAttribute('aria-label','Drag to reorder');fg.append(g);
+  rowActs(li,[sendBtn(()=>[id],(byId(id)||{}).name),rm],id);li._pre=()=>preSend([id]);li.append(fg);fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(p.ids,i,{type:'pl',id:p.id,name:p.name})});attachRow(li,p);l.append(li)});
  if(!p.ids.length)l.append(el('li','Empty. In the Library, swipe a song left and tap Add to list.'));else d.append(el('p','Drag ≡ to reorder. Swipe a song left to remove it.','hint'));d.append(l)}
 $('newPl').onclick=()=>{const n=prompt('Playlist name','Playlist '+(S.pls.length+1));if(n){S.pls.push({id:'p'+Date.now(),name:n,ids:[]});savePls();renderPls()}};
 function renderAll(){const lc=document.getElementById('libCount');if(lc){const n=S.songs.filter(x=>!x.removed).length,r=S.songs.length-n;lc.textContent=(S.songs.length?n+' song'+(n===1?'':'s')+' in the app now.':'No songs yet.')+(r?' '+r+' in Removed.':'')}typeof renderCard=='function'&&renderCard();renderLib();renderPls();renderCtl()}
@@ -85,7 +89,7 @@ async function loadMeta(s){if(S.meta[s.id])return;try{const m=await getMeta(s);i
 function updateMS(s,m){if(!('mediaSession' in navigator))return;const art=m&&m.art&&artUrl?[{src:artUrl,sizes:'512x512',type:m.art.type}]:[{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'}];
  try{navigator.mediaSession.metadata=new MediaMetadata({title:(m&&m.title)||s.name,artist:(m&&m.artist)||'',album:(m&&m.album)||s.path.split('/').slice(0,-1).join(' / '),artwork:art})}catch(e){}}
 async function loadCur(play){const s=byId(cur());if(!s)return;const tok=S.loadTok=(S.loadTok||0)+1;exitAB();clearAB();$('now').dataset.status='';renderFrom();let b=null;try{b=await DB.blob(s.id)}catch(e){}if(tok!==S.loadTok)return;
- if(!b||!b.size){S.loadFailed=true;$('now').dataset.status='could not read file, please import it again';renderCard();return}S.loadFailed=false;if(S.url)URL.revokeObjectURL(S.url);S.url=URL.createObjectURL(b);au.src=S.url;loadMeta(s);renderFrom();
+ if(!b||!b.size){S.loadFailed=true;$('now').dataset.status='could not read file, please import it again';renderCard();return}S.loadFailed=false;if(S.url)URL.revokeObjectURL(S.url);S.url=URL.createObjectURL(b);au.src=S.url;loadMeta(s);prApplySong(s.id);renderFrom();
  updateMS(s,S.meta[s.id]);
  if(play)au.play().catch(playBlocked);renderLib()}
 function step(dir,auto){const n=L.stepQueue(S.Q,dir,S.repeat,auto);if(n<0){au.pause();return}saveQ();loadCur(true)}
@@ -141,7 +145,7 @@ $('again').onclick=again;
 if('mediaSession' in navigator){const m=navigator.mediaSession;[['play',()=>au.play()],['pause',()=>au.pause()],['previoustrack',()=>$('prev').onclick()],['nexttrack',()=>step(1)],['seekto',d=>{au.currentTime=d.seekTime}]].forEach(([a,f])=>{try{m.setActionHandler(a,f)}catch(e){}})}
 // Help + share
 
-{const ab=el('div',null,'setCard about');ab.id='aboutCard';ab.innerHTML=`<h3>About</h3><p><b>Practice Player</b><br>Created by Todd W Harris, Hamler, Ohio<br>Version ${APP_VERSION}<br>© 2026 Todd W Harris</p><p class="muted">Your songs and playlists stay on this device. They are not part of the app and are never uploaded.</p>`;$('set').append(ab);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
+{const ab=el('div',null,'setCard about');ab.id='aboutCard';ab.innerHTML=`<h3>About</h3><p><b>Practice Player</b><br>Created by Todd W Harris, Hamler, Ohio<br>Version ${APP_VERSION}<br>© 2026 Todd W Harris</p><p class="muted">Your songs and playlists stay on this device. They are not part of the app and are never uploaded.</p>`;const wn=el('button',null,'btn colorBtn');wn.id='wnBtn';wn.setAttribute('aria-haspopup','dialog');wn.innerHTML='<span class="csw prIcon">★</span><span class="clab">What\'s new in Version '+APP_VERSION+'<small>See what changed in this update</small></span><span class="chev">›</span>';wn.onclick=()=>openWN();$('set').append(wn,ab);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
 $('helpVer').textContent=APP_VERSION;document.querySelectorAll('.verNum').forEach(x=>x.textContent=APP_VERSION);$('openHelp').onclick=()=>{tab('help');document.querySelector('main').scrollTop=0};
 {const toc=$('toc');document.querySelectorAll('#helpBody h2[id]').forEach(h=>{if(h.id==='h-top')return;const b=el('button',h.textContent,'tocb');b.onclick=()=>{h.scrollIntoView({block:'start'})};toc.append(b);const up=el('button','Back to topics','toTop');up.onclick=()=>$('h-top').scrollIntoView({block:'start'});let n=h.nextElementSibling;while(n&&!(n.tagName==='H2'||n.classList.contains('hintline')))n=n.nextElementSibling;h.parentNode.insertBefore(up,n||null)})}
 const SHARE={title:'Practice Player',text:'A free music practice player with A-B loop and voice cues. Open this link in Safari on iPhone (or Chrome on Android), then add it to your Home Screen.',url:'https://toddwharris.github.io/practice-player/'};
@@ -182,8 +186,58 @@ $('edPlay').onclick=()=>{if(!S.ab)$('abOn').click();else again()};$('edAgain').o
  tl.addEventListener('pointermove',e=>{if(!ED.drag)return;if(ED.drag==='?'){if(Math.abs(e.clientX-ED.x0)<3)return;setDrag(e.clientX<ED.x0?'A':'B')}
   [S.A,S.B]=L.dragHandle(ED.drag,tAt(e.clientX),S.A,S.B,au.duration);renderMarks()});
  const up=()=>{if(!ED.drag)return;ED.drag=null;$('hA').classList.remove('drag');$('hB').classList.remove('drag');edWin();renderMarks()};tl.addEventListener('pointerup',up);tl.addEventListener('pointercancel',up)})();
-(function(){const box=el('div');box.innerHTML='<h2 class="acc">Loop editor</h2><p>Time shown before and after the loop in the Loop editor.</p><div class="setrow"><label>Before <input id="ctxPre" type="number" min="0" max="120" step="1"> s</label><label>After <input id="ctxPost" type="number" min="0" max="120" step="1"> s</label></div>';
- $('colorBtn').after(box);[['ctxPre','pp-pre'],['ctxPost','pp-post']].forEach(([id,k])=>{const i=$(id);i.value=ctxGet(k);i.onchange=()=>{const v=Math.max(0,Math.min(120,Math.round(+i.value||0)));i.value=v;localStorage.setItem(k,v);if(ED.open){edWin();edRender()}}})})();
+// Loop and practice settings popup: before/after, speed (playbackRate, pitch kept), pitch (Web Audio worklet)
+var PR={speed:1,pitch:0,orig:null,ctx:null,src:null,node:null,ready:null,err:null};
+const numLS=(k,d,lo,hi)=>{const v=parseFloat(localStorage.getItem(k));return isFinite(v)?Math.max(lo,Math.min(hi,v)):d};
+S.pr=S.pr||{};
+// Per-song speed/pitch: S.pr[id]={speed,pitch,enabled}, stored in IndexedDB as 'pr:'+id
+const prFmt=(sp,pi)=>{const a=[];if(sp!==1)a.push(Math.round(sp*100)+'%');if(pi)a.push((pi>0?'+':'')+pi+' st');return a.join(' · ')};
+function prBadge(fg,id){const st=S.pr[id];if(!st)return;fg.append(el('span',prFmt(st.speed,st.pitch),'prBadge'+(st.enabled?'':' off')))}
+// ---- Send songs (share the actual MP3 files) ----
+const SEND={blobs:new Map(),BIG_MB:200,BIG_N:50};
+function preSend(ids){return Promise.all(ids.filter(id=>!SEND.blobs.has(id)).map(id=>DB.blob(id).then(b=>{if(b)SEND.blobs.set(id,b)}).catch(()=>{})))}
+function sendName(s){let n=(s.path||s.name||'song').split('/').pop();if(!/\.mp3$/i.test(n))n+='.mp3';return n}
+function sendBtn(getIds,label){const b=el('button','Send','psend');b.onclick=e=>{e.stopPropagation();sendSongs(getIds(),label)};return b}
+function sendSongs(ids,label){ids=ids.filter(id=>{const s=byId(id);return s&&!s.removed});if(!ids.length){toast('No songs to send');return}
+ const miss=ids.filter(id=>!SEND.blobs.has(id));if(miss.length){toast('Getting songs ready, tap Send again');preSend(miss);return}
+ const blobs=ids.map(id=>SEND.blobs.get(id)),tot=blobs.reduce((a,b)=>a+b.size,0);
+ if(ids.length>SEND.BIG_N||tot>SEND.BIG_MB*1048576){if(!confirm('This sends '+ids.length+' songs ('+Math.round(tot/1048576)+' MB). Big sends can fail. Sending smaller folders works better. Send anyway?'))return}
+ const files=ids.map((id,i)=>new File([blobs[i]],sendName(byId(id)),{type:'audio/mpeg'}));closeRow();
+ if(navigator.share&&navigator.canShare&&navigator.canShare({files})){navigator.share({files,title:label||'Songs'}).catch(e=>{if(e&&e.name==='AbortError')return;sendFallback(files)});return}
+ sendFallback(files)}
+function sendFallback(files){try{files.forEach((f,i)=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.className='sendDl';document.body.append(a);setTimeout(()=>{a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000)},i*400)});toast(files.length>1?'Sharing not supported here. Downloading '+files.length+' files':'Sharing not supported here. Downloading the file')}catch(e){toast('Sending files is not supported in this browser')}}
+function rowActs(li,btns,id){const st=S.pr[id];if(st){const t=el('button',null,'ptog'+(st.enabled?' on':''));t.innerHTML='<b>Speed '+(st.enabled?'On':'Off')+'</b><small>'+prFmt(st.speed,st.pitch).replace(/ · /g,' ').replace(/ st$/,'')+'</small>';
+  t.setAttribute('aria-label','Speed and pitch for this song: '+(st.enabled?'on':'off')+'. Tap to turn '+(st.enabled?'off':'on'));t.onclick=e=>{e.stopPropagation();togglePR(id)};btns=[t,...btns]}
+ const bw=btns.length>=3?86:104;const box=el('div',null,'acts');box.style.setProperty('--bw',bw+'px');btns.forEach(b=>box.append(b));li.append(box);li._ox=-bw*btns.length;li.style.setProperty('--ox',(bw*btns.length)+'px')}
+async function savePR(id){const st=S.pr[id];if(st)await DB.set('pr:'+id,st);else await DB.del('pr:'+id)}
+async function togglePR(id){const st=S.pr[id];if(!st)return;st.enabled=!st.enabled;PG.open=null;await savePR(id);if(cur()===id)prApplySong(id);renderLib();renderPls()}
+function prApplySong(id){const st=id&&S.pr[id];const sp=st&&st.enabled?st.speed:1,pi=st&&st.enabled?st.pitch:0;setSpeed(sp);if(pi!==PR.pitch||PR.ctx)setPitch(pi);else renderPR()}
+au.addEventListener('play',()=>{if(PR.pend)applyPitch()});
+function applyRate(){au.defaultPlaybackRate=PR.speed;au.playbackRate=PR.speed;au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true}
+async function ensureGraph(){if(PR.ready)return PR.ready;const AC=window.AudioContext||window.webkitAudioContext;if(!AC||!(AC.prototype&&'audioWorklet' in AC.prototype)){PR.err='Pitch shift is not available in this browser.';return null}
+ PR.ready=(async()=>{const ctx=new AC();PR.ctx=ctx;await ctx.audioWorklet.addModule('pitch-worklet.js');PR.src=ctx.createMediaElementSource(au);PR.node=new AudioWorkletNode(ctx,'pitch-shift',{outputChannelCount:[2]});PR.node.connect(ctx.destination);return ctx})().catch(e=>{PR.err='Pitch shift could not start.';PR.ready=null;return null});return PR.ready}
+async function applyPitch(){const st=PR.pitch;if(!st&&!PR.ctx){return}if(!PR.ctx&&au.paused&&!PR.live){PR.pend=true;return}PR.pend=false;// pitch 0 and no graph yet: leave plain playback alone
+ const ctx=await ensureGraph();if(!ctx){if(st){PR.pitch=0;renderPR();toast&&toast(PR.err||'Pitch shift not available')}return}
+ try{PR.src.disconnect()}catch(e){}if(PR.pitch){PR.src.connect(PR.node);PR.node.port.postMessage({semitones:PR.pitch})}else PR.src.connect(ctx.destination);if(ctx.state!=='running')ctx.resume().catch(()=>{})}
+function prLabel(){const parts=[];if(PR.speed!==1)parts.push(Math.round(PR.speed*100)+'%');if(PR.pitch)parts.push((PR.pitch>0?'+':'')+PR.pitch+' st');return parts.join(' · ')}
+function renderPR(){const cs=byId(cur()),m=cs&&S.meta[cs.id];$('prSong').textContent=cs?((m&&m.title)||cs.name):'';$('prSect').disabled=!cs;$('prNoSong').hidden=!!cs;$('prSongLine').hidden=!cs;const pct=Math.round(PR.speed*100);$('spdVal').textContent=pct+'%';$('spd').value=pct;$('pitVal').textContent=(PR.pitch>0?'+':'')+PR.pitch+' st';$('pit').value=PR.pitch;
+ document.querySelectorAll('.spdq').forEach(b=>b.classList.toggle('tog',+b.dataset.v===pct));const ind=$('prInd'),l=cs?prLabel():'';ind.hidden=!l;ind.textContent=l;
+ $('prSum').textContent=(cs?'This song: '+pct+'%, '+(PR.pitch>0?'+':'')+PR.pitch+' st · ':'')+'Loop view '+ctxGet('pp-pre')+' s / '+ctxGet('pp-post')+' s'}
+function setSpeed(v){PR.speed=Math.max(0.5,Math.min(1.5,Math.round(v*20)/20));applyRate();renderPR()}
+function setPitch(v){PR.pitch=Math.max(-6,Math.min(6,Math.round(v)));renderPR();applyPitch()}
+function openPR(){PR.live=true;PR.orig={speed:PR.speed,pitch:PR.pitch,id:cur()};PR.resetPending=false;$('ctxPre').value=ctxGet('pp-pre');$('ctxPost').value=ctxGet('pp-post');renderPR();$('prModal').hidden=false;document.body.classList.add('modalOpen');if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{})}
+async function closePR(keep){PR.live=false;if($('prModal').hidden)return;$('prModal').hidden=true;document.body.classList.remove('modalOpen');
+ if(keep){const cl=id=>Math.max(0,Math.min(120,Math.round(+$(id).value||0)));localStorage.setItem('pp-pre',cl('ctxPre'));localStorage.setItem('pp-post',cl('ctxPost'));if(ED.open){edWin();edRender()}
+  const id=PR.orig.id;if(id&&id===cur()){const changed=PR.speed!==PR.orig.speed||PR.pitch!==PR.orig.pitch;
+   if(PR.resetPending&&PR.speed===1&&!PR.pitch){delete S.pr[id];await savePR(id)}
+   else if(changed||PR.resetPending){if(PR.speed===1&&!PR.pitch)delete S.pr[id];else S.pr[id]={speed:PR.speed,pitch:PR.pitch,enabled:true};await savePR(id)}}}
+ else{setSpeed(PR.orig.speed);if(PR.pitch!==PR.orig.pitch)setPitch(PR.orig.pitch)}renderPR();renderLib();renderPls()}
+$('prBtn').onclick=openPR;$('prInd').onclick=openPR;$('prDone').onclick=()=>closePR(true);$('prCancel').onclick=()=>closePR(false);
+$('prModal').addEventListener('click',e=>{if(e.target===$('prModal'))closePR(false)});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('prModal').hidden)closePR(false)});
+$('spd').oninput=e=>setSpeed(e.target.value/100);document.querySelectorAll('.spdq').forEach(b=>b.onclick=()=>setSpeed(b.dataset.v/100));$('spdReset').onclick=()=>setSpeed(1);$('prSongReset').onclick=()=>{PR.resetPending=true;setSpeed(1);setPitch(0)};
+$('pit').oninput=e=>setPitch(+e.target.value);$('pitM').onclick=()=>setPitch(PR.pitch-1);$('pitP').onclick=()=>setPitch(PR.pitch+1);$('pitReset').onclick=()=>setPitch(0);
+au.addEventListener('loadedmetadata',applyRate);au.addEventListener('play',()=>{applyRate();if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{})});
+applyRate();renderPR();
 addEventListener('resize',()=>edRender());
 // Playlist rows: drag to reorder (grip or long press), swipe left to reveal Remove
 var PG={open:null,suppress:false,g:null};
@@ -195,21 +249,22 @@ function plMoveTo(p,from,to){if(from===to)return;const [x]=p.ids.splice(from,1);
 document.addEventListener('touchmove',e=>{if(PG.g&&(PG.g.mode==='drag'||PG.g.mode==='swipe'))e.preventDefault()},{passive:false});
 document.addEventListener('pointerdown',e=>{PG.suppress=false;clearTimeout(PG.st);if(PG.open&&!PG.open.contains(e.target)){closeRow();PG.suppress=true;clearTimeout(PG.st);PG.st=setTimeout(()=>PG.suppress=false,600)}},true);
 function attachRow(li,p){const fg=li.querySelector('.pfg'),grip=li.querySelector('.grip'),OX=li._ox||OPEN_X;
- const start=(e,viaGrip)=>{if(PG.g)return;if(e.button>0)return;const sc=$('main')||document.querySelector('main');
+ const start=(e,viaGrip,fromActs)=>{if(PG.g)return;if(e.button>0)return;const sc=$('main')||document.querySelector('main');
   PG.g={li,fg,p,id:e.pointerId,x0:e.clientX,y0:e.clientY,y:e.clientY,mode:viaGrip?'drag':'pending',sc,st:sc.scrollTop,openAt:li.classList.contains('open')?OX:0,t0:Date.now()};
   if(viaGrip){e.preventDefault();beginDrag()}else if(grip)PG.g.timer=setTimeout(()=>{if(PG.g&&PG.g.mode==='pending'&&!li.classList.contains('open')){PG.g.mode='drag';beginDrag();if(navigator.vibrate)navigator.vibrate(10)}},350);
-  try{(viaGrip?grip:fg).setPointerCapture(e.pointerId)}catch(_){}};
+  if(!fromActs)try{(viaGrip?grip:fg).setPointerCapture(e.pointerId)}catch(_){}};
  if(grip)grip.addEventListener('pointerdown',e=>{e.stopPropagation();start(e,true)});
  fg.addEventListener('pointerdown',e=>start(e,false));
+ {const ac=li.querySelector('.acts');if(ac)ac.addEventListener('pointerdown',e=>{if(li.classList.contains('open'))start(e,false,true)})}
  const move=e=>{const g=PG.g;if(!g||g.li!==li||e.pointerId!==g.id)return;const dx=e.clientX-g.x0,dy=e.clientY-g.y0;g.y=e.clientY;
-  if(g.mode==='pending'){if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.2){clearTimeout(g.timer);g.mode='swipe';if(PG.open&&PG.open!==li)closeRow();fg.style.transition='none'}else if(Math.abs(dy)>8){clearTimeout(g.timer);g.mode='scroll'}}
+  if(g.mode==='pending'){if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.2){clearTimeout(g.timer);g.mode='swipe';try{fg.setPointerCapture(e.pointerId)}catch(_){}if(PG.open&&PG.open!==li)closeRow();fg.style.transition='none'}else if(Math.abs(dy)>8){clearTimeout(g.timer);g.mode='scroll'}}
   if(g.mode==='swipe'){const x=Math.max(OX-30,Math.min(0,g.openAt+dx));fg.style.transform='translateX('+x+'px)';g.dx=x}
   if(g.mode==='drag'){e.preventDefault();dragMove()}};
  const end=e=>{const g=PG.g;if(!g||g.li!==li||e.pointerId!==g.id)return;clearTimeout(g.timer);PG.g=null;
-  if(g.mode==='swipe'){PG.suppress=true;setTimeout(()=>PG.suppress=false,400);fg.style.transition='transform .2s';const open=(g.dx||0)<OX/2&&e.type!=='pointercancel';
-   if(open){fg.style.transform='translateX('+OX+'px)';li.classList.add('open');PG.open=li}else{fg.style.transform='';li.classList.remove('open');if(PG.open===li)PG.open=null}}
+  if(g.mode==='swipe'){PG.suppress=true;setTimeout(()=>PG.suppress=false,400);fg.style.transition='transform .2s';const thr=g.openAt?OX*0.75:Math.max(OX/2,-110);const open=(g.dx||0)<thr&&e.type!=='pointercancel';
+   if(open){fg.style.transform='translateX('+OX+'px)';li.classList.add('open');PG.open=li;if(li._pre)li._pre()}else{fg.style.transform='';li.classList.remove('open');if(PG.open===li)PG.open=null}}
   else if(g.mode==='drag'){PG.suppress=true;setTimeout(()=>PG.suppress=false,400);endDrag(g)}};
- [fg,grip].filter(Boolean).forEach(n=>{n.addEventListener('pointermove',move);n.addEventListener('pointerup',end);n.addEventListener('pointercancel',end)})}
+ [fg,grip,li.querySelector('.acts')].filter(Boolean).forEach(n=>{n.addEventListener('pointermove',move);n.addEventListener('pointerup',end);n.addEventListener('pointercancel',end)})}
 function beginDrag(){const g=PG.g;closeRow();const ul=g.li.parentNode;g.rows=[...ul.querySelectorAll('li.prow')];g.from=g.rows.indexOf(g.li);g.to=g.from;
  g.tops=g.rows.map(r=>r.offsetTop);g.h=g.li.offsetHeight;g.li.classList.add('lift');g.rows.forEach(r=>{if(r!==g.li)r.style.transition='transform .15s'});ul.classList.add('dragging');autoScroll()}
 function dragMove(){const g=PG.g;const dy=g.y-g.y0+(g.sc.scrollTop-g.st);g.li.style.transform='translateY('+dy+'px)';const c=g.tops[g.from]+dy+g.h/2;let to=0;for(let k=0;k<g.rows.length;k++){if(k!==g.from&&c>g.tops[k]+g.rows[k].offsetHeight/2)to++}
@@ -217,6 +272,10 @@ function dragMove(){const g=PG.g;const dy=g.y-g.y0+(g.sc.scrollTop-g.st);g.li.st
 function autoScroll(){const g=PG.g;if(!g||g.mode!=='drag')return;const r=g.sc.getBoundingClientRect(),edge=56;let v=0;if(g.y<r.top+edge)v=-Math.ceil((r.top+edge-g.y)/4);else if(g.y>r.bottom-edge)v=Math.ceil((g.y-(r.bottom-edge))/4);
  if(v){const b=g.sc.scrollTop;g.sc.scrollTop+=v;if(g.sc.scrollTop!==b)dragMove()}requestAnimationFrame(autoScroll)}
 function endDrag(g){g.rows.forEach(r=>{r.style.transition='';r.style.transform=''});g.li.classList.remove('lift');g.li.parentNode&&g.li.parentNode.classList.remove('dragging');plMoveTo(g.p,g.from,g.to);renderPls()}
+function openWN(){const notes=RELEASE_NOTES[APP_VERSION]||['Small fixes and improvements.'];$('wnTitle').textContent="What's new in Version "+APP_VERSION;const ul=$('wnList');ul.innerHTML='';notes.forEach(n=>ul.append(el('li',n)));$('wnModal').hidden=false;document.body.classList.add('modalOpen')}
+function closeWN(){$('wnModal').hidden=true;document.body.classList.remove('modalOpen')}
+$('wnClose').onclick=closeWN;$('wnModal').addEventListener('click',e=>{if(e.target===$('wnModal'))closeWN()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('wnModal').hidden)closeWN()});
+(function(){let last=null;try{last=localStorage.getItem('pp-lastVersion');localStorage.setItem('pp-lastVersion',String(APP_VERSION))}catch(e){}if(last&&last!==String(APP_VERSION))setTimeout(openWN,400)})();
 if('serviceWorker' in navigator){const sw=navigator.serviceWorker;const hadCtl=!!sw.controller;
  sw.register('sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})})}).catch(()=>{});
  sw.addEventListener('controllerchange',()=>{if(!hadCtl)return;const k='pp-reloaded-v';if(sessionStorage.getItem(k)===String(Date.now()/60000|0))return;sessionStorage.setItem(k,String(Date.now()/60000|0));location.reload()})}

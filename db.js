@@ -10,4 +10,5 @@ async clear(){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('so
 async get(k){return this.tx('kv','readonly',t=>this.req(t.objectStore('kv').get(k)))},
 async del(k){return this.tx('kv','readwrite',t=>{t.objectStore('kv').delete(k)})},
 async clearMeta(){return this.tx('kv','readwrite',async t=>{const st=t.objectStore('kv');const ks=await this.req(st.getAllKeys());ks.filter(k=>String(k).startsWith('meta:')).forEach(k=>st.delete(k))})},
+async allKV(prefix){return this.tx('kv','readonly',async t=>{const st=t.objectStore('kv');const ks=await this.req(st.getAllKeys());const vs=await this.req(st.getAll());return ks.map((k,i)=>[k,vs[i]]).filter(([k])=>String(k).startsWith(prefix))})},
 async set(k,v){return this.tx('kv','readwrite',t=>{t.objectStore('kv').put(v,k)})}};

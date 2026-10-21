@@ -87,3 +87,20 @@ body.modalOpen{overflow:hidden}
 @media (orientation:landscape) and (max-height:500px){.modal{align-items:center}.sheet{border-radius:16px;max-height:94vh;max-height:94dvh;border:1px solid #374151}#swatches{grid-template-columns:repeat(8,1fr)}.sw{height:52px}}
 .setCard{background:#0f1520;border:1px solid #1f2937;border-left:4px solid var(--ac);border-radius:14px;padding:14px;margin:24px 0 12px}
 .setCard h3{margin-top:0;margin-bottom:8px;color:var(--ac)}.setCard p{margin:0 0 8px;line-height:1.5}.setCard .muted{color:#9ca3af;font-size:14px;margin:0}
+.prIcon{display:flex;align-items:center;justify-content:center;font-size:22px;background:var(--ac-soft)!important;border-color:var(--ac)}
+.sheet h3{margin:16px 0 6px;font-size:18px}#spd,#pit{width:100%;accent-color:var(--ac);height:36px}
+.qrow button{padding:8px 4px;font-size:16px}.pitrow{align-items:center;flex-wrap:nowrap}.pitrow button{flex:0 0 56px}.pitrow input{flex:1}
+.prInd{min-height:28px;padding:2px 10px;font-size:14px;border-radius:14px;background:var(--ac-soft);color:#fff;border:1px solid var(--ac)}
+#times{align-items:center}
+@media (orientation:landscape) and (max-height:500px){.sheet h3{margin:10px 0 4px}}
+.acts{position:absolute;right:0;top:0;bottom:0;display:flex;z-index:0}.acts>button{position:static!important;width:104px;flex:0 0 104px;border:0;border-radius:0;min-height:0}
+.ptog{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#374151;color:#d1d5db;font-size:15px;line-height:1.2}.ptog small{font-size:13px;opacity:.9}
+.ptog.on{background:var(--ac);color:var(--on-ac)}
+.prBadge{flex:0 0 auto;font-size:12px;padding:3px 8px;border-radius:10px;background:var(--ac-soft);color:#fff;border:1px solid var(--ac);white-space:nowrap}.prBadge.off{opacity:.45;background:none;border-color:#4b5563;color:#9ca3af;text-decoration:line-through}
+.prSect{border:0;padding:0;margin:0;min-width:0}.prSect:disabled h3,.prSect:disabled input,.prSect:disabled button{opacity:.4}.prSect legend{padding:0;margin-top:10px}
+.prow.lrow.open .pfg .n,.prow.open .pfg .n{transform:translateX(calc(var(--ox,104px)));}
+.lrow{--ox:208px}.prow{--ox:104px}.prow.lrow{--ox:208px}
+.wnList{padding-left:22px;line-height:1.5;font-size:17px}.wnList li{margin:8px 0}#wnBtn{margin-top:20px}
+.prow.open .pfg .n,.prow.lrow.open .pfg .n{max-width:calc(100vw - var(--ox,104px) - 40px)}.prow.open .pfg .prBadge{display:none}
+.acts>button{width:var(--bw,104px);flex:0 0 var(--bw,104px)}.acts>.psend{background:#1e3a5f;color:#fff}
+.acts,.acts>button{touch-action:pan-y}
