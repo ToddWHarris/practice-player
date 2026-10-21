@@ -1,4 +1,4 @@
-# Playlist rows: touch drag reorder (grip + long press), swipe to Remove, vertical scroll. Uses real CDP touch events.
+# Playlist rows: touch drag reorder (grip only since v27; press and hold is Favorites), swipe to Remove, vertical scroll. Uses real CDP touch events.
 import os,subprocess,time
 from playwright.sync_api import sync_playwright
 D='/tmp/pp-pl';os.makedirs(D,exist_ok=True);os.makedirs('/workspace/shots',exist_ok=True)
@@ -37,8 +37,12 @@ with sync_playwright() as p:
   time.sleep(0.8);st=pg.evaluate("document.querySelector('main').scrollTop");touch('touchEnd',0,0);pg.wait_for_timeout(300)
   assert st>50,('autoscroll',st);na=names();assert na.index(n[1])>4,na
   pg.evaluate("document.getElementById('plDetail').scrollIntoView({block:'start'})");pg.wait_for_timeout(100);n=na
-  # 2. long-press drag on the name: row 4 -> top
+  # 2. v27: a short hold then a move on the name does not drag and does not favorite; the grip still drags row 2 -> top
+  pg.evaluate("document.getElementById('plDetail').scrollIntoView({block:'start'})");pg.wait_for_timeout(100)
   x,y=ctr(rowbox(2));_,ty=ctr(rowbox(0));gesture(x,y,x,ty-6,steps=14,hold=0.5)
+  assert names()==n and pg.evaluate("S.pls.find(p=>p.id==='favs').ids.length")==0,'name hold-move must not reorder or favorite'
+  pg.evaluate("document.getElementById('plDetail').scrollIntoView({block:'start'})");pg.wait_for_timeout(100)
+  gx,gy=ctr(rowbox(2,'.grip'));_,ty=ctr(rowbox(0));gesture(gx,gy,gx,ty-6,steps=14)
   n2=names();assert n2[0]==n[2],(n2[:3],n[2])
   # 3. vertical scroll still works (quick flick on names, no long press)
   sc=pg.locator('main');top0=pg.evaluate("document.querySelector('main').scrollTop")
