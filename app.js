@@ -1,6 +1,7 @@
-const APP_VERSION=20;
+const APP_VERSION=21;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 21:['The What\'s new window shows again after every update. Tap Close to dismiss it.','Music now stays paused when a phone call, a voice chat or another app takes over the sound. It starts again when you come back to the app, or you can tap play on the lock screen or CarPlay.','Screen lock and CarPlay keep playing as before.','The app can greet you by name. It asks for your first name once (you can skip), and you can change it in Settings. Your name stays on this device.'],
  20:['The app now remembers where you were. It opens on the same Library folder or playlist, and on Library or Playlists, that you had open last time.','If that folder or playlist is gone, it opens the nearest folder that still exists, or your list of playlists.','Nothing starts playing by itself when the app opens.'],
  19:['Music keeps playing when you switch apps, go to the Home Screen or lock your phone.','Songs with no pitch change now play as plain audio, which iPhone allows in the background.','If the phone pauses the music while the app is hidden, it picks up again when you come back.','App updates now wait until the music is paused, so an update never cuts off a song.','Better with CarPlay: after Siri, a navigation prompt or a call, the music tries to start again by itself. Pausing from CarPlay or the lock screen still pauses.','An A-B loop keeps repeating while the app is in the background, because the mic cannot listen there.'],
  18:['Removed the Open Help button from Settings. Help is still in its own tab.','Send is now only for individual songs, not folders.','Loop and practice settings now show the song you are changing, on the Settings card and at the top of the popup.','A Play/Pause button in the Loop and practice popup, so you can listen while you adjust speed and pitch.'],
@@ -21,7 +22,7 @@ function swapAudio(){const old=au,n=document.createElement('audio');n.id='audio'
  try{HTMLMediaElement.prototype.pause.call(old)}catch(e){}old.replaceWith(n);au=n;
  if(src){n.src=src;const go=()=>{try{n.currentTime=t}catch(e){}if(typeof applyRate==='function')applyRate();if(was)n.play().catch(()=>{})};if(n.readyState>=1)go();else HTMLMediaElement.prototype.addEventListener.call(n,'loadedmetadata',go,{once:true})}}
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
-async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}const navTab=restoreNav();S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}S.navReady=true;if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}else tab(navTab)}
+async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}const navTab=restoreNav();S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}S.navReady=true;if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}else tab(navTab);S.loaded=true;if(typeof startGreeting==='function')startGreeting();if(typeof maybeWN==='function')maybeWN()}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNav()});window.addEventListener('pagehide',saveNav);
 const saveSet=()=>DB.set('settings',{shuffle:S.shuffle,repeat:S.repeat,autoRep:$('autoRep').checked,gap:+$('gap').value});
 const savePls=()=>DB.set('playlists',S.pls);
@@ -171,7 +172,7 @@ $('again').onclick=again;
 if('mediaSession' in navigator){const m=navigator.mediaSession;[['play',()=>{S.bgWant=false;if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});if(S.waiting&&typeof again==='function'){again();return}au.play().catch(()=>{})}],['pause',()=>{S.bgWant=false;au.pause()}],['stop',()=>{S.bgWant=false;au.pause()}],['seekbackward',d=>{au.currentTime=Math.max(0,au.currentTime-((d&&d.seekOffset)||10))}],['seekforward',d=>{au.currentTime=Math.min(au.duration||1e9,au.currentTime+((d&&d.seekOffset)||10))}],['previoustrack',()=>$('prev').onclick()],['nexttrack',()=>step(1)],['seekto',d=>{au.currentTime=d.seekTime}]].forEach(([a,f])=>{try{m.setActionHandler(a,f)}catch(e){}})}
 // Help + share
 
-{const ab=el('div',null,'setCard about');ab.id='aboutCard';ab.innerHTML=`<h3>About</h3><p><b>Practice Player</b><br>Created by Todd W Harris, Hamler, Ohio<br>Version ${APP_VERSION}<br>© 2026 Todd W Harris</p><p class="muted">Your songs and playlists stay on this device. They are not part of the app and are never uploaded.</p>`;const wn=el('button',null,'btn colorBtn');wn.id='wnBtn';wn.setAttribute('aria-haspopup','dialog');wn.innerHTML='<span class="csw prIcon">★</span><span class="clab">What\'s new in Version '+APP_VERSION+'<small>See what changed in this update</small></span><span class="chev">›</span>';wn.onclick=()=>openWN();$('set').append(wn,ab);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
+{const ab=el('div',null,'setCard about');ab.id='aboutCard';ab.innerHTML=`<h3>About</h3><p><b>Practice Player</b><br>Created by Todd W Harris, Hamler, Ohio<br>Version ${APP_VERSION}<br>© 2026 Todd W Harris</p><p class="muted">Your songs and playlists stay on this device. They are not part of the app and are never uploaded.</p>`;const wn=el('button',null,'btn colorBtn');wn.id='wnBtn';wn.setAttribute('aria-haspopup','dialog');wn.innerHTML='<span class="csw prIcon">★</span><span class="clab">What\'s new in Version '+APP_VERSION+'<small>See what changed in this update</small></span><span class="chev">›</span>';wn.onclick=()=>openWN();const nb=el('button',null,'btn colorBtn');nb.id='nameBtn';nb.setAttribute('aria-haspopup','dialog');nb.innerHTML='<span class="csw prIcon">☺</span><span class="clab">Your name<small id="nameSum"></small></span><span class="chev">›</span>';nb.onclick=()=>openName();$('set').append(nb,wn,ab);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
 $('helpVer').textContent=APP_VERSION;document.querySelectorAll('.verNum').forEach(x=>x.textContent=APP_VERSION);
 {const toc=$('toc');document.querySelectorAll('#helpBody h2[id]').forEach(h=>{if(h.id==='h-top')return;const b=el('button',h.textContent,'tocb');b.onclick=()=>{h.scrollIntoView({block:'start'})};toc.append(b);const up=el('button','Back to topics','toTop');up.onclick=()=>$('h-top').scrollIntoView({block:'start'});let n=h.nextElementSibling;while(n&&!(n.tagName==='H2'||n.classList.contains('hintline')))n=n.nextElementSibling;h.parentNode.insertBefore(up,n||null)})}
 const SHARE={title:'Practice Player',text:'A free music practice player with A-B loop and voice cues. Open this link in Safari on iPhone (or Chrome on Android), then add it to your Home Screen.',url:'https://toddwharris.github.io/practice-player/'};
@@ -263,14 +264,12 @@ $('prPlay').onclick=async()=>{const cs=byId(cur());if(!cs)return;if(!au.src){awa
 ['play','pause','timeupdate','loadedmetadata','ended','emptied'].forEach(ev=>au.addEventListener(ev,prSyncPlay));
 // v19: losing focus never pauses. If iOS paused us while hidden (not our own pause), resume on return.
 S.bgWant=false;
-au.addEventListener('pause',()=>{if(document.hidden&&!au.ended&&Date.now()-(S.intentPause||0)>300&&!S.waiting){S.bgWant=true;bgRetry(0)}});
+au.addEventListener('pause',()=>{if(document.hidden&&!au.ended&&Date.now()-(S.intentPause||0)>300&&!S.waiting){S.bgWant=true}/* interrupted (call, voice chat, another app): resume only when the app is visible again */});
 // iOS / CarPlay interruptions (Siri, navigation prompts, calls, route changes) pause the element without our code asking.
 // Try again a few times while hidden; a pause from our UI or the lock screen / CarPlay controls never sets bgWant.
-const BG_RETRY=[1000,3000,6000,12000,30000];
-function bgRetry(i){clearTimeout(S.bgT);if(i>=BG_RETRY.length)return;S.bgT=setTimeout(()=>{if(!S.bgWant||!au.paused||!au.src)return;if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});au.play().then(()=>{S.bgWant=false}).catch(()=>bgRetry(i+1))},BG_RETRY[i])}
 function msPos(){try{if(navigator.mediaSession&&navigator.mediaSession.setPositionState&&isFinite(au.duration)&&au.duration>0)navigator.mediaSession.setPositionState({duration:au.duration,playbackRate:au.playbackRate||1,position:Math.min(au.currentTime,au.duration)})}catch(e){}}
 ['loadedmetadata','ratechange','seeked','play','pause'].forEach(t=>au.addEventListener(t,msPos));
-au.addEventListener('play',()=>{S.bgWant=false;clearTimeout(S.bgT)});
+au.addEventListener('play',()=>{S.bgWant=false;});
 function onReturn(){if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});if(document.hidden)return;
  if(S.bgWant&&au.paused&&au.src){S.bgWant=false;au.play().catch(()=>{})}
  if(S.ab&&S.waiting&&!S.rec&&!$('autoRep').checked&&typeof startRec==='function'){S.recFails=0;try{startRec()}catch(e){}}}
@@ -322,10 +321,29 @@ function dragMove(){const g=PG.g;const dy=g.y-g.y0+(g.sc.scrollTop-g.st);g.li.st
 function autoScroll(){const g=PG.g;if(!g||g.mode!=='drag')return;const r=g.sc.getBoundingClientRect(),edge=56;let v=0;if(g.y<r.top+edge)v=-Math.ceil((r.top+edge-g.y)/4);else if(g.y>r.bottom-edge)v=Math.ceil((g.y-(r.bottom-edge))/4);
  if(v){const b=g.sc.scrollTop;g.sc.scrollTop+=v;if(g.sc.scrollTop!==b)dragMove()}requestAnimationFrame(autoScroll)}
 function endDrag(g){g.rows.forEach(r=>{r.style.transition='';r.style.transform=''});g.li.classList.remove('lift');g.li.parentNode&&g.li.parentNode.classList.remove('dragging');plMoveTo(g.p,g.from,g.to);renderPls()}
+function markWNSeen(){S.wnPending=false;try{localStorage.setItem('pp-lastVersion',String(APP_VERSION))}catch(e){}}
+function maybeWN(){if(S.wnPending&&$('wnModal').hidden&&!S.greeting&&$('nameModal').hidden)openWN()}
+// v21: first name, device only. First launch asks; later launches greet, then What's new.
+const NAME_K='pp-name',ASK_K='pp-nameAsked';
+function getName(){try{return (localStorage.getItem(NAME_K)||'').trim()}catch(e){return''}}
+function firstWord(n){return (n||'').trim().split(/\s+/)[0]||''}
+function nameSum(){const n=getName();$('nameSum').textContent=n?n:'Not set'}
+function openName(){$('nameIn').value=getName();$('nameModal').hidden=false;document.body.classList.add('modalOpen');setTimeout(()=>{try{$('nameIn').focus()}catch(e){}},50)}
+function closeName(save){if(save){const v=$('nameIn').value.trim().slice(0,40);try{if(v)localStorage.setItem(NAME_K,v);else localStorage.removeItem(NAME_K)}catch(e){}}
+ try{localStorage.setItem(ASK_K,'1')}catch(e){}$('nameModal').hidden=true;document.body.classList.remove('modalOpen');nameSum();maybeWN()}
+$('nameSave').onclick=()=>closeName(true);$('nameSkip').onclick=()=>closeName(false);
+$('nameIn').addEventListener('keydown',e=>{if(e.key==='Enter')closeName(true)});
+$('nameModal').addEventListener('click',e=>{if(e.target===$('nameModal'))closeName(false)});
+function greet(){const w=firstWord(getName());if(!w)return false;const h=$('hello');h.textContent='Welcome back, '+w;h.hidden=false;h.classList.remove('out');S.greeting=true;
+ const done=()=>{if(!S.greeting)return;S.greeting=false;clearTimeout(S.helloT);h.classList.add('out');setTimeout(()=>{h.hidden=true;h.classList.remove('out')},350);maybeWN()};
+ h.onclick=done;S.helloT=setTimeout(done,2000);return true}
+function startGreeting(){let asked=null;try{asked=localStorage.getItem(ASK_K)}catch(e){}nameSum();if(!asked){openName();return}greet()}
 function openWN(){const notes=RELEASE_NOTES[APP_VERSION]||['Small fixes and improvements.'];$('wnTitle').textContent="What's new in Version "+APP_VERSION;const ul=$('wnList');ul.innerHTML='';notes.forEach(n=>ul.append(el('li',n)));$('wnModal').hidden=false;document.body.classList.add('modalOpen')}
-function closeWN(){$('wnModal').hidden=true;document.body.classList.remove('modalOpen')}
+function closeWN(){markWNSeen();$('wnModal').hidden=true;document.body.classList.remove('modalOpen')}
 $('wnClose').onclick=closeWN;$('wnModal').addEventListener('click',e=>{if(e.target===$('wnModal'))closeWN()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('wnModal').hidden)closeWN()});
-(function(){let last=null;try{last=localStorage.getItem('pp-lastVersion');localStorage.setItem('pp-lastVersion',String(APP_VERSION))}catch(e){}if(last&&last!==String(APP_VERSION))setTimeout(openWN,400)})();
+// What's new after an update. v21 fix: the version is marked as seen only when the popup is closed,
+// not at startup, so the service worker reload right after an update can no longer swallow it.
+(function(){let last=null;try{last=localStorage.getItem('pp-lastVersion');if(!last)localStorage.setItem('pp-lastVersion',String(APP_VERSION))}catch(e){}S.wnPending=!!(last&&last!==String(APP_VERSION));if(S.loaded)maybeWN()})();
 if('serviceWorker' in navigator){const sw=navigator.serviceWorker;const hadCtl=!!sw.controller;
  sw.register('sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})})}).catch(()=>{});
  sw.addEventListener('controllerchange',()=>{if(!hadCtl)return;const k='pp-reloaded-v';if(sessionStorage.getItem(k)===String(Date.now()/60000|0))return;sessionStorage.setItem(k,String(Date.now()/60000|0));const go=()=>location.reload();if(au.paused&&!document.hidden)go();else{const w=()=>{if(au.paused&&!document.hidden){au.removeEventListener('pause',w);document.removeEventListener('visibilitychange',w);go()}};au.addEventListener('pause',w);document.addEventListener('visibilitychange',w)}})}
