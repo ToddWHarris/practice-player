@@ -15,7 +15,7 @@ with sync_playwright() as p:
     pg.click('nav button[data-t=set]');ev("BK.PART_MB=10");pg.click('#bkMake')
     n=None
     for i in range(400):
-      pg.wait_for_function("!document.getElementById('bkReady').hidden||document.getElementById('bkStatus').textContent.startsWith('Backup saved')",timeout=60000)
+      pg.wait_for_function("!document.getElementById('bkReady').hidden&&!document.getElementById('bkSave').disabled||document.getElementById('bkStatus').textContent.startsWith('Backup saved')",timeout=60000)
       if ev("document.getElementById('bkStatus').textContent.startsWith('Backup saved')"):break
       n=ev('BK.plan.n');k=ev('BK.i');assert ev("!!BK.file"),'one part ready';ev("__peak=Math.max(__peak,performance.memory.usedJSHeapSize)")
       pg.click('#bkSave');pg.wait_for_function(f"__n==={k+1}",timeout=20000)

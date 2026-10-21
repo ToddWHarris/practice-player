@@ -1,6 +1,7 @@
-const APP_VERSION=28;
+const APP_VERSION=29;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 29:['Backups with several parts are quicker. After you save a part, the next one is already being made, and a big Save next part button shows up right where you are.','A progress bar shows which part you are on, like Part 2 of 5.','New Cancel backup button.','If you close the share sheet without saving, the same part stays ready. Just tap again.','The backup no longer jumps away from the Backup section when you come back from saving. If the app has to reload, it offers to continue where you left off.','New Storage button in Settings. It shows how much space your songs, Custom Clips and Removed folder use, and the size of every Library folder, biggest first.'],
  28:['Backups work on iPhone again. A big backup is now split into smaller parts of about 40 MB, and the app makes one part at a time, so it no longer runs out of memory.','If your backup has more than one part, save each part when it is ready. The app shows Part 1 of 5, Part 2 of 5, and so on. Keep all the parts together in the same folder.','Old backups still restore the same way: pick all the parts at once.','Sharing a playlist uses less memory too.'],
  27:['Favorites now show a star instead of a check mark, in your highlight color.','To make a song or clip a favorite, press and hold it for about a second. Do the same again to take it off Favorites. A short message tells you which one happened.','The Favorite button is gone from the swipe menu, so the buttons there are wide again.','To reorder a playlist, drag the ≡ handle. Press and hold on a row is now for Favorites.'],
  26:['New Favorites. Swipe a song or a Custom Clip left and tap Favorite. Tap Unfavorite to take it back off.','Favorites show a check mark in the Library and in your playlists, in your highlight color.','New Favorites playlist, right under Custom Clips. It holds every song and clip you mark as a favorite. Removing one from Favorites also unfavorites it.','Favorites are saved with your backup.'],
@@ -29,7 +30,7 @@ function swapAudio(){const old=au,n=document.createElement('audio');n.id='audio'
  try{HTMLMediaElement.prototype.pause.call(old)}catch(e){}old.replaceWith(n);au=n;
  if(src){n.src=src;const go=()=>{try{n.currentTime=t}catch(e){}if(typeof applyRate==='function')applyRate();if(was)n.play().catch(()=>{})};if(n.readyState>=1)go();else HTMLMediaElement.prototype.addEventListener.call(n,'loadedmetadata',go,{once:true})}}
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
-async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];if(ensureClipsPl())savePls();const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}const navTab=restoreNav();S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}S.navReady=true;if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}else tab(navTab);S.loaded=true;if(typeof startGreeting==='function')startGreeting();if(typeof maybeWN==='function')maybeWN()}
+async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];if(ensureClipsPl())savePls();const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}const navTab=restoreNav();S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}S.navReady=true;if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}else tab(navTab);S.loaded=true;if(typeof bkResumeOffer==='function')bkResumeOffer();if(typeof startGreeting==='function')startGreeting();if(typeof maybeWN==='function')maybeWN()}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNav()});window.addEventListener('pagehide',saveNav);
 const saveSet=()=>DB.set('settings',{shuffle:S.shuffle,repeat:S.repeat,autoRep:$('autoRep').checked,gap:+$('gap').value});
 const savePls=()=>DB.set('playlists',S.pls);
@@ -140,7 +141,7 @@ $('clipSave').onclick=async()=>{const name=$('clipName').value.trim()||$('clipNa
 $('clipName').addEventListener('keydown',e=>{if(e.key==='Enter')$('clipSave').click()});
 
 // ---- v23 Backup and restore (zip, STORE). Parts of about 40 MB, built one at a time (v28). ----
-const BK={PART_MB:40,plan:null,file:null,i:0,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name']};
+const BK={PART_MB:40,plan:null,file:null,i:0,next:null,nextI:-1,tok:0,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name']};
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){}}
 function bkRender(){const t=+lsGet(BK.LAST)||0;$('bkLast').textContent='Last backup: '+(t?new Date(t).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'never');
@@ -167,23 +168,46 @@ async function bkPart(plan,gi){const g=plan.groups[gi],ents=[];
   $('bkStatus').textContent=(plan.n>1?'Preparing part '+(gi+1)+' of '+plan.n+'... ':'Preparing backup... ')+k+' of '+g.length+' songs'}
  const z=await Zip.build(ents,null,(e,crc)=>{const s=g.find(x=>x.f===e.name);if(s&&s.s.crc!==crc){s.s.crc=crc;s.s.crcSize=e.blob.size;DB.putMeta(s.s).catch(()=>{})}});
  ents.length=0;return new File([z],bkPartName(plan,gi),{type:'application/zip'})}
-async function bkPrep(i){const plan=BK.plan;if(!plan)return;BK.file=null;BK.i=i;$('bkReady').hidden=true;$('bkMake').disabled=true;
- try{BK.file=await bkPart(plan,i);const mb=plan.total/1048576,pm=BK.file.size/1048576,sz=m=>m<1?'under 1 MB':Math.round(m)+' MB';
-  $('bkMsg').textContent=plan.n>1?(i===0?'Your backup is '+sz(mb)+', so it is split into '+plan.n+' parts of about '+BK.PART_MB+' MB. Save all '+plan.n+' files together in the same folder. ':'')+'Part '+(i+1)+' of '+plan.n+' is ready ('+sz(pm)+').':'Your backup is ready ('+sz(pm)+').';
-  $('bkSave').textContent=plan.n>1?'Save part '+(i+1)+' of '+plan.n:'Save backup';$('bkReady').hidden=false;
-  $('bkStatus').textContent=plan.n>1?'Part '+(i+1)+' of '+plan.n+': tap Save part '+(i+1)+', then choose Save to Files.':'Tap Save backup, then choose Save to Files.'}
- catch(e){BK.file=null;$('bkStatus').textContent='Backup failed: '+(e&&e.message||e)}finally{$('bkMake').disabled=false}}
-$('bkMake').onclick=async()=>{if(!S.songs.length){alert('There are no songs to back up yet.');return}$('bkMake').disabled=true;$('bkReady').hidden=true;BK.file=null;BK.plan=null;$('bkStatus').textContent='Preparing backup...';
- try{BK.plan=await bkPlan()}catch(e){$('bkStatus').textContent='Backup failed: '+(e&&e.message||e);$('bkMake').disabled=false;return}await bkPrep(0)};
-// after a part is saved: drop it, then build the next one (or finish)
-function bkNext(){const plan=BK.plan,i=BK.i;BK.file=null;if(!plan)return;if(i+1<plan.n){$('bkReady').hidden=true;setTimeout(()=>bkPrep(i+1),50)}else{BK.plan=null;bkDone();if(plan.n>1)$('bkStatus').textContent='Backup saved. All '+plan.n+' parts are done.'}}
+// v29: a part is shared straight from the tap; the next part starts building at once, so the button is ready on return.
+// At most 2 parts exist: the one in the share sheet and the next one. The backup UI stays put across shares and
+// visibility changes: no service worker reload while a backup runs, and progress is kept in sessionStorage so a
+// reload (for example iOS dropping the page) comes back to Settings with "Continue backup".
+const BKS='pp-bkRun';
+function bkSaveRun(){if(BK.plan)try{sessionStorage.setItem(BKS,JSON.stringify({created:BK.plan.meta.created,day:BK.plan.day,i:BK.i,n:BK.plan.n}))}catch(e){}else try{sessionStorage.removeItem(BKS)}catch(e){}}
+function bkRun(){try{return JSON.parse(sessionStorage.getItem(BKS)||'null')}catch(e){return null}}
+function bkShow(){const plan=BK.plan,i=BK.i;if(!plan)return;const multi=plan.n>1,f=BK.file,sz=m=>m<1?'under 1 MB':Math.round(m)+' MB';
+ $('bkReady').hidden=false;$('bkProg').hidden=!multi;$('bkNote').hidden=!multi;
+ if(multi){$('bkProgTxt').textContent='Part '+(i+1)+' of '+plan.n;$('bkBarFill').style.width=Math.round(100*i/plan.n)+'%'}
+ $('bkMsg').textContent=multi?'Your backup is '+sz(plan.total/1048576)+', split into '+plan.n+' parts of about '+BK.PART_MB+' MB. Save all '+plan.n+' files together in the same folder.':(f?'Your backup is ready ('+sz(f.size/1048576)+').':'');
+ const b=$('bkSave');b.disabled=!f;b.textContent=!f?'Preparing part '+(i+1)+'...':multi?(i===0?'Save part 1 of '+plan.n:'Save next part ('+(i+1)+' of '+plan.n+')'):'Save backup';
+ if(f)$('bkStatus').textContent=multi?'Part '+(i+1)+' of '+plan.n+' is ready ('+sz(f.size/1048576)+'). Tap the button, then choose Save to Files.':'Tap Save backup, then choose Save to Files.'}
+// build part i (or reuse the prebuilt one); tok guards against a cancelled backup
+async function bkGet(i){const plan=BK.plan,tok=BK.tok;if(BK.nextI===i&&BK.next){const p=BK.next;BK.next=null;BK.nextI=-1;return p}return bkPart(plan,i).then(f=>tok===BK.tok?f:null)}
+async function bkPrep(i){if(!BK.plan)return;const tok=BK.tok;BK.file=null;BK.i=i;bkSaveRun();bkShow();
+ try{const f=await bkGet(i);if(tok!==BK.tok)return;BK.file=f;bkShow()}
+ catch(e){if(tok!==BK.tok)return;BK.file=null;$('bkStatus').textContent='Backup failed: '+(e&&e.message||e)}}
+function bkPrefetch(){const plan=BK.plan,j=BK.i+1,tok=BK.tok;if(!plan||j>=plan.n||BK.nextI===j)return;BK.nextI=j;
+ BK.next=bkPart(plan,j).then(f=>tok===BK.tok?f:null).catch(e=>{if(tok===BK.tok){BK.next=null;BK.nextI=-1}throw e});BK.next.catch(()=>{})}
+function bkReset(){BK.tok=(BK.tok||0)+1;BK.plan=null;BK.file=null;BK.next=null;BK.nextI=-1;BK.i=0;bkSaveRun();$('bkReady').hidden=true;$('bkMake').disabled=false}
+async function bkStart(resume){if(!S.songs.length){alert('There are no songs to back up yet.');return}bkReset();$('bkMake').disabled=true;$('bkStatus').textContent='Preparing backup...';
+ try{BK.plan=await bkPlan();if(resume&&resume.n===BK.plan.n){BK.plan.meta.created=resume.created;BK.plan.day=resume.day}}catch(e){$('bkStatus').textContent='Backup failed: '+(e&&e.message||e);$('bkMake').disabled=false;return}
+ $('bkMake').disabled=false;await bkPrep(resume&&resume.n===BK.plan.n?Math.min(resume.i,BK.plan.n-1):0)}
+$('bkMake').onclick=()=>bkStart(null);
+$('bkCancel').onclick=()=>{bkReset();$('bkStatus').textContent='Backup cancelled.'};
+// after a part is saved: drop it and move on to the next one (usually already built)
+function bkNext(){const plan=BK.plan,i=BK.i;BK.file=null;if(!plan)return;if(i+1<plan.n)bkPrep(i+1);else{bkReset();bkDone();if(plan.n>1)$('bkStatus').textContent='Backup saved. All '+plan.n+' parts are done.'}}
 function bkDone(){lsSet(BK.LAST,String(Date.now()));lsSet(BK.DIRTY,null);$('bkReady').hidden=true;$('bkStatus').textContent='Backup saved.';bkRender()}
 function bkDownload(files){files.forEach((f,i)=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.className='sendDl';document.body.append(a);setTimeout(()=>{a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},20000)},i*600)})}
 // must run straight from the tap: the part is already built
-$('bkSave').onclick=()=>{let f=BK.file;if(!f)return;let files=[f];f=null;
- if(navigator.share&&navigator.canShare&&navigator.canShare({files})){const p=navigator.share({files,title:'Practice Player backup'});files=null;
-  p.then(bkNext).catch(e=>{if(e&&e.name==='AbortError'){$('bkStatus').textContent='Not saved yet. Tap '+$('bkSave').textContent+' to try again.';return}bkDownload([BK.file]);bkNext()});return}
- bkDownload(files);files=null;bkNext()};
+$('bkSave').onclick=()=>{let f=BK.file;if(!f)return;const tok=BK.tok;let files=[f];
+ if(navigator.share&&navigator.canShare&&navigator.canShare({files})){const p=navigator.share({files,title:'Practice Player backup'});files=null;f=null;bkPrefetch();
+  $('bkSave').disabled=true;
+  p.then(()=>{if(tok===BK.tok)bkNext()}).catch(e=>{if(tok!==BK.tok)return;if(e&&e.name==='AbortError'){bkShow();$('bkStatus').textContent='Not saved yet. Tap the button to try again.';return}bkDownload([BK.file]);bkNext()});return}
+ bkDownload(files);files=null;f=null;bkNext()};
+// came back from a reload in the middle of a backup: stay in Settings and offer to continue
+function bkResumeOffer(){const r=bkRun();if(!r||BK.plan)return false;tab('set');$('bkStatus').textContent='Your backup was interrupted at part '+(r.i+1)+' of '+r.n+'.';
+ $('bkReady').hidden=false;$('bkProg').hidden=false;$('bkProgTxt').textContent='Part '+(r.i+1)+' of '+r.n;$('bkBarFill').style.width=Math.round(100*r.i/r.n)+'%';$('bkNote').hidden=false;$('bkMsg').textContent='';
+ const b=$('bkSave');b.disabled=false;b.textContent='Continue backup (part '+(r.i+1)+' of '+r.n+')';b.onclick0=b.onclick;b.onclick=()=>{b.onclick=b.onclick0;bkStart(r)};return true}
 $('bkIn').onchange=async e=>{const fl=[...e.target.files];e.target.value='';if(!fl.length)return;$('bkStatus').textContent='Reading backup...';try{const r=await bkRestore(fl);$('bkStatus').textContent=r;alert(r)}catch(err){$('bkStatus').textContent='Restore failed: '+(err&&err.message||err);alert('Restore failed. '+(err&&err.message||''))}};
 async function bkRestore(fileList){const ents={};let meta=null;const parts=[];
  for(const f of fileList){const list=await Zip.read(f);for(const x of list){if(x.name==='backup.json')meta=JSON.parse(await x.blob.text());else if(x.name==='part.json')parts.push(JSON.parse(await x.blob.text()));else ents[x.name]=x}}
@@ -458,12 +482,35 @@ function greet(){const w=firstWord(getName());if(!w)return false;const h=$('hell
 function startGreeting(){let asked=null;try{asked=localStorage.getItem(ASK_K)}catch(e){}nameSum();if(!asked){openName();return}greet()}
 function openWN(){const notes=RELEASE_NOTES[APP_VERSION]||['Small fixes and improvements.'];$('wnTitle').textContent="What's new in Version "+APP_VERSION;const ul=$('wnList');ul.innerHTML='';notes.forEach(n=>ul.append(el('li',n)));$('wnModal').hidden=false;document.body.classList.add('modalOpen')}
 function closeWN(){markWNSeen();$('wnModal').hidden=true;document.body.classList.remove('modalOpen')}
+// v29 Storage: sizes come from the Blob sizes in IndexedDB
+function stSize(b){b=b||0;if(b<1024)return b+' bytes';const u=['KB','MB','GB','TB'];let i=-1;do{b/=1024;i++}while(b>=1024&&i<u.length-1);return(b<10?b.toFixed(1):b<100?b.toFixed(1):Math.round(b))+' '+u[i]}
+async function storageData(){const sz={};for(const s of S.songs){let n=0;try{const b=await DB.blob(s.id);n=b?b.size:0}catch(e){}sz[s.id]=n}
+ const lib=S.songs.filter(s=>!s.clip&&!s.removed),clips=S.songs.filter(s=>s.clip),rem=S.songs.filter(s=>!s.clip&&s.removed),sum=a=>a.reduce((t,s)=>t+sz[s.id],0);
+ const root={name:'',size:0,count:0,kids:{}};
+ for(const s of lib){const parts=s.path.split('/').slice(0,-1);let n=root;n.size+=sz[s.id];n.count++;for(const p of parts){n=n.kids[p]||(n.kids[p]={name:p,size:0,count:0,kids:{}});n.size+=sz[s.id];n.count++}}
+ const rows=[];const walk=(n,d,path)=>Object.values(n.kids).sort((a,b)=>b.size-a.size||a.name.localeCompare(b.name)).forEach(k=>{rows.push({name:k.name,path:path.concat(k.name).join('/'),depth:d,size:k.size,count:k.count});walk(k,d+1,path.concat(k.name))});walk(root,0,[]);
+ const top=lib.filter(s=>!s.path.includes('/'));
+ return{total:sum(S.songs),songs:sum(lib),songN:lib.length,clips:sum(clips),clipN:clips.length,removed:sum(rem),remN:rem.length,folders:rows,top:{size:sum(top),count:top.length}}}
+const nSongs=(n,w)=>n+' '+(w||'song')+(n===1?'':'s');
+async function openStorage(){$('stModal').hidden=false;document.body.classList.add('modalOpen');const body=$('stBody');body.innerHTML='';body.append(el('p','Adding up...','hintline'));
+ const d=await storageData();body.innerHTML='';body.append(el('div','Total: '+stSize(d.total),'stTotal'));
+ const line=(name,sub,size,cls)=>{const li=el('li',null,cls||'');const n=el('span',null,'stName');n.append(el('span',name));if(sub){n.append(' ');n.append(el('small',sub))}li.append(n,el('span',stSize(size),'sz'));return li};
+ const t=el('ul',null,'stTbl stSum');t.append(line('Songs',nSongs(d.songN),d.songs,'stSongs'),line('Custom Clips',nSongs(d.clipN,'clip'),d.clips,'stClips'),line('Removed folder',nSongs(d.remN),d.removed,'stRem'));body.append(t);
+ if(navigator.storage&&navigator.storage.estimate){try{const e=await navigator.storage.estimate();if(e&&e.usage!=null){const u=el('ul',null,'stTbl stDev');u.append(line('Used by this app',null,e.usage,'stUsed'));if(e.quota)u.append(line('App storage limit (approximate)',null,e.quota,'stQuota'));body.append(u);
+  body.append(el('p',"iPhone doesn't share its free space with web apps. For that, open Settings > General > iPhone Storage.",'hintline stNote'))}}catch(e){}}
+ body.append(el('h3','Library folders'));const f=el('ul',null,'stTbl stFolders');
+ if(!d.folders.length&&!d.top.count)f.append(el('li','No songs in the Library yet.'));
+ d.folders.forEach(r=>{const li=line('📁 '+r.name,nSongs(r.count),r.size,'stF');li.dataset.path=r.path;li.dataset.depth=r.depth;li.style.paddingLeft=(r.depth*18)+'px';f.append(li)});
+ if(d.top.count){const li=line('Top level (not in a folder)',nSongs(d.top.count),d.top.size,'stF stTop');f.append(li)}
+ body.append(f)}
+function closeStorage(){$('stModal').hidden=true;if([...document.querySelectorAll('.modal')].every(m=>m.hidden))document.body.classList.remove('modalOpen')}
+$('stOpen').onclick=openStorage;$('stClose').onclick=closeStorage;$('stModal').addEventListener('click',e=>{if(e.target===$('stModal'))closeStorage()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('stModal').hidden)closeStorage()});
 $('wnClose').onclick=closeWN;$('wnModal').addEventListener('click',e=>{if(e.target===$('wnModal'))closeWN()});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('wnModal').hidden)closeWN()});
 // What's new after an update. v21 fix: the version is marked as seen only when the popup is closed,
 // not at startup, so the service worker reload right after an update can no longer swallow it.
 (function(){let last=null;try{last=localStorage.getItem('pp-lastVersion');if(!last)localStorage.setItem('pp-lastVersion',String(APP_VERSION))}catch(e){}S.wnPending=!!(last&&last!==String(APP_VERSION));if(S.loaded)maybeWN()})();
 if('serviceWorker' in navigator){const sw=navigator.serviceWorker;const hadCtl=!!sw.controller;
- sw.register('sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')reg.update().catch(()=>{})})}).catch(()=>{});
- sw.addEventListener('controllerchange',()=>{if(!hadCtl)return;const k='pp-reloaded-v';if(sessionStorage.getItem(k)===String(Date.now()/60000|0))return;sessionStorage.setItem(k,String(Date.now()/60000|0));const go=()=>location.reload();if(au.paused&&!document.hidden)go();else{const w=()=>{if(au.paused&&!document.hidden){au.removeEventListener('pause',w);document.removeEventListener('visibilitychange',w);go()}};au.addEventListener('pause',w);document.addEventListener('visibilitychange',w)}})}
+ sw.register('sw.js',{updateViaCache:'none'}).then(reg=>{reg.update().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!(typeof BK!=='undefined'&&BK.plan))reg.update().catch(()=>{})})}).catch(()=>{});
+ sw.addEventListener('controllerchange',()=>{if(!hadCtl)return;const k='pp-reloaded-v';if(sessionStorage.getItem(k)===String(Date.now()/60000|0))return;sessionStorage.setItem(k,String(Date.now()/60000|0));const go=()=>{if(typeof BK!=='undefined'&&BK.plan){setTimeout(go,3000);return}location.reload()};if(au.paused&&!document.hidden)go();else{const w=()=>{if(au.paused&&!document.hidden){au.removeEventListener('pause',w);document.removeEventListener('visibilitychange',w);go()}};au.addEventListener('pause',w);document.addEventListener('visibilitychange',w)}})}
 if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{});
 load();

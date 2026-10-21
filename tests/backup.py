@@ -63,9 +63,9 @@ with sync_playwright() as p:
   # split into parts
   ev("BK.PART_MB=0.15;__bk=null");pg.click('#bkMake');pg.wait_for_selector('#bkReady:not([hidden])',timeout=15000);msg=pg.inner_text('#bkMsg');assert 'split into' in msg,msg
   # v28: one part at a time. Part N is built, shared alone, dropped, then part N+1 is built.
-  n=ev('BK.plan.n');assert n>=3,n;assert 'Part 1 of %d'%n in msg,msg;parts=[]
+  n=ev('BK.plan.n');assert n>=3,n;assert 'Part 1 of %d'%n in pg.inner_text('#bkProgTxt');parts=[]
   for i in range(n):
-    pg.wait_for_function(f"!document.getElementById('bkReady').hidden&&document.getElementById('bkSave').textContent==='Save part {i+1} of {n}'",timeout=15000)
+    pg.wait_for_function(f"!document.getElementById('bkReady').hidden&&document.getElementById('bkSave').textContent===({i}==0?'Save part 1 of {n}':'Save next part ({i+1} of {n})')&&!document.getElementById('bkSave').disabled",timeout=15000)
     assert ev('BK.file.name').endswith(f'-part{i+1}.zip') and ev('BK.i')==i
     ev('__bk=null');pg.click('#bkSave');pg.wait_for_function('__bk&&__bk.length===1');parts+=save_files()
   pg.wait_for_function(f"document.getElementById('bkStatus').textContent.includes('All {n} parts')",timeout=10000)

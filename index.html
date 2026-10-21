@@ -21,7 +21,8 @@
  <div class="row"><label class="btn">Import playlist<input id="plIn" class="plIn" type="file" accept=".pplay,.zip,application/zip,application/octet-stream" hidden></label></div>
 <h2 class="acc">Backup</h2><p>Save a copy of all your songs, clips, playlists and settings to the Files app. <span id="bkLast">Last backup: never</span></p>
  <div class="row"><button id="bkMake" class="btn primary">Back up to Files</button><label class="btn">Restore from backup<input id="bkIn" type="file" accept=".zip,application/zip" multiple hidden></label></div>
- <div id="bkReady" hidden><p id="bkMsg" class="hintline"></p><button id="bkSave" class="btn primary big">Save backup</button></div><p id="bkStatus" class="hintline" role="status"></p>
+ <div class="row"><button id="stOpen" class="btn">Storage</button></div>
+ <div id="bkReady" hidden><p id="bkMsg" class="hintline"></p><div id="bkProg" class="bkProg" hidden><div class="bkProgTxt" id="bkProgTxt"></div><div class="bkBar"><div id="bkBarFill"></div></div></div><button id="bkSave" class="btn primary big bkSaveBtn">Save backup</button><p id="bkNote" class="hintline" hidden>iPhone needs one tap per part. Files remembers the last folder you used.</p><button id="bkCancel" class="btn bkCancel">Cancel backup</button></div><p id="bkStatus" class="hintline" role="status"></p>
 <h2 class="acc">Color</h2><button id="colorBtn" class="btn colorBtn" aria-haspopup="dialog"><span id="colorSw" class="csw"></span><span class="clab">Highlight color<small id="colorName">Green</small></span><span class="chev">›</span></button>
 <h2 class="acc">Loop and practice</h2><button id="prBtn" class="btn colorBtn" aria-haspopup="dialog"><span class="csw prIcon">⏱</span><span class="clab">Loop and practice settings<small id="prSum"></small></span><span class="chev">›</span></button></section>
 <section id="help" class="tab"><div id="helpBody">
@@ -176,6 +177,10 @@
  </fieldset>
  <h3>Loop editor view</h3><p class="hintline">Time shown before and after the loop in the Loop editor.</p>
  <div class="setrow"><label>Before <input id="ctxPre" type="number" min="0" max="120" step="1"> s</label><label>After <input id="ctxPost" type="number" min="0" max="120" step="1"> s</label></div>
+</div></div>
+<div id="stModal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="stTitle">
+ <div class="sheetHead"><span></span><h2 id="stTitle" class="acc">Storage</h2><button id="stClose" class="btn primary">Close</button></div>
+ <div id="stBody"><p class="hintline">Adding up...</p></div>
 </div></div>
 <div id="wnModal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="wnTitle">
  <div class="sheetHead"><span></span><h2 id="wnTitle" class="acc">What's new</h2><button id="wnClose" class="btn primary">Close</button></div>
