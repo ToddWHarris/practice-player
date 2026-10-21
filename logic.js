@@ -9,9 +9,23 @@ const Logic={
  cue(text){const t=(text||'').toLowerCase().replace(/[^a-z' ]+/g,' ');if(/\bstop\b/.test(t))return'stop';if(/\b(go|again|repeat|yes)\b/.test(t))return'again';return null},
  fmt(s){s=Math.max(0,s|0);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},
  // Play queue: bound to the context playback was started from (playlist or folder)
- makeQueue(ctx,ids,start,shuffle,valid=()=>true,rnd=Math.random){const pairs=ids.map((id,k)=>({id,k})).filter(p=>valid(p.id));if(!pairs.length)return null;let si=pairs.findIndex(p=>p.k===start);if(si<0)si=0;const order=pairs.map(p=>p.id);const q={ctx,order,list:order.slice(),qi:si,shuffle:false};if(shuffle)Logic.setShuffle(q,true,rnd);return q},
- setShuffle(q,on,rnd=Math.random){if(!q)return q;if(on){const cur=q.qi;const rest=q.list.map((_,k)=>k).filter(k=>k!==cur);const idx=[cur,...Logic.shuffled(rest,rnd)];q.list=idx.map(k=>q.list[k]);q.pos=idx.map(k=>(q.pos||q.list.map((_,i)=>i))[k]);q.qi=0}else if(q.shuffle){const p=q.pos[q.qi];q.list=q.order.slice();q.qi=p;delete q.pos}q.shuffle=on;if(!on)delete q.pos;return q},
- stepQueue(q,dir,repeat,auto){if(!q)return -1;const rep=auto?repeat:(repeat==='one'?'all':repeat);const n=Logic.nextIndex(q.qi,q.list.length,rep,dir);if(n>=0)q.qi=n;return n},
+ // Play queue bound to its start context. items: [{id,k}] (k = playlist index, or null); play: item indices in play order; list: ids in play order
+ _sync(q){q.list=q.play.map(i=>q.items[i].id);return q},
+ makeQueue(ctx,ids,start,shuffle,valid=()=>true,rnd=Math.random){const items=ids.map((id,k)=>({id,k})).filter(p=>valid(p.id));if(!items.length)return null;let si=items.findIndex(p=>p.k===start);if(si<0)si=0;
+  const q={ctx,items,play:items.map((_,i)=>i),qi:si,shuffle:false};Logic._sync(q);if(shuffle)Logic.setShuffle(q,true,rnd);return q},
+ upgradeQueue(q){if(!q||q.items)return q;q.items=(q.order||q.list).map(id=>({id,k:null}));q.play=q.list.map(id=>(q.order||q.list).indexOf(id));if(q.play.some(i=>i<0))q.play=q.items.map((_,i)=>i);delete q.order;delete q.pos;return Logic._sync(q)},
+ setShuffle(q,on,rnd=Math.random){if(!q)return q;const cur=q.play[q.qi];const pend=q.items.map((_,i)=>i).filter(i=>!q.items[i].gone||i===cur);
+  if(on){q.play=[cur,...Logic.shuffled(pend.filter(i=>i!==cur),rnd)];q.qi=0}else{q.play=Logic._orderIdx(q,pend);q.qi=q.play.indexOf(cur)}q.shuffle=on;return Logic._sync(q)},
+ _orderIdx(q,idx){return idx.slice().sort((a,b)=>{const ka=q.items[a].k,kb=q.items[b].k;return (ka==null||kb==null)?a-b:ka-kb})},
+ _prune(q){const cur=q.play[q.qi];q.play=q.play.filter(i=>!q.items[i].gone||i===cur);q.qi=q.play.indexOf(cur)},
+ stepQueue(q,dir,repeat,auto){if(!q)return -1;const rep=auto?repeat:(repeat==='one'?'all':repeat);const n=Logic.nextIndex(q.qi,q.play.length,rep,dir);if(n<0)return n;
+  const was=q.play[q.qi],target=q.play[n];if(q.items[was].gone&&target!==was)q.play=q.play.filter(i=>i!==was);q.qi=q.play.indexOf(target);
+  Logic._sync(q);return q.qi},
+ // Playlist edited while it is the active queue: keep the playing song current
+ plMove(q,from,to){if(!q)return q;for(const it of q.items){if(it.k==null)continue;const k=it.k;if(k===from)it.k=to;else if(from<to&&k>from&&k<=to)it.k=k-1;else if(from>to&&k>=to&&k<from)it.k=k+1;else if(!Number.isInteger(k)){const f=Math.ceil(k);if(f===from)it.k=to-0.5;else if(from<to&&f>from&&f<=to)it.k=k-1;else if(from>to&&f>=to&&f<from)it.k=k+1}}
+  if(!q.shuffle){const cur=q.play[q.qi];q.play=Logic._orderIdx(q,q.play);q.qi=q.play.indexOf(cur)}return Logic._sync(q)},
+ plRemove(q,r){if(!q)return q;const cur=q.play[q.qi];const ix=q.items.findIndex(it=>it.k===r);for(const it of q.items)if(it.k!=null&&it.k>r)it.k-=1;
+  if(ix>=0){if(ix===cur){q.items[ix].gone=true;q.items[ix].k=r-0.5}else{q.play=q.play.filter(i=>i!==ix);q.qi=q.play.indexOf(cur)}}return Logic._sync(q)},
  // Accent color helpers
  PRESETS:[['Green','#22c55e'],['Blue','#3b82f6'],['Teal','#14b8a6'],['Pink','#ec4899'],['Purple','#a855f7'],['Red','#ef4444'],['Orange','#f97316'],['Gold','#eab308']],
  normHex(h){h=String(h||'').trim().toLowerCase();if(/^#[0-9a-f]{3}$/.test(h))h='#'+[...h.slice(1)].map(c=>c+c).join('');return /^#[0-9a-f]{6}$/.test(h)?h:null},
