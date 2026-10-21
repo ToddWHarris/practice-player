@@ -62,7 +62,24 @@ with sync_playwright() as p:
   assert 'Restored 0 songs' in pg.inner_text('#bkStatus') and '4 already in the app were skipped' in pg.inner_text('#bkStatus') and ev('S.songs.length')==4 and snap()['pls']==before['pls']
   # split into parts
   ev("BK.PART_MB=0.15;__bk=null");pg.click('#bkMake');pg.wait_for_selector('#bkReady:not([hidden])',timeout=15000);msg=pg.inner_text('#bkMsg');assert 'split into' in msg,msg
-  pg.click('#bkSave');pg.wait_for_function('__bk&&__bk.length>1');parts=save_files();assert all(f'-part{i+1}.zip' in parts[i] for i in range(len(parts))),parts
+  # v28: one part at a time. Part N is built, shared alone, dropped, then part N+1 is built.
+  n=ev('BK.plan.n');assert n>=3,n;assert 'Part 1 of %d'%n in msg,msg;parts=[]
+  for i in range(n):
+    pg.wait_for_function(f"!document.getElementById('bkReady').hidden&&document.getElementById('bkSave').textContent==='Save part {i+1} of {n}'",timeout=15000)
+    assert ev('BK.file.name').endswith(f'-part{i+1}.zip') and ev('BK.i')==i
+    ev('__bk=null');pg.click('#bkSave');pg.wait_for_function('__bk&&__bk.length===1');parts+=save_files()
+  pg.wait_for_function(f"document.getElementById('bkStatus').textContent.includes('All {n} parts')",timeout=10000)
+  assert ev('BK.file===null&&BK.plan===null'),'parts dropped after sharing'
+  assert all(f'-part{i+1}.zip' in parts[i] for i in range(n)),parts
+  import zipfile
+  allf=[x for pth in parts for x in zipfile.ZipFile(pth).namelist() if x.startswith('music/')];meta1=json.loads(zipfile.ZipFile(parts[0]).read('backup.json'))
+  assert sorted(allf)==sorted(x for g in meta1['partFiles'] for x in g) and len(allf)==len(set(allf))==4 and meta1['parts']==n
+  assert all(zipfile.ZipFile(pth).testzip() is None for pth in parts),'crc ok'
+  assert ev("S.songs.every(s=>typeof s.crc==='number')"),'crc cached on songs'
+  # a second backup reuses the cached crc and gives identical zips
+  ev("BK.PART_MB=200;__bk=null");pg.click('#bkMake');pg.wait_for_selector('#bkReady:not([hidden])',timeout=15000);pg.click('#bkSave');pg.wait_for_function('__bk&&__bk.length===1')
+  one=save_files()[0];assert zipfile.ZipFile(one).testzip() is None and 'crc' not in json.loads(zipfile.ZipFile(one).read('backup.json'))['songs'][0]
+  ev("BK.PART_MB=0.15")
   ev("async()=>{(await DB.open()).close();await new Promise(r=>{const q=indexedDB.deleteDatabase('practice-player');q.onsuccess=q.onerror=q.onblocked=r});localStorage.clear()}");pg.reload();pg.wait_for_timeout(1000)
   pg.click('nav button[data-t=set]');pg.set_input_files('#bkIn',parts[1:2]);pg.wait_for_function("document.getElementById('bkStatus').textContent.startsWith('Restore failed')",timeout=10000);assert 'part 1' in pg.inner_text('#bkStatus')
   pg.set_input_files('#bkIn',parts[:1]);pg.wait_for_function("document.getElementById('bkStatus').textContent.startsWith('Restored')",timeout=15000);assert 'pick all parts' in pg.inner_text('#bkStatus'),pg.inner_text('#bkStatus')

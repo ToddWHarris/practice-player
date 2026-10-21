@@ -4,20 +4,20 @@ const Zip=(()=>{
  function crc32(u,c){c=(c===undefined?0:c)^0xFFFFFFFF;for(let i=0;i<u.length;i++)c=T[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
  const enc=s=>new TextEncoder().encode(s);
  function dos(d){d=d||new Date();return{t:(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),d:((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate()}}
- // crc of a Blob, read in 4 MB chunks to keep memory low
- async function blobCrc(b){let c=0,o=0;const CH=4<<20;while(o<b.size){const u=new Uint8Array(await b.slice(o,o+CH).arrayBuffer());c=crc32(u,c);o+=CH}return c}
- // entries: [{name, blob}] -> Blob (zip)
- async function build(entries,onStep){const parts=[],cd=[];let off=0;const dt=dos();
-  for(let k=0;k<entries.length;k++){const e=entries[k];const nm=enc(e.name),b=e.blob,crc=await blobCrc(b),sz=b.size;
+ // crc of a Blob, read in 1 MB chunks to keep memory low
+ async function blobCrc(b){let c=0,o=0;const CH=1<<20;while(o<b.size){const u=new Uint8Array(await b.slice(o,o+CH).arrayBuffer());c=crc32(u,c);o+=CH}return c}
+ // entries: [{name, blob, crc?}] -> Blob (zip). The result is composed of the entry Blobs and small header arrays; no file bytes are copied.
+ async function build(entries,onStep,onCrc){const parts=[],cd=[];let off=0;const dt=dos();
+  for(let k=0;k<entries.length;k++){const e=entries[k];const nm=enc(e.name),b=e.blob,crc=e.crc!=null?e.crc>>>0:await blobCrc(b),sz=b.size;if(onCrc&&e.crc==null)onCrc(e,crc);
    const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);
    h.setUint16(10,dt.t,true);h.setUint16(12,dt.d,true);h.setUint32(14,crc,true);h.setUint32(18,sz,true);h.setUint32(22,sz,true);h.setUint16(26,nm.length,true);h.setUint16(28,0,true);
-   parts.push(h.buffer,nm,b);
+   parts.push(new Uint8Array(h.buffer),nm,b);
    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(10,0,true);
    c.setUint16(12,dt.t,true);c.setUint16(14,dt.d,true);c.setUint32(16,crc,true);c.setUint32(20,sz,true);c.setUint32(24,sz,true);c.setUint16(28,nm.length,true);c.setUint32(42,off,true);
-   cd.push(c.buffer,nm);off+=30+nm.length+sz;if(onStep)onStep(k+1,entries.length)}
+   cd.push(new Uint8Array(c.buffer),nm);off+=30+nm.length+sz;if(onStep)onStep(k+1,entries.length)}
   let cdLen=0;cd.forEach(x=>cdLen+=x.byteLength);
   const z=new DataView(new ArrayBuffer(22));z.setUint32(0,0x06054b50,true);z.setUint16(8,entries.length,true);z.setUint16(10,entries.length,true);z.setUint32(12,cdLen,true);z.setUint32(16,off,true);
-  return new Blob([...parts,...cd,z.buffer],{type:'application/zip'})}
+  return new Blob([...parts,...cd,new Uint8Array(z.buffer)],{type:'application/zip'})}
  // Blob (zip) -> [{name, blob, crc, size}]
  async function read(zb){const tailN=Math.min(zb.size,65557),tail=new DataView(await zb.slice(zb.size-tailN).arrayBuffer());let e=-1;
   for(let i=tailN-22;i>=0;i--)if(tail.getUint32(i,true)===0x06054b50){e=i;break}if(e<0)throw new Error('Not a zip file');

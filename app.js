@@ -1,6 +1,7 @@
-const APP_VERSION=27;
+const APP_VERSION=28;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 28:['Backups work on iPhone again. A big backup is now split into smaller parts of about 40 MB, and the app makes one part at a time, so it no longer runs out of memory.','If your backup has more than one part, save each part when it is ready. The app shows Part 1 of 5, Part 2 of 5, and so on. Keep all the parts together in the same folder.','Old backups still restore the same way: pick all the parts at once.','Sharing a playlist uses less memory too.'],
  27:['Favorites now show a star instead of a check mark, in your highlight color.','To make a song or clip a favorite, press and hold it for about a second. Do the same again to take it off Favorites. A short message tells you which one happened.','The Favorite button is gone from the swipe menu, so the buttons there are wide again.','To reorder a playlist, drag the ≡ handle. Press and hold on a row is now for Favorites.'],
  26:['New Favorites. Swipe a song or a Custom Clip left and tap Favorite. Tap Unfavorite to take it back off.','Favorites show a check mark in the Library and in your playlists, in your highlight color.','New Favorites playlist, right under Custom Clips. It holds every song and clip you mark as a favorite. Removing one from Favorites also unfavorites it.','Favorites are saved with your backup.'],
  25:['New Custom Clips start cleanly without a click. Clips you already saved are not changed; save them again to get the fix.','The Welcome back greeting now shows larger, in the middle of the screen.'],
@@ -138,45 +139,58 @@ $('clipSave').onclick=async()=>{const name=$('clipName').value.trim()||$('clipNa
  try{const rec=await makeClip(cs.id,S.clipAB[0],S.clipAB[1],name);closeClip();renderPls();toast('Saved "'+rec.name+'" to Custom Clips')}catch(e){alert('Could not save the clip. '+(e&&e.message||''))}finally{$('clipSave').disabled=false}};
 $('clipName').addEventListener('keydown',e=>{if(e.key==='Enter')$('clipSave').click()});
 
-// ---- v23 Backup and restore (zip, STORE). Parts of about 200 MB. ----
-const BK={PART_MB:200,parts:null,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name']};
+// ---- v23 Backup and restore (zip, STORE). Parts of about 40 MB, built one at a time (v28). ----
+const BK={PART_MB:40,plan:null,file:null,i:0,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name']};
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){}}
 function bkRender(){const t=+lsGet(BK.LAST)||0;$('bkLast').textContent='Last backup: '+(t?new Date(t).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'never');
  const has=S.songs.length>0,old=!t||Date.now()-t>30*864e5,dirty=lsGet(BK.DIRTY)==='1',snz=+lsGet(BK.SNOOZE)||0;const show=has&&(old||dirty)&&Date.now()>snz;
  $('bkBanner').hidden=!show;if(show)$('bkBannerText').textContent=dirty?'You added new songs. Back up so you do not lose them.':(t?'It has been over 30 days since your last backup.':'Your songs are only in this app. Back them up to Files.')}
 function bkFile(s){const p=(s.path||s.name||s.id).replace(/^\/+/,'').replace(/\.\.+/g,'.');return 'music/'+p}
-async function bkBuild(){const songs=S.songs.slice(),pr={};Object.keys(S.pr).forEach(k=>pr[k]=S.pr[k]);const prefs={};BK.PREFS.forEach(k=>{const v=lsGet(k);if(v!=null)prefs[k]=v});
+// v28: plan the parts first (no song data), then build ONE part at a time right before it is shared.
+// A part is a Blob made of the song Blobs from IndexedDB plus small headers, so MP3 bytes are never copied.
+// After a part is shared every reference to it is dropped before the next part is built.
+async function bkPlan(){const songs=S.songs.slice(),pr={};Object.keys(S.pr).forEach(k=>pr[k]=S.pr[k]);const prefs={};BK.PREFS.forEach(k=>{const v=lsGet(k);if(v!=null)prefs[k]=v});
  const used={},files=[];for(const s of songs){let f=bkFile(s);if(used[f]){const m=f.match(/^(.*?)(\.[^./]*)?$/);f=m[1]+'-'+s.id.slice(-6)+(m[2]||'')}used[f]=1;files.push({s,f})}
  const meta={app:'Practice Player',format:1,version:APP_VERSION,created:new Date().toISOString(),
-  songs:files.map(({s,f})=>Object.assign({},s,{file:f})),playlists:S.pls,pr,settings:(await DB.get('settings'))||{},accent:(await DB.get('accent'))||null,prefs,
+  songs:files.map(({s,f})=>{const r=Object.assign({},s,{file:f});delete r.crc;delete r.crcSize;return r}),playlists:S.pls,pr,settings:(await DB.get('settings'))||{},accent:(await DB.get('accent'))||null,prefs,
   loop:(cur()&&S.A!=null&&S.B!=null)?{song:cur(),a:S.A,b:S.B}:null,queue:S.Q||null};
  // split into parts of about PART_MB by file size; backup.json goes in part 1 and lists every part's files
  const lim=BK.PART_MB*1048576,groups=[[]];let acc=0;for(const x of files){const sz=x.s.size||0;if(acc>0&&acc+sz>lim){groups.push([]);acc=0}groups[groups.length-1].push(x);acc+=sz}
- meta.parts=groups.length;meta.partFiles=groups.map(g=>g.map(x=>x.f));const day=ymd(new Date()),out=[];let done=0;
- for(let gi=0;gi<groups.length;gi++){const ents=[];if(gi===0)ents.push({name:'backup.json',blob:new Blob([JSON.stringify(meta)],{type:'application/json'})});
-  ents.push({name:'part.json',blob:new Blob([JSON.stringify({app:'Practice Player',part:gi+1,of:groups.length,created:meta.created})])});
-  for(const x of groups[gi]){const b=await DB.blob(x.s.id);if(b)ents.push({name:x.f,blob:b});$('bkStatus').textContent='Preparing backup... '+(++done)+' of '+files.length+' songs'}
-  const z=await Zip.build(ents);const nm='PracticePlayer-backup-'+day+(groups.length>1?'-part'+(gi+1):'')+'.zip';out.push(new File([z],nm,{type:'application/zip'}))}
- return out}
-$('bkMake').onclick=async()=>{if(!S.songs.length){alert('There are no songs to back up yet.');return}$('bkMake').disabled=true;$('bkReady').hidden=true;$('bkStatus').textContent='Preparing backup...';
- try{BK.parts=await bkBuild();const mb=BK.parts.reduce((a,f)=>a+f.size,0)/1048576;
-  $('bkMsg').textContent=BK.parts.length>1?'Your backup is '+Math.round(mb)+' MB, so it is split into '+BK.parts.length+' parts of about '+BK.PART_MB+' MB. Save all '+BK.parts.length+' files together in the same folder.':'Your backup is ready ('+(mb<1?'under 1':Math.round(mb))+' MB).';
-  $('bkSave').textContent=BK.parts.length>1?'Save backup ('+BK.parts.length+' files)':'Save backup';$('bkReady').hidden=false;$('bkStatus').textContent='Tap Save backup, then choose Save to Files.'}
- catch(e){$('bkStatus').textContent='Backup failed: '+(e&&e.message||e)}finally{$('bkMake').disabled=false}};
+ meta.parts=groups.length;meta.partFiles=groups.map(g=>g.map(x=>x.f));
+ return{meta,groups,day:ymd(new Date()),n:groups.length,total:files.reduce((a,x)=>a+(x.s.size||0),0)}}
+function bkPartName(plan,i){return 'PracticePlayer-backup-'+plan.day+(plan.n>1?'-part'+(i+1):'')+'.zip'}
+async function bkPart(plan,gi){const g=plan.groups[gi],ents=[];
+ if(gi===0)ents.push({name:'backup.json',blob:new Blob([JSON.stringify(plan.meta)],{type:'application/json'})});
+ ents.push({name:'part.json',blob:new Blob([JSON.stringify({app:'Practice Player',part:gi+1,of:plan.n,created:plan.meta.created})])});
+ let k=0;for(const x of g){const b=await DB.blob(x.s.id);k++;if(b){const e={name:x.f,blob:b};if(x.s.crc!=null&&x.s.crcSize===b.size)e.crc=x.s.crc;ents.push(e)}
+  $('bkStatus').textContent=(plan.n>1?'Preparing part '+(gi+1)+' of '+plan.n+'... ':'Preparing backup... ')+k+' of '+g.length+' songs'}
+ const z=await Zip.build(ents,null,(e,crc)=>{const s=g.find(x=>x.f===e.name);if(s&&s.s.crc!==crc){s.s.crc=crc;s.s.crcSize=e.blob.size;DB.putMeta(s.s).catch(()=>{})}});
+ ents.length=0;return new File([z],bkPartName(plan,gi),{type:'application/zip'})}
+async function bkPrep(i){const plan=BK.plan;if(!plan)return;BK.file=null;BK.i=i;$('bkReady').hidden=true;$('bkMake').disabled=true;
+ try{BK.file=await bkPart(plan,i);const mb=plan.total/1048576,pm=BK.file.size/1048576,sz=m=>m<1?'under 1 MB':Math.round(m)+' MB';
+  $('bkMsg').textContent=plan.n>1?(i===0?'Your backup is '+sz(mb)+', so it is split into '+plan.n+' parts of about '+BK.PART_MB+' MB. Save all '+plan.n+' files together in the same folder. ':'')+'Part '+(i+1)+' of '+plan.n+' is ready ('+sz(pm)+').':'Your backup is ready ('+sz(pm)+').';
+  $('bkSave').textContent=plan.n>1?'Save part '+(i+1)+' of '+plan.n:'Save backup';$('bkReady').hidden=false;
+  $('bkStatus').textContent=plan.n>1?'Part '+(i+1)+' of '+plan.n+': tap Save part '+(i+1)+', then choose Save to Files.':'Tap Save backup, then choose Save to Files.'}
+ catch(e){BK.file=null;$('bkStatus').textContent='Backup failed: '+(e&&e.message||e)}finally{$('bkMake').disabled=false}}
+$('bkMake').onclick=async()=>{if(!S.songs.length){alert('There are no songs to back up yet.');return}$('bkMake').disabled=true;$('bkReady').hidden=true;BK.file=null;BK.plan=null;$('bkStatus').textContent='Preparing backup...';
+ try{BK.plan=await bkPlan()}catch(e){$('bkStatus').textContent='Backup failed: '+(e&&e.message||e);$('bkMake').disabled=false;return}await bkPrep(0)};
+// after a part is saved: drop it, then build the next one (or finish)
+function bkNext(){const plan=BK.plan,i=BK.i;BK.file=null;if(!plan)return;if(i+1<plan.n){$('bkReady').hidden=true;setTimeout(()=>bkPrep(i+1),50)}else{BK.plan=null;bkDone();if(plan.n>1)$('bkStatus').textContent='Backup saved. All '+plan.n+' parts are done.'}}
 function bkDone(){lsSet(BK.LAST,String(Date.now()));lsSet(BK.DIRTY,null);$('bkReady').hidden=true;$('bkStatus').textContent='Backup saved.';bkRender()}
-function bkDownload(files){files.forEach((f,i)=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.className='sendDl';document.body.append(a);setTimeout(()=>{a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},60000)},i*600)})}
-// must run straight from the tap: the files are already built
-$('bkSave').onclick=()=>{const files=BK.parts;if(!files)return;
- if(navigator.share&&navigator.canShare&&navigator.canShare({files})){navigator.share({files,title:'Practice Player backup'}).then(bkDone).catch(e=>{if(e&&e.name==='AbortError'){$('bkStatus').textContent='Backup not saved. Tap Save backup to try again.';return}bkDownload(files);bkDone()});return}
- bkDownload(files);bkDone()};
+function bkDownload(files){files.forEach((f,i)=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.className='sendDl';document.body.append(a);setTimeout(()=>{a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},20000)},i*600)})}
+// must run straight from the tap: the part is already built
+$('bkSave').onclick=()=>{let f=BK.file;if(!f)return;let files=[f];f=null;
+ if(navigator.share&&navigator.canShare&&navigator.canShare({files})){const p=navigator.share({files,title:'Practice Player backup'});files=null;
+  p.then(bkNext).catch(e=>{if(e&&e.name==='AbortError'){$('bkStatus').textContent='Not saved yet. Tap '+$('bkSave').textContent+' to try again.';return}bkDownload([BK.file]);bkNext()});return}
+ bkDownload(files);files=null;bkNext()};
 $('bkIn').onchange=async e=>{const fl=[...e.target.files];e.target.value='';if(!fl.length)return;$('bkStatus').textContent='Reading backup...';try{const r=await bkRestore(fl);$('bkStatus').textContent=r;alert(r)}catch(err){$('bkStatus').textContent='Restore failed: '+(err&&err.message||err);alert('Restore failed. '+(err&&err.message||''))}};
 async function bkRestore(fileList){const ents={};let meta=null;const parts=[];
  for(const f of fileList){const list=await Zip.read(f);for(const x of list){if(x.name==='backup.json')meta=JSON.parse(await x.blob.text());else if(x.name==='part.json')parts.push(JSON.parse(await x.blob.text()));else ents[x.name]=x}}
  if(!meta)throw new Error('backup.json was not found. Pick part 1 of the backup (you can pick all parts at once).');
  const have=new Set(S.songs.map(s=>s.id));let added=0,skipped=0,missing=0,n=0;
  for(const rec of meta.songs){n++;$('bkStatus').textContent='Restoring '+n+' of '+meta.songs.length+'...';if(have.has(rec.id)){skipped++;continue}const x=ents[rec.file];if(!x){missing++;continue}
-  const r=Object.assign({},rec);delete r.file;const data=new Blob([await x.blob.arrayBuffer()],{type:r.type||'audio/mpeg'});await DB.putSong(r,data);have.add(r.id);added++}
+  const r=Object.assign({},rec);delete r.file;const data=new Blob([x.blob],{type:r.type||'audio/mpeg'});await DB.putSong(r,data);have.add(r.id);added++}
  S.songs=await DB.allSongs();
  for(const p of meta.playlists||[]){const ex=S.pls.find(q=>q.id===p.id);if(ex){const extra=ex.ids.filter(id=>!p.ids.includes(id));ex.ids=p.ids.filter(id=>byId(id)).concat(extra.filter(id=>!p.ids.includes(id)))}else S.pls.push({id:p.id,name:p.name,ids:p.ids.slice(),builtin:p.builtin})}
  S.pls.forEach(p=>{p.ids=p.ids.filter(id=>byId(id))});ensureClipsPl();await savePls();
