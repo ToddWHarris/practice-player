@@ -3,6 +3,7 @@ async tx(s,m,f){const d=await this.open();return new Promise((res,rej)=>{const t
 req(r){return new Promise((a,b)=>{r.onsuccess=()=>a(r.result);r.onerror=()=>b(r.error)})},
 async allSongs(){return this.tx('songs','readonly',t=>this.req(t.objectStore('songs').getAll()))},
 async putSong(meta,blob){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').put(meta);t.objectStore('blobs').put(blob,meta.id)})},
+async putMeta(meta){return this.tx('songs','readwrite',t=>{t.objectStore('songs').put(meta)})},
 async blob(id){return this.tx('blobs','readonly',t=>this.req(t.objectStore('blobs').get(id)))},
 async delSong(id){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').delete(id);t.objectStore('blobs').delete(id)})},
 async clear(){return this.tx(['songs','blobs'],'readwrite',t=>{t.objectStore('songs').clear();t.objectStore('blobs').clear()})},

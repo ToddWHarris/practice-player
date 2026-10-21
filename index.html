@@ -4,7 +4,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#22c55e">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>Practice Player</title><link rel="stylesheet" href="style.css"></head><body>
-<nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="help">Settings</button></nav>
+<nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="set">Settings</button><button data-t="help">Help</button></nav>
 <div id="card" class="empty"><div id="cArt" aria-hidden="true"><span>♪</span></div><div class="cInfo"><div id="now">Nothing playing</div><div id="cSub"></div><div id="cMeta"></div><div id="cPath"></div><div id="from"></div></div></div>
 <main>
 <section id="lib" class="tab on">
@@ -14,11 +14,73 @@
  <div class="row"><button id="newPl" class="btn">New playlist</button></div>
  <ul id="plList" class="list"></ul><div id="plDetail"></div>
 </section>
-<section id="help" class="tab"><h2 class="acc">Your music</h2><p>Copy songs from the Files app into this app. <span id="libCount"></span></p>
+<section id="set" class="tab"><h2 class="acc">Your music</h2><p>Copy songs from the Files app into this app. <span id="libCount"></span></p>
  <div class="row"><label class="btn primary">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
  <label class="btn">Import files<input id="inFiles" type="file" accept="audio/*,.mp3" multiple hidden></label></div>
- <div class="row"><button id="clearLib" class="btn danger">Remove all</button></div>
-<h2 class="acc">Color</h2><p>Pick a highlight color. It is saved on this device.</p><div id="swatches"></div><div id="customRow"><input type="color" id="customColor" value="#22c55e"><label for="customColor">Custom color</label></div><div id="helpBody"></div><button id="share" class="btn big">Share this app</button></section>
+<h2 class="acc">Color</h2><p>Pick a highlight color. It is saved on this device.</p><div id="swatches"></div><div id="customRow"><input type="color" id="customColor" value="#22c55e"><label for="customColor">Custom color</label></div><div class="row"><button id="openHelp" class="btn">Open Help</button></div></section>
+<section id="help" class="tab"><div id="helpBody">
+<h2 class="acc" id="h-top">Help</h2>
+<p class="hintline">Tap a topic to jump to it. Music keeps playing while you read.</p>
+<div id="toc" role="navigation" aria-label="Help topics"></div>
+
+<h2 id="h-welcome">Welcome</h2>
+<p>Practice Player is a simple music player for practicing along with songs. You can loop a hard part and say "again" to hear it once more.</p>
+<ul><li>Your songs, playlists and settings stay on this device. Nothing is uploaded and there is no account.</li><li>Each person who installs the app on their own phone has their own separate copy.</li><li>The app has four tabs: <b>Library</b>, <b>Playlists</b>, <b>Settings</b> and <b>Help</b>.</li></ul>
+<button id="share" class="btn">Share this app</button>
+
+<h2 id="h-install">Install on your phone</h2>
+<p><b>iPhone</b></p>
+<ol><li>Open the app link in Safari.</li><li>Tap the Share button (the square with an arrow), then <b>Add to Home Screen</b>, then <b>Add</b>.</li><li>From now on, open the app from its Home Screen icon. It works offline too.</li></ol>
+<p><b>Android</b></p>
+<ol><li>Open the app link in Chrome.</li><li>Tap the three dot menu, then <b>Add to Home screen</b> or <b>Install app</b>.</li><li>Open the app from its icon.</li></ol>
+
+<h2 id="h-getmp3">Getting MP3s onto your phone</h2>
+<p>The app imports MP3 files that you can see in the Files app (on Android, in your phone's files). It cannot use songs from Apple Music or the Music app.</p>
+<p>Ways to get songs from a computer to an iPhone:</p>
+<ul><li><b>iCloud Drive:</b> on the computer, copy your song folder into iCloud Drive (Finder on a Mac, iCloud for Windows, or icloud.com in a web browser). Wait for it to upload. On the iPhone, open Files, then iCloud Drive. Tip: press and hold the folder and tap <b>Download Now</b> so the songs are on the phone before you import.</li><li><b>USB drive:</b> copy the songs onto a USB stick or memory card and plug it into the iPhone (use an adapter if needed). It shows up in Files under Locations.</li><li><b>AirDrop</b> from a Mac, or a cloud app like Google Drive, Dropbox or OneDrive, also works. Anything that shows up in Files can be imported.</li><li>If you like, move the folder into Files, <b>On My iPhone</b>, so it is kept on the phone. This is optional. You can import straight from iCloud Drive or a USB drive.</li></ul>
+<p>On Android, copy the songs with a USB cable into the phone's Music or Download folder, or use Google Drive.</p>
+
+<h2 id="h-import">Importing songs</h2>
+<p>Go to <b>Settings</b>, then <b>Your music</b>.</p>
+<ul><li><b>Import folder</b> copies every MP3 in the folder you pick, and in all of its subfolders, into the app. The folder layout is kept. Big folders can take a minute. Wait for the "Imported" message.</li><li><b>Import files</b> lets you pick one or more songs. Select several at once to save time. On Android, use this if Import folder does not work.</li><li>Imports are copies kept in the app's own private storage. You will not see them in the Files app, and nothing is uploaded.</li><li>After importing, it is OK to delete the originals from your phone to save space. Keeping a backup on your computer or in iCloud is a good idea. Until you delete them, your songs use about double the space.</li><li>You can import more at any time. Importing the same song again (same name, folder and size) replaces it, so you do not get duplicates.</li><li>To hide one song, swipe it to the left in the Library and tap <b>Remove</b>. It goes to the Removed folder and can be restored. To erase it for good, open Removed, swipe it left and tap <b>Delete forever</b>.</li><li>Deleting the app from your Home Screen, or clearing Safari website data, erases the app's copies. You would need to import again.</li></ul>
+
+<h2 id="h-library">Library and folders</h2>
+<ul><li>The Library shows your songs in the same folders you imported. Tap a folder to open it. Use the path at the top (Home / ...) to go back.</li><li>Tap a song to play it. The songs in that folder become your queue, so Next and Back move through that folder. Songs in its subfolders are not included.</li><li><b>Play all in this folder</b> starts the folder from its first song.</li><li>Swipe a song or a folder to the left to see two buttons. For a folder, <b>Add to list</b> adds every song in it and its subfolders, and <b>Remove</b> moves the whole folder to Removed. Tapping a folder still opens it.</li><li>Swipe a song to the left to see two buttons. <b>Add to list</b> adds it to a playlist. <b>Remove</b> moves it to the <b>Removed</b> folder. Swipe right or tap the song to close them without changes. Only one song is open at a time.</li><li><b>Removed</b> appears last in the Library, with a count, when it holds songs. Removed songs are hidden from their folder and are skipped when you play a folder or playlist. They stay in your playlists, shown in grey. Inside Removed, removed folders are kept together and show their original path, and each song shows the folder it came from. Swipe a folder or song left and tap <b>Restore</b> to put it back, or <b>Delete forever</b> to erase it (you are asked to confirm). You can also open a removed folder and restore or delete single songs. Importing the same file again also restores it.</li><li>Songs in the Library are sorted by name, so they cannot be dragged. Use a playlist for your own order.</li></ul>
+
+<h2 id="h-card">Now playing card</h2>
+<ul><li>The card at the top of Library and Playlists shows the current song.</li><li>If the MP3 has tags, you see the title, artist, album, year and track number, plus the album art. If not, you see the file name and a music note.</li><li>It also shows where the song is in the queue (for example 3 of 8), its length, file size and quality (kbps), its folder, and "Playing from" with the name of the playlist or folder.</li><li>The lock screen and Control Center show the song too, with play, pause, next and previous buttons.</li></ul>
+
+<h2 id="h-playlists">Playlists</h2>
+<ul><li>Tap <b>New playlist</b> and type a name.</li><li>To add songs, go to the Library, swipe a song to the left, tap <b>Add to list</b>, then type the number of the playlist.</li><li>Tap a playlist's name to see its songs. Tap <b>▶</b> to play it from the start, or tap any song in it to start there.</li><li><b>Rename</b> changes the name. <b>Delete</b> asks first and removes only the playlist. Your songs stay in the Library.</li><li><b>Change the order:</b> drag the <b>≡</b> handle on the right of a song up or down. You can also press and hold a song for a moment, then drag it. The list scrolls when you drag near the top or bottom.</li><li><b>Take a song out:</b> swipe it to the left and tap the red <b>Remove</b> button. It is removed from this playlist only. The song stays in your Library, it does not go to the Removed folder, and there is no Restore. To get it back, add it again with Add to list. Swipe right or tap the song to close it without changes.</li><li>You can edit the playlist that is playing. The current song keeps playing and Next and Back follow the new order.</li></ul>
+
+<h2 id="h-queue">Next and Back</h2>
+<ul><li>Next (⏭) and Back (⏮) follow your current queue: the playlist or folder you started from. The card shows "Playing from" so you always know which one.</li><li>Starting a song from a different playlist or folder switches the queue.</li><li>Back goes to the start of the song if you are more than 3 seconds in. Tap it again to go to the previous song.</li><li>When the queue ends, music stops, unless Repeat is set to playlist.</li><li>Your queue is remembered when you close the app. Open it and tap Play to continue.</li></ul>
+
+<h2 id="h-shuffle">Shuffle and Repeat</h2>
+<ul><li><b>Shuffle</b> plays your current queue in random order, starting with the song that is playing. Turn it off to go back to the normal order.</li><li><b>Repeat</b> changes each time you tap it: <b>off</b>, then <b>playlist</b> (the whole queue starts over at the end), then <b>one song</b> (the same song plays again and again), then back to off.</li></ul>
+
+<h2 id="h-ab">A-B loop and voice</h2>
+<ol><li>Tap <b>A-B loop</b> under the player to open it.</li><li>Play the song. Tap <b>Set A</b> where the part starts and <b>Set B</b> where it ends. Use <b>A −0.5</b>, <b>A +0.5</b>, <b>B −0.5</b> and <b>B +0.5</b> to fine tune by half a second. The seek bar shows the loop.</li><li>Tap <b>Start loop</b>. It plays from A and pauses at B.</li><li>At B the app shows "Listening". Say <b>go</b>, <b>again</b>, <b>repeat</b> or <b>yes</b> to play from A again. Say <b>stop</b> to end the loop.</li><li>The big <b>Again</b> button always works too. To end the loop, tap <b>Stop loop</b>.</li></ol>
+<p><b>For voice to work</b></p>
+<ul><li><b>Auto repeat</b> must be unchecked.</li><li>Turn on Dictation: iPhone Settings, General, Keyboard, Enable Dictation.</li><li>The first time you tap Start loop, iPhone asks to use the microphone. Tap <b>Allow</b>.</li><li>Keep the app open on screen. An internet connection helps.</li><li>If listening stops, a <b>Tap to listen</b> button appears. Tap it to turn the mic back on.</li></ul>
+<p><b>Auto repeat (no voice)</b></p>
+<ul><li>Check <b>Auto repeat</b> and set the gap in seconds. After each pass the app waits that long, then plays from A again by itself. The mic is not used.</li></ul>
+<ul><li><b>Clear</b> removes A and B. Starting a different song also clears A and B. Opening Settings ends the loop but keeps A and B.</li></ul>
+
+<h2 id="h-editor">Loop editor</h2>
+<ul><li>Once A and B are set, tap <b>Loop editor</b> in the A-B section for a big, zoomed in view of your loop.</li><li>Drag the A and B handles with your finger. They move in whole seconds (1 s steps). A always stays at least 1 second before B.</li><li>The view also shows some of the song before and after the loop, 10 seconds each by default. Change this in <b>Settings</b>, <b>Loop editor</b>, Before and After. When you let go of a handle, the view adjusts so you can drag further. Near the start of a song you can drag A all the way to 0:00.</li><li>Turn your phone sideways for a wider timeline. If it does not turn, switch off Portrait Orientation Lock in Control Center.</li><li>Tap <b>Play loop from A</b> to hear it. Voice cues, Auto repeat and the Again button work here too. Tap <b>Done</b> when finished.</li></ul>
+
+<h2 id="h-settings">Settings, color and updates</h2>
+<ul><li><b>Highlight color:</b> in Settings, tap one of the colors or pick your own with <b>Custom color</b>. Button text switches between black and white so it stays readable. It is saved on this device.</li><li><b>Opening Settings pauses the music</b> and ends any loop. Tap Play when you come back. Reading Help does not pause the music.</li><li><b>Version number:</b> shown at the top and bottom of Settings.</li><li><b>Updates</b> download by themselves when you are online. If the version number has not changed, close the app fully (swipe up from the bottom, then swipe the app away) and open it again. Sometimes it takes two tries.</li></ul>
+
+<h2 id="h-trouble">Troubleshooting</h2>
+<ul><li><b>Voice: not-allowed.</b> The mic is blocked. Allow it in iPhone Settings, Apps, Safari, Microphone, then tap <b>Tap to listen</b>.</li><li><b>Voice: service-not-allowed.</b> Turn on Dictation in iPhone Settings, General, Keyboard.</li><li><b>Voice: no-speech.</b> Nothing was heard. The app keeps listening. Speak a little louder or closer.</li><li><b>Voice: network.</b> Speech needs an internet connection. Use the Again button instead.</li><li><b>Voice: audio-capture.</b> No microphone was found, or another app is using it. Close that app and try again.</li><li><b>Voice: unsupported.</b> This browser has no voice support. Use the Again button or Auto repeat.</li><li><b>"Tap Play to start"</b> means the phone wants a tap before it plays. Tap Play.</li><li><b>"Could not read file, please import it again"</b> means the app's copy of that song is damaged or missing. Import it again from Settings, Your music.</li><li><b>The update did not show.</b> Close the app fully and open it again, maybe twice, then check the version number in Settings.</li><li><b>Songs are gone.</b> Deleting the app icon, clearing Safari website data, or a very full iPhone can erase the app's copies. Import them again.</li></ul>
+
+<h2 id="h-limits">iPhone limits</h2>
+<ul><li>Songs must be imported into the app. It cannot read Apple Music or the Music app.</li><li>The microphone works only while the app is open on screen, and only when the app is opened from its secure (https) link.</li><li>Voice commands depend on iPhone Dictation and work best online.</li><li>The A-B loop and voice cues work best with the screen on and the app in front.</li><li>Lock screen controls work for play, pause, next and previous.</li><li>Songs are stored only on this phone. Nothing is shared between devices.</li></ul>
+<p class="hintline">Practice Player, Version <span id="helpVer"></span></p>
+</div></section>
+
 </main>
 <footer id="player">
   <div id="seekWrap"><div id="mA" class="mk"></div><div id="mB" class="mk"></div><div id="abBand"></div><input id="seek" type="range" min="0" max="1000" value="0"></div>

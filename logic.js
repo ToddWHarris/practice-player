@@ -11,7 +11,7 @@ const Logic={
  // Play queue: bound to the context playback was started from (playlist or folder)
  // Play queue bound to its start context. items: [{id,k}] (k = playlist index, or null); play: item indices in play order; list: ids in play order
  _sync(q){q.list=q.play.map(i=>q.items[i].id);return q},
- makeQueue(ctx,ids,start,shuffle,valid=()=>true,rnd=Math.random){const items=ids.map((id,k)=>({id,k})).filter(p=>valid(p.id));if(!items.length)return null;let si=items.findIndex(p=>p.k===start);if(si<0)si=0;
+ makeQueue(ctx,ids,start,shuffle,valid=()=>true,rnd=Math.random){const items=ids.map((id,k)=>({id,k})).filter(p=>valid(p.id));if(!items.length)return null;let si=items.findIndex(p=>p.k===start);if(si<0)si=items.findIndex(p=>p.k>start);if(si<0)si=0;
   const q={ctx,items,play:items.map((_,i)=>i),qi:si,shuffle:false};Logic._sync(q);if(shuffle)Logic.setShuffle(q,true,rnd);return q},
  upgradeQueue(q){if(!q||q.items)return q;q.items=(q.order||q.list).map(id=>({id,k:null}));q.play=q.list.map(id=>(q.order||q.list).indexOf(id));if(q.play.some(i=>i<0))q.play=q.items.map((_,i)=>i);delete q.order;delete q.pos;return Logic._sync(q)},
  setShuffle(q,on,rnd=Math.random){if(!q)return q;const cur=q.play[q.qi];const pend=q.items.map((_,i)=>i).filter(i=>!q.items[i].gone||i===cur);
@@ -24,6 +24,8 @@ const Logic={
  // Playlist edited while it is the active queue: keep the playing song current
  plMove(q,from,to){if(!q)return q;for(const it of q.items){if(it.k==null)continue;const k=it.k;if(k===from)it.k=to;else if(from<to&&k>from&&k<=to)it.k=k-1;else if(from>to&&k>=to&&k<from)it.k=k+1;else if(!Number.isInteger(k)){const f=Math.ceil(k);if(f===from)it.k=to-0.5;else if(from<to&&f>from&&f<=to)it.k=k-1;else if(from>to&&f>=to&&f<from)it.k=k+1}}
   if(!q.shuffle){const cur=q.play[q.qi];q.play=Logic._orderIdx(q,q.play);q.qi=q.play.indexOf(cur)}return Logic._sync(q)},
+ // A song was removed from the app's normal view: drop it from the queue, but let it finish if it is playing
+ qRemoveId(q,id){if(!q)return q;const cur=q.play[q.qi];q.items.forEach((it,i)=>{if(it.id!==id)return;if(i===cur)it.gone=true;else q.play=q.play.filter(x=>x!==i)});q.qi=q.play.indexOf(cur);return Logic._sync(q)},
  plRemove(q,r){if(!q)return q;const cur=q.play[q.qi];const ix=q.items.findIndex(it=>it.k===r);for(const it of q.items)if(it.k!=null&&it.k>r)it.k-=1;
   if(ix>=0){if(ix===cur){q.items[ix].gone=true;q.items[ix].k=r-0.5}else{q.play=q.play.filter(i=>i!==ix);q.qi=q.play.indexOf(cur)}}return Logic._sync(q)},
  // Accent color helpers
