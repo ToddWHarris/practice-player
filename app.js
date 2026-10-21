@@ -1,4 +1,4 @@
-const APP_VERSION=14;
+const APP_VERSION=15;
 var ED={open:false,ws:0,we:0,drag:null};
 const $=id=>document.getElementById(id),L=Logic,au=$('audio');
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
@@ -144,7 +144,12 @@ if('mediaSession' in navigator){const m=navigator.mediaSession;[['play',()=>au.p
 {const v=el('p','Version '+APP_VERSION,'ver');$('set').append(v);const t=el('p','Practice Player, Version '+APP_VERSION,'ver');t.style.margin='0 0 12px';$('set').prepend(t)}
 $('helpVer').textContent=APP_VERSION;$('openHelp').onclick=()=>{tab('help');document.querySelector('main').scrollTop=0};
 {const toc=$('toc');document.querySelectorAll('#helpBody h2[id]').forEach(h=>{if(h.id==='h-top')return;const b=el('button',h.textContent,'tocb');b.onclick=()=>{h.scrollIntoView({block:'start'})};toc.append(b);const up=el('button','Back to topics','toTop');up.onclick=()=>$('h-top').scrollIntoView({block:'start'});let n=h.nextElementSibling;while(n&&!(n.tagName==='H2'||n.classList.contains('hintline')))n=n.nextElementSibling;h.parentNode.insertBefore(up,n||null)})}
-$('share').onclick=async()=>{const url=location.href.split('#')[0];try{if(navigator.share)await navigator.share({title:'Practice Player',text:'A simple music practice player. Add it to your Home Screen.',url});else{await navigator.clipboard.writeText(url);alert('Link copied: '+url)}}catch(e){}};
+const SHARE={title:'Practice Player',text:'A free music practice player with A-B loop and voice cues. Open this link in Safari on iPhone (or Chrome on Android), then add it to your Home Screen.',url:'https://toddwharris.github.io/practice-player/'};
+function toast(msg){let t=document.getElementById('toast');if(!t){t=el('div',null,'toast');t.id='toast';t.setAttribute('role','status');document.body.append(t)}t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2500)}
+function showLink(){const box=$('shareLink'),i=$('shareUrl');i.value=SHARE.url;box.hidden=false;tab('help');box.scrollIntoView({block:'center'});i.focus();i.select();try{i.setSelectionRange(0,999)}catch(e){}}
+async function shareApp(){if(navigator.share){try{await navigator.share(SHARE);return}catch(e){if(e&&e.name==='AbortError')return}}
+ try{if(!navigator.clipboard||!navigator.clipboard.writeText)throw new Error('no clipboard');await navigator.clipboard.writeText(SHARE.url);toast('Link copied')}catch(e){showLink()}}
+document.querySelectorAll('.shareBtn').forEach(b=>b.onclick=shareApp);
 function applyAccent(c,save=true){c=L.normHex(c)||L.PRESETS[0][1];const r=document.documentElement.style;r.setProperty('--ac',c);r.setProperty('--on-ac',L.textOn(c));r.setProperty('--ac-soft',c+'55');
  document.querySelector('meta[name=theme-color]').setAttribute('content',c);$('customColor').value=c;document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('sel',b.dataset.c===c));try{localStorage.setItem('accent',c)}catch(e){}if(save)DB.set('accent',c)}
 L.PRESETS.forEach(([n,c])=>{const b=el('button',n,'sw');b.dataset.c=c;b.style.background=c;b.style.color=L.textOn(c);b.setAttribute('aria-label',n+' color');b.onclick=()=>applyAccent(c);$('swatches').append(b)});

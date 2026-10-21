@@ -14,7 +14,7 @@
  <div class="row"><button id="newPl" class="btn">New playlist</button></div>
  <ul id="plList" class="list"></ul><div id="plDetail"></div>
 </section>
-<section id="set" class="tab"><h2 class="acc">Your music</h2><p>Copy songs from the Files app into this app. <span id="libCount"></span></p>
+<section id="set" class="tab"><div class="shareBox"><button class="btn primary big shareBtn" id="shareSet">Share this app</button><p class="hintline">Sends a link to the app only. Your songs and playlists are never shared.</p></div><h2 class="acc">Your music</h2><p>Copy songs from the Files app into this app. <span id="libCount"></span></p>
  <div class="row"><label class="btn primary">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
  <label class="btn">Import files<input id="inFiles" type="file" accept="audio/*,.mp3" multiple hidden></label></div>
 <h2 class="acc">Color</h2><p>Pick a highlight color. It is saved on this device.</p><div id="swatches"></div><div id="customRow"><input type="color" id="customColor" value="#22c55e"><label for="customColor">Custom color</label></div><div class="row"><button id="openHelp" class="btn">Open Help</button></div></section>
@@ -26,7 +26,11 @@
 <h2 id="h-welcome">Welcome</h2>
 <p>Practice Player is a simple music player for practicing along with songs. You can loop a hard part and say "again" to hear it once more.</p>
 <ul><li>Your songs, playlists and settings stay on this device. Nothing is uploaded and there is no account.</li><li>Each person who installs the app on their own phone has their own separate copy.</li><li>The app has four tabs: <b>Library</b>, <b>Playlists</b>, <b>Settings</b> and <b>Help</b>.</li></ul>
-<button id="share" class="btn">Share this app</button>
+
+<h2 id="h-share">Share this app</h2>
+<ul><li>Tap <b>Share this app</b> here or near the top of Settings to send the app link to family and friends by Messages, Mail or any other app.</li><li>Only the link to the app is shared. Your songs, playlists and settings are never shared. Each person imports their own music.</li><li>If your phone cannot open the share sheet, the link is copied so you can paste it. If copying does not work either, the link is shown so you can select and copy it.</li></ul>
+<button class="btn primary shareBtn" id="share">Share this app</button>
+<div id="shareLink" hidden><p>Copy this link:</p><input id="shareUrl" readonly></div>
 
 <h2 id="h-install">Install on your phone</h2>
 <p><b>iPhone</b></p>
