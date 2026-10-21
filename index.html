@@ -9,15 +9,19 @@
 <div id="card" class="empty"><div id="cArt" aria-hidden="true"><span>♪</span></div><div class="cInfo"><div id="now">Nothing playing</div><div id="cSub"></div><div id="cMeta"></div><div id="cPath"></div><div id="from"></div></div></div>
 <main>
 <section id="lib" class="tab on">
-  <div id="crumbs"></div><ul id="tree" class="list"></ul>
+  <div id="bkBanner" class="bkBanner" hidden><span id="bkBannerText"></span><span class="bkBannerBtns"><button id="bkBannerGo" class="btn primary">Back up now</button><button id="bkBannerLater" class="btn">Later</button></span></div><div id="crumbs"></div><ul id="tree" class="list"></ul>
 </section>
 <section id="pls" class="tab">
- <div class="row"><button id="newPl" class="btn">New playlist</button></div>
+ <div class="row"><button id="newPl" class="btn">New playlist</button><label class="btn">Import playlist<input id="plIn2" class="plIn" type="file" accept=".pplay,.zip,application/zip,application/octet-stream" hidden></label></div>
  <ul id="plList" class="list"></ul><div id="plDetail"></div>
 </section>
 <section id="set" class="tab"><div class="shareBox"><button class="btn primary big shareBtn" id="shareSet">Share this app</button><p class="hintline">Sends a link to the app only. Your songs and playlists are never shared.</p></div><h2 class="acc">Your music</h2><p>Copy songs from the Files app into this app. <span id="libCount"></span></p>
  <div class="row"><label class="btn primary">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
  <label class="btn">Import files<input id="inFiles" type="file" accept="audio/*,.mp3" multiple hidden></label></div>
+ <div class="row"><label class="btn">Import playlist<input id="plIn" class="plIn" type="file" accept=".pplay,.zip,application/zip,application/octet-stream" hidden></label></div>
+<h2 class="acc">Backup</h2><p>Save a copy of all your songs, clips, playlists and settings to the Files app. <span id="bkLast">Last backup: never</span></p>
+ <div class="row"><button id="bkMake" class="btn primary">Back up to Files</button><label class="btn">Restore from backup<input id="bkIn" type="file" accept=".zip,application/zip" multiple hidden></label></div>
+ <div id="bkReady" hidden><p id="bkMsg" class="hintline"></p><button id="bkSave" class="btn primary big">Save backup</button></div><p id="bkStatus" class="hintline" role="status"></p>
 <h2 class="acc">Color</h2><button id="colorBtn" class="btn colorBtn" aria-haspopup="dialog"><span id="colorSw" class="csw"></span><span class="clab">Highlight color<small id="colorName">Green</small></span><span class="chev">›</span></button>
 <h2 class="acc">Loop and practice</h2><button id="prBtn" class="btn colorBtn" aria-haspopup="dialog"><span class="csw prIcon">⏱</span><span class="clab">Loop and practice settings<small id="prSum"></small></span><span class="chev">›</span></button></section>
 <section id="help" class="tab"><div id="helpBody">
@@ -79,6 +83,28 @@
 <h2 id="h-speed">Speed and pitch</h2>
 <ul><li>Speed and pitch are saved <b>for each song</b>. Songs you have not changed play normally.</li><li>Play the song, then in <b>Settings</b> tap <b>Loop and practice settings</b>. The popup shows the name of the song you are changing (and the artist if known). If no song is loaded, it says No song selected.</li><li>Use the big <b>Play/Pause</b> button at the top of the popup to listen while you adjust. Speed and pitch change live as it plays, and an A-B loop keeps looping as normal. Opening the Settings tab still pauses the music, and closing the popup pauses it again, since Settings does not show the player.</li><li><b>Speed</b> plays slower or faster without changing the pitch. Drag the slider from 50% to 150%, or tap 50%, 75%, 90%, 100% or 125%. <b>Reset speed</b> goes back to 100%.</li><li><b>Pitch</b> moves the key up or down by up to 6 semitones without changing the speed. Use the slider or the <b>−1</b> and <b>+1</b> buttons. <b>Reset pitch</b> goes back to 0.</li><li><b>Reset this song</b> clears the saved speed and pitch for this song.</li><li>You hear each change right away. Tap <b>Done</b> to save it for this song, or <b>Cancel</b> or tap outside to go back.</li><li>When a song with saved settings plays, a small label like <b>75% · −2 st</b> shows next to the time under the seek bar. Tap it to change them.</li><li>Songs with saved settings show the same label in the Library and in playlists. A grey, crossed out label means the settings are turned off.</li><li><b>Turn them on or off:</b> swipe the song to the left in the Library or in a playlist and tap <b>Speed On</b> or <b>Speed Off</b>. The settings are kept either way. If that song is playing, you hear the change right away.</li><li>Removed and restored songs keep their settings. Delete forever clears them.</li><li>Speed and pitch work with the A-B loop, the Loop editor, voice cues and Auto repeat.</li><li><b>Pitch works while the app is open on screen.</b> On iPhone, music with a pitch change may stop when the screen locks or you switch apps, and lock screen controls may not work. For normal background playback, set pitch back to 0 (or turn the song's settings off), then close the app fully and open it again. Speed alone does not have this limit.</li></ul>
 
+<h2 id="h-clips">Custom Clips</h2>
+<ul><li><b>Custom Clips</b> is a built-in playlist at the top of Playlists. It is always there and cannot be renamed or deleted.</li>
+<li>To make a clip, play a song and set an A-B loop. Then tap <b>Save Custom Clip</b> in the Loop editor or in Loop and practice settings. Give it a name (or keep the suggested one) and tap Save.</li>
+<li>A clip is a new, separate MP3 made from just the part between A and B. It is cut without changing the sound quality. Your original song is never changed. The clip keeps the song's artist and album, and gets the song's speed and pitch settings as its own.</li>
+<li>Clips do not appear in your Library folders. You find them in Custom Clips and in any playlist you put them in.</li>
+<li>Clips play like any other song: shuffle, repeat, A-B loop, drag to reorder, and Send.</li>
+<li>In Custom Clips, swipe a clip left to see <b>Save In</b>, <b>Send</b> and <b>Delete</b>. Save In moves the clip to one of your other playlists and takes it out of Custom Clips. Delete erases the clip file for good, after you confirm. The original song is not touched.</li>
+<li>In your other playlists, swipe a clip left for <b>Add to list</b>, <b>Send</b> and <b>Remove</b>. Remove only takes it off that playlist. If a clip is no longer in any playlist, it goes back to Custom Clips, so you never lose it.</li></ul>
+<h2 id="h-sharepl">Sharing a playlist</h2>
+<ul><li>In <b>Playlists</b>, swipe a playlist left and tap <b>Share</b>. A window shows how many songs it has and how big it is. Tap <b>Prepare</b>, wait a moment, then tap <b>Share</b>.</li>
+<li>This makes one file named after the playlist, ending in .pplay. It holds the songs (clips too), their order, and each song's speed and pitch. It is sent with your phone's share sheet, so you can use AirDrop, Messages, Mail or Save to Files.</li>
+<li>If the playlist is over 20 MB, it is too big for most email and text messages. AirDrop or Save to Files works best.</li>
+<li><b>To open a shared playlist:</b> save the .pplay file to the Files app first. Tapping the file will not open this app on iPhone. Instead, open Practice Player and tap <b>Import playlist</b> (in Settings under Your music, or at the top of Playlists), then pick the file. Mail may show it as a plain attachment. Tap it, then the share button, then Save to Files.</li>
+<li>The playlist is added with its songs in the same order. Songs you already have are reused, not copied twice. New songs go in the Library folder <b>Shared</b>, in a folder with the playlist's name. If you already have a playlist with that name, the new one is called, for example, Polkas (2). Speed and pitch are only added for songs that do not have their own.</li>
+<li>Please only share music you have the right to share.</li></ul>
+<h2 id="h-backup">Backup</h2>
+<ul><li><b>Deleting the app from your Home Screen erases its songs and playlists. Back up first.</b></li>
+<li>In <b>Settings</b>, under <b>Backup</b>, tap <b>Back up to Files</b>. When it is ready, tap <b>Save backup</b> and choose <b>Save to Files</b>. The backup is a .zip file named PracticePlayer-backup with the date.</li>
+<li>It holds every song in its folders, your Custom Clips, your playlists and their order, speed and pitch for each song, the Removed folder, your current A-B loop and your settings.</li>
+<li>A big library is split into parts of about 200 MB (part1, part2 and so on). Keep all the parts together in the same folder.</li>
+<li>To bring everything back, tap <b>Restore from backup</b> and pick the backup file, or all of its parts at once. Songs that are already in the app are skipped, so restoring twice does not make copies.</li>
+<li>Settings shows the date of your last backup. The app reminds you on the Library tab when it has been more than 30 days, or after you import new songs. Tap Later to hide the reminder for a week.</li></ul>
 <h2 id="h-send">Sending songs to someone</h2>
 <ul><li>Swipe left on a song (in Library or a playlist) and tap <b>Send</b>. Your phone's share sheet opens with the actual MP3 files, so you can use AirDrop, Messages or Mail.</li>
 <li>Send works on one song at a time. Folders cannot be sent.</li>
@@ -119,6 +145,7 @@
  <div id="edTl"><div id="edBand"></div><div id="edHead"></div><div id="hA" class="hd" aria-label="A handle"><span>A</span></div><div id="hB" class="hd" aria-label="B handle"><span>B</span></div></div>
  <div id="edScale"><span id="edWs">0:00</span><span id="edWe">0:00</span></div>
  <div id="edStatus"></div>
+ <div class="row"><button id="edClip" class="btn clipBtn" disabled>Save Custom Clip</button></div>
  <div class="row"><button id="edPlay" class="btn">Play loop from A</button><button id="edAgain" class="btn" hidden>Again</button></div>
  <p class="edTip">Drag the A and B handles. They move in whole seconds.</p>
 </div></div>
@@ -131,6 +158,7 @@
 <div id="prModal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="prTitle">
  <div class="sheetHead"><button id="prCancel" class="btn">Cancel</button><h2 id="prTitle" class="acc">Loop and practice</h2><button id="prDone" class="btn primary">Done</button></div>
  <p id="prFor" class="prFor"></p>
+ <button id="prClip" class="btn clipBtn" disabled>Save Custom Clip</button><p id="prClipHint" class="hintline">Set A and B first to save that part as a clip.</p>
  <div class="prPlayRow"><button id="prPlay" class="btn prPlay" aria-label="Play">▶</button><span id="prTime" class="prTime">0:00</span></div>
  <p class="hintline">Changes apply right away so you can hear them. Tap Done to keep them.</p>
  <fieldset id="prSect" class="prSect"><legend class="hintline" id="prSongLine">Speed and pitch for this song: <b id="prSong" class="acc"></b></legend><p id="prNoSong" class="hintline">Play a song to set its speed and pitch.</p>
@@ -159,5 +187,17 @@
  <input id="nameIn" class="nameIn" type="text" autocomplete="given-name" autocapitalize="words" maxlength="40" placeholder="First name">
 </div></div>
 <div id="hello" class="hello" hidden role="status" aria-live="polite"></div>
+<div id="clipModal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="clipTitle">
+ <div class="sheetHead"><button id="clipCancel" class="btn">Cancel</button><h2 id="clipTitle" class="acc">Save Custom Clip</h2><button id="clipSave" class="btn primary">Save</button></div>
+ <p id="clipInfo" class="hintline"></p>
+ <label for="clipName">Clip name</label><input id="clipName" class="nameIn" type="text" maxlength="80">
+ <p class="hintline">The clip is a new, separate MP3 made from the part between A and B. Your original song is not changed.</p>
+</div></div>
+<div id="plsModal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="plsTitle">
+ <div class="sheetHead"><button id="plsCancel" class="btn">Cancel</button><h2 id="plsTitle" class="acc">Share playlist</h2><span></span></div>
+ <p id="plsInfo" class="plsInfo"></p><p id="plsWarn" class="plsWarn" hidden>Too big for most email and text messages. AirDrop or Save to Files works best.</p>
+ <p class="hintline">Sends the songs and the playlist order to someone else with Practice Player. They open the app and tap Import playlist.</p>
+ <button id="plsGo" class="btn primary big">Prepare</button><p id="plsStatus" class="hintline" role="status"></p>
+</div></div>
 <audio id="audio" preload="metadata"></audio>
-<script src="db.js"></script><script src="logic.js"></script><script src="app.js"></script></body></html>
+<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>

@@ -1,6 +1,8 @@
-const APP_VERSION=22;
+const APP_VERSION=24;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 24:['Share a playlist: swipe a playlist left in Playlists and tap Share. It sends the songs, their order, and speed and pitch in one file.','Import playlist, in Settings and at the top of Playlists, adds a shared playlist. Songs you already have are not copied twice, and new songs go in the Library folder Shared.'],
+ 23:['New Custom Clips playlist. Set an A-B loop and tap Save Custom Clip to save that part of the song as its own MP3. Your original song is not changed.','In Custom Clips, swipe a clip left to Save In another playlist, Send it, or Delete it.','New Backup section in Settings. Back up all your songs, clips, playlists and settings to the Files app, and restore them later.','Deleting the app from your Home Screen erases its songs and playlists. The app now reminds you to back up.'],
  22:['The Home Screen icon now uses a darker green. Icons already on your Home Screen keep their old color.','The welcome message now ends with an exclamation mark, like Welcome back, Todd!'],
  21:['The What\'s new window shows again after every update. Tap Close to dismiss it.','Music now stays paused when a phone call, a voice chat or another app takes over the sound. It starts again when you come back to the app, or you can tap play on the lock screen or CarPlay.','Screen lock and CarPlay keep playing as before.','The app can greet you by name. It asks for your first name once (you can skip), and you can change it in Settings. Your name stays on this device.'],
  20:['The app now remembers where you were. It opens on the same Library folder or playlist, and on Library or Playlists, that you had open last time.','If that folder or playlist is gone, it opens the nearest folder that still exists, or your list of playlists.','Nothing starts playing by itself when the app opens.'],
@@ -23,13 +25,13 @@ function swapAudio(){const old=au,n=document.createElement('audio');n.id='audio'
  try{HTMLMediaElement.prototype.pause.call(old)}catch(e){}old.replaceWith(n);au=n;
  if(src){n.src=src;const go=()=>{try{n.currentTime=t}catch(e){}if(typeof applyRate==='function')applyRate();if(was)n.play().catch(()=>{})};if(n.readyState>=1)go();else HTMLMediaElement.prototype.addEventListener.call(n,'loadedmetadata',go,{once:true})}}
 const S={songs:[],pls:[],cwd:[],Q:null,shuffle:false,repeat:'off',A:null,B:null,ab:false,waiting:false,url:null,rec:null,timer:null,openPl:null};
-async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}const navTab=restoreNav();S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}S.navReady=true;if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}else tab(navTab);S.loaded=true;if(typeof startGreeting==='function')startGreeting();if(typeof maybeWN==='function')maybeWN()}
+async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists'))||[];if(ensureClipsPl())savePls();const st=(await DB.get('settings'))||{};S.shuffle=!!st.shuffle;S.repeat=st.repeat||'off';$('autoRep').checked=!!st.autoRep;$('gap').value=st.gap??2;try{(await DB.allKV('pr:')).forEach(([k,v])=>{S.pr[k.slice(3)]=v})}catch(e){}const navTab=restoreNav();S.Q=L.upgradeQueue((await DB.get('queue'))||null);if(S.Q&&!S.Q.list.every(byId))S.Q=null;if(S.Q){if(S.Q.shuffle!==S.shuffle)L.setShuffle(S.Q,S.shuffle);loadCur(false)}renderAll();{let c=null;try{c=localStorage.getItem('accent')}catch(e){}applyAccent(c||(await DB.get('accent'))||L.PRESETS[0][1],false)}S.navReady=true;if(!(await DB.get('seenWelcome'))){tab('help');DB.set('seenWelcome',true)}else tab(navTab);S.loaded=true;if(typeof startGreeting==='function')startGreeting();if(typeof maybeWN==='function')maybeWN()}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNav()});window.addEventListener('pagehide',saveNav);
 const saveSet=()=>DB.set('settings',{shuffle:S.shuffle,repeat:S.repeat,autoRep:$('autoRep').checked,gap:+$('gap').value});
 const savePls=()=>DB.set('playlists',S.pls);
 function tab(t){setTimeout(saveNav,0);document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id===t));const set=t==='set',hide=set||t==='help';$('player').hidden=hide;$('card').hidden=hide;if(set){if(typeof exitAB=='function'&&(S.ab||S.waiting))exitAB();if(!au.paused)au.pause()}}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
-async function importFiles(list){let n=0;for(const f of list){if(!/\.(mp3|m4a|aac|wav)$/i.test(f.name)&&!/^audio\//.test(f.type))continue;const path=f.webkitRelativePath||f.name;const id=L.songId(path,f.size);const data=new Blob([await f.arrayBuffer()],{type:f.type||'audio/mpeg'});delete S.meta[id];await DB.del('meta:'+id);await DB.putSong({id,path,name:f.name.replace(/\.[^.]+$/,''),size:f.size,type:f.type||'audio/mpeg',added:Date.now()},data);n++}S.songs=await DB.allSongs();renderAll();alert('Imported '+n+' song(s).')}
+async function importFiles(list){let n=0;for(const f of list){if(!/\.(mp3|m4a|aac|wav)$/i.test(f.name)&&!/^audio\//.test(f.type))continue;const path=f.webkitRelativePath||f.name;const id=L.songId(path,f.size);const data=new Blob([await f.arrayBuffer()],{type:f.type||'audio/mpeg'});delete S.meta[id];await DB.del('meta:'+id);await DB.putSong({id,path,name:f.name.replace(/\.[^.]+$/,''),size:f.size,type:f.type||'audio/mpeg',added:Date.now()},data);n++}if(n)lsSet('pp-backupDirty','1');S.songs=await DB.allSongs();renderAll();alert('Imported '+n+' song(s).')}
 $('inDir').onchange=e=>{importFiles([...e.target.files]);e.target.value=''};$('inFiles').onchange=e=>{importFiles([...e.target.files]);e.target.value=''};
 function el(tag,txt,cls){const e=document.createElement(tag);if(txt!=null)e.textContent=txt;if(cls)e.className=cls;return e}
 function btn(txt,fn){const b=el('button',txt);b.onclick=e=>{e.stopPropagation();fn()};return b}
@@ -37,10 +39,10 @@ function btn(txt,fn){const b=el('button',txt);b.onclick=e=>{e.stopPropagation();
 const NAV_K='pp-nav';S.navReady=false;
 function saveNav(){if(!S.navReady)return;try{const on=document.querySelector('nav button.on');localStorage.setItem(NAV_K,JSON.stringify({tab:on?on.dataset.t:'lib',cwd:S.cwd||[],pl:S.openPl||null}))}catch(e){}}
 function readNav(){try{return JSON.parse(localStorage.getItem(NAV_K)||'null')||{}}catch(e){return{}}}
-function dirExists(parts){if(!parts.length)return true;const pre=parts.join('/')+'/';return S.songs.some(s=>!s.removed&&s.path.startsWith(pre))}
+function dirExists(parts){if(!parts.length)return true;const pre=parts.join('/')+'/';return libSongs().some(s=>!s.removed&&s.path.startsWith(pre))}
 function restoreNav(){const n=readNav();let c=Array.isArray(n.cwd)?n.cwd.filter(x=>typeof x==='string'):[];while(c.length&&!dirExists(c))c=c.slice(0,-1);S.cwd=c;S.viewRemoved=false;
  S.openPl=n.pl&&S.pls.some(p=>p.id===n.pl)?n.pl:null;return n.tab==='pls'?'pls':'lib'}
-function renderLib(){setTimeout(saveNav,0);if(S.viewRemoved)return renderRemoved();const live=S.songs.filter(s=>!s.removed),gone=S.songs.filter(s=>s.removed);const root=L.buildTree(live);let node=L.nodeAt(root,S.cwd);if(!node){S.cwd=[];node=root}
+function renderLib(){setTimeout(saveNav,0);if(S.viewRemoved)return renderRemoved();const live=libSongs().filter(s=>!s.removed),gone=libSongs().filter(s=>s.removed);const root=L.buildTree(live);let node=L.nodeAt(root,S.cwd);if(!node){S.cwd=[];node=root}
  const c=$('crumbs');c.innerHTML='';const h=el('a','Home');h.href='#';h.onclick=e=>{e.preventDefault();S.cwd=[];S.viewRemoved=false;renderLib()};c.append(h);S.cwd.forEach((d,i)=>{c.append(' / ');const a=el('a',d);a.href='#';a.onclick=e=>{e.preventDefault();S.cwd=S.cwd.slice(0,i+1);renderLib()};c.append(a)});
  const ul=$('tree');ul.innerHTML='';if(!live.length&&!gone.length)ul.append(el('li','No songs yet. Open Settings and tap Import folder or Import files under Your music to add songs from the Files app.'));
  Object.keys(node.dirs).sort().forEach(d=>{const fp=[...S.cwd,d].join('/');const li=el('li',null,'prow lrow frow');li._ox=-208;
@@ -55,11 +57,11 @@ function renderLib(){setTimeout(saveNav,0);if(S.viewRemoved)return renderRemoved
   fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(songs.map(x=>x.id),i,fctx())});attachRow(li,null);ul.append(li)});
  if(!S.cwd.length&&gone.length){const li=el('li',null,'remfolder');li.append(el('span','🗑 Removed ('+gone.length+')','n'));li.onclick=()=>{S.viewRemoved=true;closeRow();renderLib()};ul.append(li)}}
 const inDir=(s,fp)=>s.path.startsWith(fp+'/');
-function folderIds(fp){return S.songs.filter(s=>!s.removed&&inDir(s,fp)).sort((a,b)=>a.path.localeCompare(b.path)).map(s=>s.id)}
+function folderIds(fp){return libSongs().filter(s=>!s.removed&&inDir(s,fp)).sort((a,b)=>a.path.localeCompare(b.path)).map(s=>s.id)}
 function remRow(label,sub,onRestore,onDelete,onTap){const li=el('li',null,'prow lrow rrow');li._ox=-208;const rs=el('button','Restore','padd');rs.onclick=e=>{e.stopPropagation();onRestore()};
  const df=el('button','Delete forever','prm');df.onclick=e=>{e.stopPropagation();onDelete()};const fg=el('div',null,'pfg');const n=el('span',null,'n');n.append(el('span',label),el('small',sub,'orig'));fg.append(n);li.append(rs,df,fg);
  fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}onTap&&onTap()});attachRow(li,null);return li}
-function renderRemoved(){const all=S.songs.filter(s=>s.removed).sort((a,b)=>a.path.localeCompare(b.path));const grp=S.viewRemoved&&S.viewRemoved.group;
+function renderRemoved(){const all=libSongs().filter(s=>s.removed).sort((a,b)=>a.path.localeCompare(b.path));const grp=S.viewRemoved&&S.viewRemoved.group;
  const gone=grp?all.filter(s=>s.removedGroup===grp):all;if(!all.length||(grp&&!gone.length)){if(all.length&&grp){S.viewRemoved=true;return renderRemoved()}S.viewRemoved=false;return renderLib()}
  const c=$('crumbs');c.innerHTML='';const h=el('a','Home');h.href='#';h.onclick=e=>{e.preventDefault();S.viewRemoved=false;S.cwd=[];renderLib()};c.append(h,' / ');
  if(grp){const r=el('a','Removed');r.href='#';r.onclick=e=>{e.preventDefault();S.viewRemoved=true;renderLib()};c.append(r,' / '+grp.split('/').pop())}else c.append('Removed');
@@ -68,7 +70,7 @@ function renderRemoved(){const all=S.songs.filter(s=>s.removed).sort((a,b)=>a.pa
  if(!grp){const groups=[...new Set(all.filter(s=>s.removedGroup).map(s=>s.removedGroup))].sort();
   groups.forEach(g=>{const ss=all.filter(s=>s.removedGroup===g);ul.append(remRow('📁 '+g.split('/').pop()+' ('+ss.length+')','From: '+g.split('/').join(' / '),()=>restoreMany(ss),()=>deleteMany(ss,'the folder '+g.split('/').pop()+' ('+ss.length+' songs)'),()=>{S.viewRemoved={group:g};closeRow();renderLib()}))})}
  gone.filter(s=>grp||!s.removedGroup).forEach(s=>ul.append(remRow('♪ '+s.name,'From: '+dirOf(s),()=>restoreSong(s),()=>deleteForever(s))))}
-async function removeFolder(fp){PG.open=null;const ss=S.songs.filter(s=>!s.removed&&inDir(s,fp));for(const s of ss){s.removed=true;s.removedAt=Date.now();s.removedGroup=fp;await DB.putMeta(s);if(S.Q)L.qRemoveId(S.Q,s.id)}if(S.Q)saveQ();renderAll()}
+async function removeFolder(fp){PG.open=null;const ss=libSongs().filter(s=>!s.removed&&inDir(s,fp));for(const s of ss){s.removed=true;s.removedAt=Date.now();s.removedGroup=fp;await DB.putMeta(s);if(S.Q)L.qRemoveId(S.Q,s.id)}if(S.Q)saveQ();renderAll()}
 async function restoreMany(ss){PG.open=null;for(const s of ss){delete s.removed;delete s.removedAt;delete s.removedGroup;await DB.putMeta(s)}renderAll()}
 async function deleteMany(ss,what){if(!confirm('Delete '+what+' forever? This erases the songs from the app and from your playlists.'))return;for(const s of ss)await eraseSong(s);savePls();renderAll()}
 async function softRemove(s){PG.open=null;s.removed=true;s.removedAt=Date.now();await DB.putMeta(s);if(S.Q){L.qRemoveId(S.Q,s.id);saveQ()}renderAll()}
@@ -76,20 +78,108 @@ async function restoreSong(s){PG.open=null;delete s.removed;delete s.removedAt;d
 async function deleteForever(s){if(!confirm('Delete '+s.name+' forever? This erases it from the app and from your playlists.'))return;await eraseSong(s);savePls();renderAll()}
 async function eraseSong(s){PG.open=null;if(S.pr[s.id]){delete S.pr[s.id];await DB.del('pr:'+s.id)}await DB.delSong(s.id);await DB.del('meta:'+s.id);delete S.meta[s.id];
  S.songs=S.songs.filter(x=>x.id!==s.id);S.pls.forEach(p=>{const idx=[];p.ids.forEach((x,k)=>{if(x===s.id)idx.push(k)});idx.reverse().forEach(k=>{p.ids.splice(k,1);plSyncQ(p,q=>L.plRemove(q,k))})});if(S.Q){L.qRemoveId(S.Q,s.id);saveQ()}}
-function addToPl(id){const many=Array.isArray(id)?id:[id];if(!many.length){alert('No songs to add.');return}if(!S.pls.length){alert('Create a playlist first in the Playlists tab.');return}const names=S.pls.map((p,i)=>(i+1)+'. '+p.name).join('\n');const k=prompt('Add to which playlist? Enter number:\n'+names,'1');const p=S.pls[(+k)-1];if(p){p.ids.push(...many);savePls();renderPls();if(many.length>1)alert('Added '+many.length+' songs to '+p.name+'.')}}
+function addToPl(id){const many=Array.isArray(id)?id:[id];if(!many.length){alert('No songs to add.');return}const PL=S.pls.filter(x=>!isClips(x));if(!PL.length){alert('Create a playlist first in the Playlists tab.');return}const names=PL.map((p,i)=>(i+1)+'. '+p.name).join('\n');const k=prompt('Add to which playlist? Enter number:\n'+names,'1');const p=PL[(+k)-1];if(p){p.ids.push(...many);savePls();renderPls();if(many.length>1)alert('Added '+many.length+' songs to '+p.name+'.')}}
 const fctx=()=>({type:'folder',id:S.cwd.join('/'),name:S.cwd.length?'Folder '+S.cwd.join(' / '):'Library'});
 const playable=id=>{const x=S.songs.find(s=>s.id===id);return !!x&&!x.removed};
 const byId=id=>S.songs.find(s=>s.id===id);
-function renderPls(){setTimeout(saveNav,0);const ul=$('plList');ul.innerHTML='';S.pls.forEach(p=>{const li=el('li');li.append(el('span',p.name+' ('+p.ids.length+')','n'));li.onclick=()=>{S.openPl=p.id;renderPls()};
- li.append(btn('▶',()=>playList(p.ids,0,{type:'pl',id:p.id,name:p.name})),btn('Rename',()=>{const n=prompt('New name',p.name);if(n){p.name=n;if(S.Q&&S.Q.ctx.id===p.id){S.Q.ctx.name=n;saveQ();renderFrom()}savePls();renderPls()}}),btn('Delete',()=>{if(confirm('Delete playlist '+p.name+'?')){S.pls=S.pls.filter(x=>x!==p);savePls();renderPls()}}));ul.append(li)});
+// v23 Custom Clips
+const CLIPS_ID='clips';const libSongs=()=>S.songs.filter(s=>!s.clip);const isClips=p=>p&&p.id===CLIPS_ID;const clipsPl=()=>S.pls.find(isClips);
+function ensureClipsPl(){let p=clipsPl();let ch=false;if(!p){p={id:CLIPS_ID,name:'Custom Clips',ids:[],builtin:true};S.pls.unshift(p);ch=true}
+ if(p.name!=='Custom Clips'){p.name='Custom Clips';ch=true}p.builtin=true;if(S.pls[0]!==p){S.pls=[p,...S.pls.filter(x=>x!==p)];ch=true}
+ // a clip that is in no playlist comes back to Custom Clips, so a clip file is never lost or hidden
+ S.songs.filter(x=>x.clip).forEach(x=>{if(!S.pls.some(q=>q.ids.includes(x.id))){p.ids.push(x.id);ch=true}});
+ p.ids=p.ids.filter(id=>{const x=byId(id);return x&&x.clip});return ch}
+function renderPls(){setTimeout(saveNav,0);const ul=$('plList');ul.innerHTML='';S.pls.forEach(p=>{const li=el('li',null,'prow plrow');const fg=el('div',null,'pfg');fg.append(el('span',p.name+' ('+p.ids.length+')','n'));
+ const sh=el('button','Share','padd');sh.onclick=e=>{e.stopPropagation();closeRow();openPlShare(p.id)};rowActs(li,[sh],null);li.append(fg);
+ fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}S.openPl=p.id;renderPls()});attachRow(li,null);
+ li.append=(...a)=>fg.append(...a);
+ if(isClips(p)){li.classList.add('builtinPl');li.append(btn('▶',()=>playList(p.ids,0,{type:'pl',id:p.id,name:p.name})));ul.append(li);return}
+ li.append(btn('▶',()=>playList(p.ids,0,{type:'pl',id:p.id,name:p.name})),btn('Rename',()=>{const n=prompt('New name',p.name);if(n){p.name=n;if(S.Q&&S.Q.ctx.id===p.id){S.Q.ctx.name=n;saveQ();renderFrom()}savePls();renderPls()}}),btn('Delete',()=>{if(confirm('Delete playlist '+p.name+'?')){S.pls=S.pls.filter(x=>x!==p);ensureClipsPl();savePls();renderPls()}}));ul.append(li)});
  const d=$('plDetail');d.innerHTML='';const p=S.pls.find(x=>x.id===S.openPl);if(!p)return;d.append(el('h3',p.name));const l=el('ul',null,'list');
  p.ids.forEach((id,i)=>{const s=byId(id);const li=el('li',null,'prow'+(S.Q&&S.Q.ctx.id===p.id&&cur()===id&&S.Q.items[S.Q.play[S.Q.qi]].k===i?' cur':''));li.dataset.i=i;
-  const rm=el('button','Remove','prm');rm.setAttribute('aria-label','Remove from playlist');rm.onclick=e=>{e.stopPropagation();plRemoveAt(p,i)};
+  const rm=el('button',isClips(p)?'Delete':'Remove','prm');rm.setAttribute('aria-label',isClips(p)?'Delete clip':'Remove from playlist');rm.onclick=e=>{e.stopPropagation();if(isClips(p))deleteClip(id);else{plRemoveAt(p,i);if(s&&s.clip&&ensureClipsPl()){savePls();renderPls();toast('The clip is in no other playlist, so it went back to Custom Clips')}}};
   const fg=el('div',null,'pfg');fg.append(el('span',s?s.name+(s.removed?' (removed)':''):'(missing)','n'));if(s&&s.removed)li.classList.add('gone');if(s)prBadge(fg,id);const g=el('span','≡','grip');g.setAttribute('aria-label','Drag to reorder');fg.append(g);
-  rowActs(li,[sendBtn(()=>[id],(byId(id)||{}).name),rm],id);li._pre=()=>preSend([id]);li.append(fg);fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(p.ids,i,{type:'pl',id:p.id,name:p.name})});attachRow(li,p);l.append(li)});
- if(!p.ids.length)l.append(el('li','Empty. In the Library, swipe a song left and tap Add to list.'));else d.append(el('p','Drag ≡ to reorder. Swipe a song left to remove it.','hint'));d.append(l)}
+  const acts=[sendBtn(()=>[id],(byId(id)||{}).name),rm];if(s&&s.clip){if(isClips(p)){const sv=el('button','Save In','padd');sv.onclick=e=>{e.stopPropagation();closeRow();saveClipIn(id)};acts.unshift(sv)}else{const ad=el('button','Add to list','padd');ad.onclick=e=>{e.stopPropagation();closeRow();addToPl(id)};acts.unshift(ad)}}
+  rowActs(li,acts,id);li._pre=()=>preSend([id]);li.append(fg);fg.addEventListener('click',()=>{if(PG.open){closeRow();PG.suppress=false;return}if(PG.suppress){PG.suppress=false;return}playList(p.ids,i,{type:'pl',id:p.id,name:p.name})});attachRow(li,p);l.append(li)});
+ if(!p.ids.length)l.append(el('li',isClips(p)?'No clips yet. Set an A-B loop on a song, then tap Save Custom Clip in the Loop editor or in Loop and practice settings.':'Empty. In the Library, swipe a song left and tap Add to list.'));else d.append(el('p',isClips(p)?'Drag ≡ to reorder. Swipe a clip left to Save In another playlist, Send or Delete it.':'Drag ≡ to reorder. Swipe a song left to remove it.','hint'));d.append(l)}
 $('newPl').onclick=()=>{const n=prompt('Playlist name','Playlist '+(S.pls.length+1));if(n){S.pls.push({id:'p'+Date.now(),name:n,ids:[]});savePls();renderPls()}};
-function renderAll(){const lc=document.getElementById('libCount');if(lc){const n=S.songs.filter(x=>!x.removed).length,r=S.songs.length-n;lc.textContent=(S.songs.length?n+' song'+(n===1?'':'s')+' in the app now.':'No songs yet.')+(r?' '+r+' in Removed.':'')}typeof renderCard=='function'&&renderCard();renderLib();renderPls();renderCtl()}
+function saveClipIn(id){const PL=S.pls.filter(x=>!isClips(x));if(!PL.length){alert('Create a playlist first in the Playlists tab, then use Save In to move the clip there.');return}
+ const k=prompt('Move this clip to which playlist? Enter number:\n'+PL.map((p,i)=>(i+1)+'. '+p.name).join('\n'),'1');const p=PL[(+k)-1];if(!p)return;
+ if(!p.ids.includes(id))p.ids.push(id);const c=clipsPl();const i=c.ids.indexOf(id);if(i>=0){PG.open=null;c.ids.splice(i,1);plSyncQ(c,q=>L.plRemove(q,i))}savePls();renderPls();toast('Moved to '+p.name)}
+async function deleteClip(id){const s=byId(id);if(!s)return;if(!confirm('Delete the clip "'+s.name+'" for good? This deletes the clip file. The original song is not changed.'))return;await eraseSong(s);savePls();renderAll();toast('Clip deleted')}
+function tc(t){t=Math.max(0,t||0);const m=Math.floor(t/60),r=t-m*60,ss=Math.floor(r),fr=Math.round((r-ss)*10);return m+':'+String(ss).padStart(2,'0')+(fr?'.'+fr:'')}
+function clipReady(){const cs=byId(cur());return !!cs&&S.A!=null&&S.B!=null&&S.B-S.A>=0.2&&!S.loadFailed}
+function syncClipBtns(){const ok=clipReady();['edClip','prClip'].forEach(k=>{const b=$(k);if(b)b.disabled=!ok});const h=$('prClipHint');if(h)h.hidden=ok}
+function openClip(){if(!clipReady())return;const cs=byId(cur()),m=S.meta[cs.id];const title=(m&&m.title)||cs.name;S.clipAB=[S.A,S.B];
+ $('clipName').value=title+' clip '+tc(S.A)+'-'+tc(S.B);$('clipInfo').textContent='From '+title+', '+tc(S.A)+' to '+tc(S.B)+' ('+(S.B-S.A).toFixed(1)+' s)';$('clipModal').hidden=false;document.body.classList.add('modalOpen');setTimeout(()=>{try{$('clipName').select()}catch(e){}},50)}
+function closeClip(){$('clipModal').hidden=true;if($('prModal').hidden&&$('wnModal').hidden&&$('nameModal').hidden)document.body.classList.remove('modalOpen')}
+async function makeClip(srcId,a,b,name){const src=byId(srcId);if(!src)throw new Error('no song');const blob=await DB.blob(srcId);if(!blob)throw new Error('could not read the song');
+ const u=new Uint8Array(await blob.arrayBuffer());let m=S.meta[srcId];if(!m)try{m=await getMeta(src)}catch(e){}
+ const r=MP3Clip.clip(u,a,b,{title:name,artist:(m&&m.artist)||'',album:(m&&m.album)||'',year:(m&&m.year)||'',comment:'Clip from '+((m&&m.title)||src.name)+', '+tc(a)+' to '+tc(b)});
+ if(!r)throw new Error('Clips can only be made from MP3 songs.');
+ const id='clip-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),safe=name.replace(/[\/\\:*?"<>|]/g,'-').slice(0,80);
+ const rec={id,path:'Custom Clips/'+safe+'.mp3',name,size:r.bytes.length,type:'audio/mpeg',added:Date.now(),clip:true,src:srcId,srcPath:src.path,a:r.start,b:r.end};
+ await DB.putSong(rec,new Blob([r.bytes],{type:'audio/mpeg'}));S.songs.push(rec);
+ if(S.pr[srcId]){S.pr[id]=Object.assign({},S.pr[srcId]);await savePR(id)}
+ if(!clipsPl())ensureClipsPl();clipsPl().ids.push(id);ensureClipsPl();await savePls();return rec}
+$('edClip').onclick=openClip;$('prClip').onclick=openClip;$('clipCancel').onclick=closeClip;$('clipModal').addEventListener('click',e=>{if(e.target===$('clipModal'))closeClip()});
+$('clipSave').onclick=async()=>{const name=$('clipName').value.trim()||$('clipName').placeholder||'Clip';const cs=byId(cur());if(!cs||!S.clipAB)return closeClip();$('clipSave').disabled=true;
+ try{const rec=await makeClip(cs.id,S.clipAB[0],S.clipAB[1],name);closeClip();renderPls();toast('Saved "'+rec.name+'" to Custom Clips')}catch(e){alert('Could not save the clip. '+(e&&e.message||''))}finally{$('clipSave').disabled=false}};
+$('clipName').addEventListener('keydown',e=>{if(e.key==='Enter')$('clipSave').click()});
+
+// ---- v23 Backup and restore (zip, STORE). Parts of about 200 MB. ----
+const BK={PART_MB:200,parts:null,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name']};
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){}}
+function bkRender(){const t=+lsGet(BK.LAST)||0;$('bkLast').textContent='Last backup: '+(t?new Date(t).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'never');
+ const has=S.songs.length>0,old=!t||Date.now()-t>30*864e5,dirty=lsGet(BK.DIRTY)==='1',snz=+lsGet(BK.SNOOZE)||0;const show=has&&(old||dirty)&&Date.now()>snz;
+ $('bkBanner').hidden=!show;if(show)$('bkBannerText').textContent=dirty?'You added new songs. Back up so you do not lose them.':(t?'It has been over 30 days since your last backup.':'Your songs are only in this app. Back them up to Files.')}
+function bkFile(s){const p=(s.path||s.name||s.id).replace(/^\/+/,'').replace(/\.\.+/g,'.');return 'music/'+p}
+async function bkBuild(){const songs=S.songs.slice(),pr={};Object.keys(S.pr).forEach(k=>pr[k]=S.pr[k]);const prefs={};BK.PREFS.forEach(k=>{const v=lsGet(k);if(v!=null)prefs[k]=v});
+ const used={},files=[];for(const s of songs){let f=bkFile(s);if(used[f]){const m=f.match(/^(.*?)(\.[^./]*)?$/);f=m[1]+'-'+s.id.slice(-6)+(m[2]||'')}used[f]=1;files.push({s,f})}
+ const meta={app:'Practice Player',format:1,version:APP_VERSION,created:new Date().toISOString(),
+  songs:files.map(({s,f})=>Object.assign({},s,{file:f})),playlists:S.pls,pr,settings:(await DB.get('settings'))||{},accent:(await DB.get('accent'))||null,prefs,
+  loop:(cur()&&S.A!=null&&S.B!=null)?{song:cur(),a:S.A,b:S.B}:null,queue:S.Q||null};
+ // split into parts of about PART_MB by file size; backup.json goes in part 1 and lists every part's files
+ const lim=BK.PART_MB*1048576,groups=[[]];let acc=0;for(const x of files){const sz=x.s.size||0;if(acc>0&&acc+sz>lim){groups.push([]);acc=0}groups[groups.length-1].push(x);acc+=sz}
+ meta.parts=groups.length;meta.partFiles=groups.map(g=>g.map(x=>x.f));const day=ymd(new Date()),out=[];let done=0;
+ for(let gi=0;gi<groups.length;gi++){const ents=[];if(gi===0)ents.push({name:'backup.json',blob:new Blob([JSON.stringify(meta)],{type:'application/json'})});
+  ents.push({name:'part.json',blob:new Blob([JSON.stringify({app:'Practice Player',part:gi+1,of:groups.length,created:meta.created})])});
+  for(const x of groups[gi]){const b=await DB.blob(x.s.id);if(b)ents.push({name:x.f,blob:b});$('bkStatus').textContent='Preparing backup... '+(++done)+' of '+files.length+' songs'}
+  const z=await Zip.build(ents);const nm='PracticePlayer-backup-'+day+(groups.length>1?'-part'+(gi+1):'')+'.zip';out.push(new File([z],nm,{type:'application/zip'}))}
+ return out}
+$('bkMake').onclick=async()=>{if(!S.songs.length){alert('There are no songs to back up yet.');return}$('bkMake').disabled=true;$('bkReady').hidden=true;$('bkStatus').textContent='Preparing backup...';
+ try{BK.parts=await bkBuild();const mb=BK.parts.reduce((a,f)=>a+f.size,0)/1048576;
+  $('bkMsg').textContent=BK.parts.length>1?'Your backup is '+Math.round(mb)+' MB, so it is split into '+BK.parts.length+' parts of about '+BK.PART_MB+' MB. Save all '+BK.parts.length+' files together in the same folder.':'Your backup is ready ('+(mb<1?'under 1':Math.round(mb))+' MB).';
+  $('bkSave').textContent=BK.parts.length>1?'Save backup ('+BK.parts.length+' files)':'Save backup';$('bkReady').hidden=false;$('bkStatus').textContent='Tap Save backup, then choose Save to Files.'}
+ catch(e){$('bkStatus').textContent='Backup failed: '+(e&&e.message||e)}finally{$('bkMake').disabled=false}};
+function bkDone(){lsSet(BK.LAST,String(Date.now()));lsSet(BK.DIRTY,null);$('bkReady').hidden=true;$('bkStatus').textContent='Backup saved.';bkRender()}
+function bkDownload(files){files.forEach((f,i)=>{const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.className='sendDl';document.body.append(a);setTimeout(()=>{a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},60000)},i*600)})}
+// must run straight from the tap: the files are already built
+$('bkSave').onclick=()=>{const files=BK.parts;if(!files)return;
+ if(navigator.share&&navigator.canShare&&navigator.canShare({files})){navigator.share({files,title:'Practice Player backup'}).then(bkDone).catch(e=>{if(e&&e.name==='AbortError'){$('bkStatus').textContent='Backup not saved. Tap Save backup to try again.';return}bkDownload(files);bkDone()});return}
+ bkDownload(files);bkDone()};
+$('bkIn').onchange=async e=>{const fl=[...e.target.files];e.target.value='';if(!fl.length)return;$('bkStatus').textContent='Reading backup...';try{const r=await bkRestore(fl);$('bkStatus').textContent=r;alert(r)}catch(err){$('bkStatus').textContent='Restore failed: '+(err&&err.message||err);alert('Restore failed. '+(err&&err.message||''))}};
+async function bkRestore(fileList){const ents={};let meta=null;const parts=[];
+ for(const f of fileList){const list=await Zip.read(f);for(const x of list){if(x.name==='backup.json')meta=JSON.parse(await x.blob.text());else if(x.name==='part.json')parts.push(JSON.parse(await x.blob.text()));else ents[x.name]=x}}
+ if(!meta)throw new Error('backup.json was not found. Pick part 1 of the backup (you can pick all parts at once).');
+ const have=new Set(S.songs.map(s=>s.id));let added=0,skipped=0,missing=0,n=0;
+ for(const rec of meta.songs){n++;$('bkStatus').textContent='Restoring '+n+' of '+meta.songs.length+'...';if(have.has(rec.id)){skipped++;continue}const x=ents[rec.file];if(!x){missing++;continue}
+  const r=Object.assign({},rec);delete r.file;const data=new Blob([await x.blob.arrayBuffer()],{type:r.type||'audio/mpeg'});await DB.putSong(r,data);have.add(r.id);added++}
+ S.songs=await DB.allSongs();
+ for(const p of meta.playlists||[]){const ex=S.pls.find(q=>q.id===p.id);if(ex){const extra=ex.ids.filter(id=>!p.ids.includes(id));ex.ids=p.ids.filter(id=>byId(id)).concat(extra)}else S.pls.push({id:p.id,name:p.name,ids:p.ids.slice(),builtin:p.builtin})}
+ S.pls.forEach(p=>{p.ids=p.ids.filter(id=>byId(id))});ensureClipsPl();await savePls();
+ for(const [id,st] of Object.entries(meta.pr||{})){if(!S.pr[id]&&byId(id)){S.pr[id]=st;await savePR(id)}}
+ if(meta.settings&&!(await DB.get('settings'))){await DB.set('settings',meta.settings)}
+ for(const [k,v] of Object.entries(meta.prefs||{})){if(lsGet(k)==null)lsSet(k,v)}if(meta.accent&&!(await DB.get('accent')))await DB.set('accent',meta.accent);
+ if(lsGet('accent'))applyAccent(lsGet('accent'),false);
+ if(meta.loop&&!cur()&&byId(meta.loop.song)){}
+ renderAll();bkRender();const total=meta.parts||1,got=new Set(parts.map(p=>p.part)).size||1;
+ let msg='Restored '+added+' song'+(added===1?'':'s')+'.';if(skipped)msg+=' '+skipped+' already in the app were skipped.';
+ if(missing)msg+=' '+missing+' could not be found'+(total>got?' because only '+got+' of '+total+' backup parts were picked. Restore again and pick all parts.':'.');return msg}
+$('bkBannerGo').onclick=()=>{tab('set');setTimeout(()=>{$('bkMake').scrollIntoView({block:'center'})},50)};
+$('bkBannerLater').onclick=()=>{lsSet(BK.SNOOZE,String(Date.now()+7*864e5));bkRender()};
+function renderAll(){const lc=document.getElementById('libCount');if(lc){const LS=libSongs(),n=LS.filter(x=>!x.removed).length,r=LS.length-n;lc.textContent=(LS.length?n+' song'+(n===1?'':'s')+' in the app now.':'No songs yet.')+(r?' '+r+' in Removed.':'')}typeof renderCard=='function'&&renderCard();try{bkRender()}catch(e){}renderLib();renderPls();renderCtl()}
 const cur=()=>S.Q&&S.Q.list[S.Q.qi];
 const saveQ=()=>DB.set('queue',S.Q);
 function playList(ids,i,ctx){const q=L.makeQueue(ctx||{type:'all',name:'All songs'},ids,i,S.shuffle,playable);if(!q)return;S.Q=q;saveQ();loadCur(true)}
@@ -119,7 +209,7 @@ async function loadCur(play){const s=byId(cur());if(!s)return;const tok=S.loadTo
  if(play)au.play().catch(playBlocked);renderLib()}
 function step(dir,auto){const n=L.stepQueue(S.Q,dir,S.repeat,auto);if(n<0){au.pause();return}saveQ();loadCur(true)}
 au.onended=()=>{if(S.repeat==='one'){au.currentTime=0;au.play();return}step(1,true)};
-$('play').onclick=()=>{if(!au.src||S.loadFailed){if(S.Q&&byId(cur()))loadCur(true);else if(S.songs.some(x=>!x.removed))playList(S.songs.filter(x=>!x.removed).map(s=>s.id),0);return}au.paused?au.play().catch(playBlocked):au.pause()};
+$('play').onclick=()=>{if(!au.src||S.loadFailed){if(S.Q&&byId(cur()))loadCur(true);else if(libSongs().some(x=>!x.removed))playList(libSongs().filter(x=>!x.removed).map(s=>s.id),0);return}au.paused?au.play().catch(playBlocked):au.pause()};
 function playBlocked(e){if(e&&e.name==='NotAllowedError'){$('now').dataset.status='tap Play to start';renderCard()}}
 $('prev').onclick=()=>{if(au.currentTime>3)au.currentTime=0;else step(-1)};$('next').onclick=()=>step(1);
 $('shuf').onclick=()=>{S.shuffle=!S.shuffle;if(S.Q){L.setShuffle(S.Q,S.shuffle);saveQ()}saveSet();renderCtl()};
@@ -130,7 +220,7 @@ let seeking=false;$('seek').oninput=()=>{seeking=true;$('tCur').textContent=L.fm
 au.ontimeupdate=()=>{if(!seeking&&au.duration)$('seek').value=au.currentTime/au.duration*1000;$('tCur').textContent=L.fmt(au.currentTime);$('tDur').textContent=L.fmt(au.duration||0);checkB()};
 au.onloadedmetadata=()=>{renderCard();renderMarks();$('tDur').textContent=L.fmt(au.duration)};
 // A-B loop
-function renderMarks(){const d=au.duration||0;const pos=(t,e)=>{e.style.display=t!=null&&d?'block':'none';if(d&&t!=null)e.style.left=(t/d*100)+'%'};pos(S.A,$('mA'));pos(S.B,$('mB'));const band=$('abBand');if(d&&S.A!=null&&S.B!=null){band.style.display='block';band.style.left=S.A/d*100+'%';band.style.width=(S.B-S.A)/d*100+'%'}else band.style.display='none';
+function renderMarks(){try{syncClipBtns()}catch(e){}const d=au.duration||0;const pos=(t,e)=>{e.style.display=t!=null&&d?'block':'none';if(d&&t!=null)e.style.left=(t/d*100)+'%'};pos(S.A,$('mA'));pos(S.B,$('mB'));const band=$('abBand');if(d&&S.A!=null&&S.B!=null){band.style.display='block';band.style.left=S.A/d*100+'%';band.style.width=(S.B-S.A)/d*100+'%'}else band.style.display='none';
  $('edOpen').hidden=!(S.A!=null&&S.B!=null);typeof edRender=='function'&&edRender();$('abState').textContent=(S.A!=null?'A '+S.A.toFixed(1):'')+(S.B!=null?'  B '+S.B.toFixed(1):'')+(S.ab?'  (on)':'');$('abOn').textContent=S.ab?'Stop loop':'Start loop';typeof syncTog=='function'&&syncTog()}
 function setAB(a,b){[S.A,S.B]=L.clampAB(a,b,au.duration);renderMarks()}
 $('setA').onclick=()=>setAB(au.currentTime,S.B!=null&&S.B>au.currentTime?S.B:null);$('setB').onclick=()=>{if(S.A==null)S.A=0;setAB(S.A,au.currentTime)};
@@ -249,7 +339,7 @@ async function applyPitch(){const st=PR.pitch;if(!st&&!PR.ctx){return}if(!st&&PR
  const ctx=await ensureGraph();if(!ctx){if(st){PR.pitch=0;renderPR();toast&&toast(PR.err||'Pitch shift not available')}return}
  try{PR.src.disconnect()}catch(e){}if(PR.pitch){PR.src.connect(PR.node);PR.node.port.postMessage({semitones:PR.pitch})}else PR.src.connect(ctx.destination);if(ctx.state!=='running')ctx.resume().catch(()=>{})}
 function prLabel(){const parts=[];if(PR.speed!==1)parts.push(Math.round(PR.speed*100)+'%');if(PR.pitch)parts.push((PR.pitch>0?'+':'')+PR.pitch+' st');return parts.join(' · ')}
-function renderPR(){const cs=byId(cur()),m=cs&&S.meta[cs.id];$('prSong').textContent=cs?((m&&m.title)||cs.name):'';$('prSect').disabled=!cs;$('prNoSong').hidden=!!cs;$('prSongLine').hidden=!cs;const pct=Math.round(PR.speed*100);$('spdVal').textContent=pct+'%';$('spd').value=pct;$('pitVal').textContent=(PR.pitch>0?'+':'')+PR.pitch+' st';$('pit').value=PR.pitch;
+function renderPR(){try{syncClipBtns()}catch(e){}const cs=byId(cur()),m=cs&&S.meta[cs.id];$('prSong').textContent=cs?((m&&m.title)||cs.name):'';$('prSect').disabled=!cs;$('prNoSong').hidden=!!cs;$('prSongLine').hidden=!cs;const pct=Math.round(PR.speed*100);$('spdVal').textContent=pct+'%';$('spd').value=pct;$('pitVal').textContent=(PR.pitch>0?'+':'')+PR.pitch+' st';$('pit').value=PR.pitch;
  document.querySelectorAll('.spdq').forEach(b=>b.classList.toggle('tog',+b.dataset.v===pct));const ind=$('prInd'),l=cs?prLabel():'';ind.hidden=!l;ind.textContent=l;
  const ttl=cs?((m&&m.title)||cs.name):'',art=m&&m.artist;$('prFor').textContent=cs?'Settings for: '+ttl+(art?' by '+art:''):'No song selected';prSyncPlay();
  $('prSum').textContent=(cs?ttl+': '+pct+'%, '+(PR.pitch>0?'+':'')+PR.pitch+' st · ':'No song selected · ')+'Loop view '+ctxGet('pp-pre')+' s / '+ctxGet('pp-post')+' s'}
