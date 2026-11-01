@@ -1,6 +1,7 @@
-const APP_VERSION=29;
+const APP_VERSION=30;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 30:["New Metronome tab with a big Start button and a big tempo readout.","Type any tempo from 30 to 300, use the minus and plus buttons, or tap along with Tap tempo.","Pick 2/4, 3/4, 4/4, 5/4, 6/8, 7/8 or 12/8. Beat one is accented with its own click and flash color.","The whole screen flashes on every beat, right in time with the click.","Set the click volume and save your favorite beats by name. Saved beats are part of your Backup.","Turn on the mic and say start, stop, or a tempo like one twenty."],
  29:['Backups with several parts are quicker. After you save a part, the next one is already being made, and a big Save next part button shows up right where you are.','A progress bar shows which part you are on, like Part 2 of 5.','New Cancel backup button.','If you close the share sheet without saving, the same part stays ready. Just tap again.','The backup no longer jumps away from the Backup section when you come back from saving. If the app has to reload, it offers to continue where you left off.','New Storage button in Settings. It shows how much space your songs, Custom Clips and Removed folder use, and the size of every Library folder, biggest first.'],
  28:['Backups work on iPhone again. A big backup is now split into smaller parts of about 40 MB, and the app makes one part at a time, so it no longer runs out of memory.','If your backup has more than one part, save each part when it is ready. The app shows Part 1 of 5, Part 2 of 5, and so on. Keep all the parts together in the same folder.','Old backups still restore the same way: pick all the parts at once.','Sharing a playlist uses less memory too.'],
  27:['Favorites now show a star instead of a check mark, in your highlight color.','To make a song or clip a favorite, press and hold it for about a second. Do the same again to take it off Favorites. A short message tells you which one happened.','The Favorite button is gone from the swipe menu, so the buttons there are wide again.','To reorder a playlist, drag the ≡ handle. Press and hold on a row is now for Favorites.'],
@@ -34,7 +35,7 @@ async function load(){S.songs=await DB.allSongs();S.pls=(await DB.get('playlists
 document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNav()});window.addEventListener('pagehide',saveNav);
 const saveSet=()=>DB.set('settings',{shuffle:S.shuffle,repeat:S.repeat,autoRep:$('autoRep').checked,gap:+$('gap').value});
 const savePls=()=>DB.set('playlists',S.pls);
-function tab(t){setTimeout(saveNav,0);document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id===t));const set=t==='set',hide=set||t==='help';$('player').hidden=hide;$('card').hidden=hide;if(set){if(typeof exitAB=='function'&&(S.ab||S.waiting))exitAB();if(!au.paused)au.pause()}}
+function tab(t){setTimeout(saveNav,0);document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('.tab').forEach(s=>s.classList.toggle('on',s.id===t));if(window.Metro){if(t==='met')Metro.enter();else Metro.leave()}const set=t==='set'||t==='met',hide=set||t==='help';$('player').hidden=hide;$('card').hidden=hide;if(set){if(typeof exitAB=='function'&&(S.ab||S.waiting))exitAB();if(!au.paused)au.pause()}}
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
 async function importFiles(list){let n=0;for(const f of list){if(!/\.(mp3|m4a|aac|wav)$/i.test(f.name)&&!/^audio\//.test(f.type))continue;const path=f.webkitRelativePath||f.name;const id=L.songId(path,f.size);const data=new Blob([await f.arrayBuffer()],{type:f.type||'audio/mpeg'});delete S.meta[id];await DB.del('meta:'+id);await DB.putSong({id,path,name:f.name.replace(/\.[^.]+$/,''),size:f.size,type:f.type||'audio/mpeg',added:Date.now()},data);n++}if(n)lsSet('pp-backupDirty','1');S.songs=await DB.allSongs();renderAll();alert('Imported '+n+' song(s).')}
 $('inDir').onchange=e=>{importFiles([...e.target.files]);e.target.value=''};$('inFiles').onchange=e=>{importFiles([...e.target.files]);e.target.value=''};
@@ -141,7 +142,7 @@ $('clipSave').onclick=async()=>{const name=$('clipName').value.trim()||$('clipNa
 $('clipName').addEventListener('keydown',e=>{if(e.key==='Enter')$('clipSave').click()});
 
 // ---- v23 Backup and restore (zip, STORE). Parts of about 40 MB, built one at a time (v28). ----
-const BK={PART_MB:40,plan:null,file:null,i:0,next:null,nextI:-1,tok:0,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name']};
+const BK={PART_MB:40,plan:null,file:null,i:0,next:null,nextI:-1,tok:0,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met']};
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){}}
 function bkRender(){const t=+lsGet(BK.LAST)||0;$('bkLast').textContent='Last backup: '+(t?new Date(t).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'never');
@@ -379,7 +380,8 @@ function rowActs(li,btns,id){const st=S.pr[id];if(st){const t=el('button',null,'
 async function savePR(id){const st=S.pr[id];if(st)await DB.set('pr:'+id,st);else await DB.del('pr:'+id)}
 async function togglePR(id){const st=S.pr[id];if(!st)return;st.enabled=!st.enabled;PG.open=null;await savePR(id);if(cur()===id)prApplySong(id);renderLib();renderPls()}
 function prApplySong(id){const st=id&&S.pr[id];const sp=st&&st.enabled?st.speed:1,pi=st&&st.enabled?st.pitch:0;setSpeed(sp);if(pi!==PR.pitch||PR.ctx)setPitch(pi);else renderPR()}
-au.addEventListener('play',()=>{if(PR.pend)applyPitch()});
+au.addEventListener('play',()=>{if(PR.pend)applyPitch();if(window.Metro)Metro.stop()});
+if(window.Metro)Metro.init();
 function applyRate(){au.defaultPlaybackRate=PR.speed;au.playbackRate=PR.speed;au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true}
 async function ensureGraph(){if(PR.ready)return PR.ready;const AC=window.AudioContext||window.webkitAudioContext;if(!AC||!(AC.prototype&&'audioWorklet' in AC.prototype)){PR.err='Pitch shift is not available in this browser.';return null}
  PR.ready=(async()=>{const ctx=new AC();PR.ctx=ctx;ctx.onstatechange=()=>{if(PR.ctx===ctx&&(ctx.state==='suspended'||ctx.state==='interrupted')&&!au.paused)ctx.resume().catch(()=>{})};await ctx.audioWorklet.addModule('pitch-worklet.js');PR.src=ctx.createMediaElementSource(au);PR.node=new AudioWorkletNode(ctx,'pitch-shift',{outputChannelCount:[2]});PR.node.connect(ctx.destination);return ctx})().catch(e=>{PR.err='Pitch shift could not start.';PR.ready=null;return null});return PR.ready}

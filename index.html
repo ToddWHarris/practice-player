@@ -5,7 +5,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#22c55e">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-180.png">
 <title>Practice Player</title><link rel="stylesheet" href="style.css"></head><body>
-<nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="set">Settings</button><button data-t="help">Help</button></nav>
+<nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="met">Metronome</button><button data-t="set">Settings</button><button data-t="help">Help</button></nav>
 <div id="card" class="empty"><div id="cArt" aria-hidden="true"><span>♪</span></div><div class="cInfo"><div id="now">Nothing playing</div><div id="cSub"></div><div id="cMeta"></div><div id="cPath"></div><div id="from"></div></div></div>
 <main>
 <section id="lib" class="tab on">
@@ -15,6 +15,15 @@
  <div class="row"><button id="newPl" class="btn">New playlist</button><label class="btn">Import playlist<input id="plIn2" class="plIn" type="file" accept=".pplay,.zip,application/zip,application/octet-stream" hidden></label></div>
  <ul id="plList" class="list"></ul><div id="plDetail"></div>
 </section>
+<section id="met" class="tab"><div id="mDisp" class="mDisp">
+<div class="mBpmBig"><span id="mBpm">120</span><small>BPM</small></div>
+<div id="mDots" class="mDots"></div>
+<button id="mGo" class="btn primary mGo">Start</button>
+<div class="mRow"><button id="mMinus" class="btn mPm" aria-label="Slower">−</button><input id="mBpmIn" type="number" inputmode="numeric" min="30" max="300" aria-label="Tempo in BPM"><button id="mPlus" class="btn mPm" aria-label="Faster">+</button><button id="mTap" class="btn mTap">Tap tempo</button></div>
+<div class="mRow"><label>Time <select id="mSig"></select></label><label class="mVolL">Volume <input id="mVol" type="range" min="0" max="100"></label></div>
+<div class="mRow"><select id="mBeats" aria-label="Saved beats"></select><button id="mSave" class="btn">Save</button><button id="mDel" class="btn" disabled>Delete</button></div>
+<div class="mRow"><button id="mMic" class="btn mMic" aria-pressed="false">Mic off</button><span id="mVoiceTxt" class="mVoiceTxt">Voice is off.</span></div>
+</div></section>
 <section id="set" class="tab"><div class="shareBox"><button class="btn primary big shareBtn" id="shareSet">Share this app</button><p class="hintline">Sends a link to the app only. Your songs and playlists are never shared.</p></div><h2 class="acc">Your music</h2><p>Copy songs from the Files app into this app. <span id="libCount"></span></p>
  <div class="row"><label class="btn primary">Import folder<input id="inDir" type="file" webkitdirectory multiple hidden></label>
  <label class="btn">Import files<input id="inFiles" type="file" accept="audio/*,.mp3" multiple hidden></label></div>
@@ -78,6 +87,8 @@
 <ul><li>Check <b>Auto repeat</b> and set the gap in seconds. After each pass the app waits that long, then plays from A again by itself. The mic is not used.</li></ul>
 <ul><li><b>Clear</b> removes A and B. Starting a different song also clears A and B. Opening Settings ends the loop but keeps A and B.</li></ul>
 
+<h2 id="h-met">Metronome</h2>
+<ul><li>Open the <b>Metronome</b> tab. Tap the big <b>Start</b> button. Tap it again to stop.</li><li>Type a tempo from 30 to 300 in the box, or use <b>−</b> and <b>+</b>. Or tap <b>Tap tempo</b> along with the beat a few times. It starts fresh after 2 seconds without a tap.</li><li>Pick a time signature. Beat one gets a higher click and a different flash color.</li><li>The whole screen flashes on every beat. <b>Volume</b> sets how loud the clicks are.</li><li><b>Save</b> keeps the tempo and time signature under a name. Pick it from the Saved beats list to load it again, or tap <b>Delete</b>. Saved beats go into your Backup.</li><li>Tap <b>Mic off</b> to turn voice on. Then say "start", "stop", or a tempo like "one twenty", "ninety" or "one hundred twenty". It only listens while the app is open on screen and the Metronome tab is showing.</li><li>The metronome stops when you leave the tab or play a song. On iPhone the silent switch can mute the clicks, so flip it off if you hear nothing.</li></ul>
 <h2 id="h-editor">Loop editor</h2>
 <ul><li>Once A and B are set, tap <b>Loop editor</b> in the A-B section for a big, zoomed in view of your loop.</li><li>Drag the A and B handles with your finger. They move in whole seconds (1 s steps). A always stays at least 1 second before B.</li><li>The view also shows some of the song before and after the loop, 10 seconds each by default. Change this in <b>Settings</b>: tap <b>Loop and practice settings</b> and set Before and After, then tap Done. When you let go of a handle, the view adjusts so you can drag further. Near the start of a song you can drag A all the way to 0:00.</li><li>Turn your phone sideways for a wider timeline. If it does not turn, switch off Portrait Orientation Lock in Control Center.</li><li>Tap <b>Play loop from A</b> to hear it. Voice cues, Auto repeat and the Again button work here too. Tap <b>Done</b> when finished.</li></ul>
 
@@ -205,4 +216,4 @@
  <button id="plsGo" class="btn primary big">Prepare</button><p id="plsStatus" class="hintline" role="status"></p>
 </div></div>
 <audio id="audio" preload="metadata"></audio>
-<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>
+<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>

@@ -117,3 +117,14 @@ body.modalOpen{overflow:hidden}
 .prow,.prow .pfg{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .bkSaveBtn{width:100%;min-height:64px;margin:8px 0}.bkCancel{width:100%;margin-top:6px}.bkProg{margin:8px 0}.bkProgTxt{font-size:18px;font-weight:700;color:var(--ac);margin-bottom:6px}.bkBar{height:12px;border-radius:6px;background:#1f2937;overflow:hidden}#bkBarFill{height:100%;width:0;background:var(--ac);transition:width .3s}
 .stTotal{font-size:22px;font-weight:700;color:var(--ac);margin:6px 0}.stTbl{list-style:none;padding:0;margin:0}.stTbl li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #1f2937}.stTbl li .sz{white-space:nowrap;font-variant-numeric:tabular-nums}.stTbl li small{color:#9ca3af}.stTbl .stName{word-break:break-word}
+
+nav button{padding:14px 2px;font-size:15px}
+.mDisp{min-height:calc(100vh - 60px);padding:16px;display:flex;flex-direction:column;gap:14px;align-items:stretch;transition:background .08s}
+.mDisp.f1{background:var(--ac);color:var(--on-ac)}.mDisp.fn{background:#1e3a8a}
+.mBpmBig{text-align:center;font-size:96px;font-weight:800;line-height:1}.mBpmBig small{display:block;font-size:20px;font-weight:600;opacity:.8}
+.mDots{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}.mDot{width:18px;height:18px;border-radius:50%;background:#374151}.mDot.one{outline:2px solid var(--ac)}.mDot.on{background:#fff}
+.mGo{font-size:34px;padding:26px;border-radius:18px}.mGo.on{background:#dc2626;color:#fff}
+.mRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.mRow label{display:flex;gap:8px;align-items:center;font-size:17px}
+.mPm{font-size:28px;min-width:56px}#mBpmIn{width:90px;font-size:24px;padding:10px;border-radius:10px;border:1px solid #374151;background:#111827;color:inherit;text-align:center}
+.mTap{flex:1;font-size:20px;padding:14px}#mSig,#mBeats{font-size:18px;padding:10px;border-radius:10px;background:#111827;color:inherit;border:1px solid #374151}#mBeats{flex:1;min-width:0}
+.mVolL{flex:1}.mVolL input{flex:1}.mMic.on{background:#16a34a;color:#fff}.mVoiceTxt{flex:1;font-size:15px;opacity:.9}
