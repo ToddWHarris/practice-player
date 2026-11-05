@@ -41,7 +41,7 @@ function draw(){if(!M.on)return;const now=M.ctx.currentTime;let hit=null;while(M
   [...$m('mDots').children].forEach((x,i)=>x.classList.toggle('on',i===hit.b));clearTimeout(M.ft);M.ft=setTimeout(()=>d.classList.remove('f1','fn'),Math.min(150,30000/M.bpm))}
  M.raf=requestAnimationFrame(draw)}
 function mCtx(){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;if(!M.ctx){M.ctx=new AC();M.gain=M.ctx.createGain();M.gain.connect(M.ctx.destination)}if(M.ctx.state!=='running'&&M.ctx.resume)M.ctx.resume();return M.ctx}
-function mStart(){if(M.on)return;if(!mCtx())return;M.gain.gain.cancelScheduledValues(0);M.gain.gain.value=1;M.on=true;M.fired++;M.beat=0;M.q=[];
+function mStart(){if(M.on)return;try{if(window.Meter&&Meter.L&&Meter.L.on)Meter.stop()}catch(e){}if(!mCtx())return;M.gain.gain.cancelScheduledValues(0);M.gain.gain.value=1;M.on=true;M.fired++;M.beat=0;M.q=[];
  // first click almost at once (10 ms is enough for the audio thread to pick it up)
  M.next=M.ctx.currentTime+0.01;M.firstLead=M.next-M.ctx.currentTime;
  try{if(typeof au!=='undefined'&&!au.paused)au.pause()}catch(e){}
@@ -83,7 +83,7 @@ function mInit(){mLoad();const sg=$m('mSig');Object.keys(SIGS).forEach(k=>{const
  $m('mMinus').onclick=()=>setBpm(M.bpm-1);$m('mPlus').onclick=()=>setBpm(M.bpm+1);
  $m('mTap').onclick=()=>{const b=M.tap(performance.now());if(b)setBpm(b)};
  sg.onchange=()=>setSig(sg.value);$m('mVol').oninput=e=>{M.vol=e.target.value/100;mSave()};
- $m('mMic').onclick=()=>{if(M.mic)mVoiceOff();else{if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)navigator.mediaDevices.getUserMedia({audio:true}).then(st=>st.getTracks().forEach(t=>t.stop())).catch(()=>{});mCtx();mVoiceOn()}};
+ $m('mMic').onclick=()=>{if(M.mic)mVoiceOff();else{try{if(window.Meter&&Meter.L&&Meter.L.on)Meter.stop()}catch(e){}if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)navigator.mediaDevices.getUserMedia({audio:true}).then(st=>st.getTracks().forEach(t=>t.stop())).catch(()=>{});mCtx();mVoiceOn()}};
  $m('mBeats').onchange=e=>{const b=beats()[+e.target.value];$m('mDel').disabled=!b;if(b){setBpm(b.bpm);setSig(b.sig);if(typeof toast==='function')toast('Loaded '+b.name)}};
  $m('mSave').onclick=()=>{const n=(prompt('Name for this beat ('+M.bpm+' in '+M.sig+')','')||'').trim();if(!n)return;const a=beats();const i=a.findIndex(x=>x.name.toLowerCase()===n.toLowerCase());const rec={name:n,bpm:M.bpm,sig:M.sig};
   if(i>=0)a[i]=rec;else a.push(rec);a.sort((x,y)=>x.name.localeCompare(y.name));setBeats(a);mRenderBeats(a.findIndex(x=>x.name===n));if(typeof toast==='function')toast('Saved '+n)};

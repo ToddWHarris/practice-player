@@ -9,11 +9,13 @@ with sync_playwright() as p:
   pg=ctx.new_page();pg.on('pageerror',lambda e:errs.append(str(e)));ev=pg.evaluate
   pg.goto('http://localhost:8765/');pg.wait_for_timeout(900)
   tabs=pg.locator('nav button').all_inner_texts()
-  assert tabs==['Library','Playlists','Metronome','Tuner','Settings','Help'],tabs
-  # tab bar fits iPhone width
+  assert tabs==['Library','Playlists','Metronome','Tuner','Level','Settings','Help'],tabs
+  # each tab scrolls fully into view on a phone-width bar
   nav=pg.locator('#tabs').bounding_box();assert nav and nav['width']<=390
-  for i in range(6):
-    bb=pg.locator('nav button').nth(i).bounding_box();assert bb and bb['x']+bb['width']<=nav['x']+nav['width']+1
+  for i in range(7):
+    tab=pg.locator('nav button').nth(i)
+    tab.evaluate("el=>el.scrollIntoView({inline:'nearest',block:'nearest'})")
+    bb=tab.bounding_box();assert bb and bb['width']>=24 and bb['x']>=nav['x']-1 and bb['x']+bb['width']<=nav['x']+nav['width']+1
   pg.click('nav button[data-t=tun]');pg.wait_for_timeout(200)
   assert pg.is_visible('#tuGo') and pg.is_hidden('#player') and pg.is_hidden('#card')
   assert pg.inner_text('#tuGo')=='Start'
@@ -65,8 +67,8 @@ with sync_playwright() as p:
   # Leaving tab keeps Start label (mic released)
   pg.click('nav button[data-t=lib]');pg.click('nav button[data-t=tun]');assert pg.inner_text('#tuGo')=='Start'
   # What's new / version
-  assert ev('APP_VERSION')==32
-  assert ev('RELEASE_NOTES[32].length')>=4
+  assert ev('APP_VERSION')==33
+  assert ev('RELEASE_NOTES[32].length')>=4 and ev('RELEASE_NOTES[33].length')>=4
   b.close()
 assert not errs,errs
 print('TUNER OK')

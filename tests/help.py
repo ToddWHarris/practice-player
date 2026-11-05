@@ -8,7 +8,7 @@ with sync_playwright() as p:
   b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--autoplay-policy=no-user-gesture-required'])
   ctx=b.new_context(viewport={'width':390,'height':844},has_touch=True,is_mobile=True,device_scale_factor=2);pg=ctx.new_page();pg.on('pageerror',lambda e:errs.append(str(e)))
   pg.goto('http://localhost:8765/');pg.wait_for_timeout(800)
-  assert pg.locator('nav button').all_inner_texts()==['Library','Playlists','Metronome','Tuner','Settings','Help']
+  assert pg.locator('nav button').all_inner_texts()==['Library','Playlists','Metronome','Tuner','Level','Settings','Help']
   assert pg.is_visible('#help') and pg.is_visible('#h-welcome'),'first run opens Help'
   pg.screenshot(path='/workspace/shots/v14-help.png')
   # Settings holds settings only

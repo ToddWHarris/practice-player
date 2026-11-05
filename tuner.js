@@ -201,7 +201,7 @@ function finishResample(){const sm=T.sample;if(!sm||!sm.editId)return;const p=fi
  p.samples=Object.assign({},sm.samples);p.curve=TunerCore.interpolateCurve(p.samples);p.date=new Date().toISOString();p.a4=T.a4;
  const list=profiles();const i=list.findIndex(x=>x.id===p.id);if(i>=0)list[i]=p;setProfiles(list);endSample(false);tSyncUI();
  if(typeof toast==='function')toast('Updated '+p.name)}
-async function tStart(){if(T.on)return;try{if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){showIdle('Microphone not available.');return}
+async function tStart(){if(T.on)return;try{if(window.Meter&&Meter.L&&Meter.L.on)Meter.stop();if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){showIdle('Microphone not available.');return}
  const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
  const AC=window.AudioContext||window.webkitAudioContext;const ctx=new AC();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();
  const src=ctx.createMediaStreamSource(stream);const an=ctx.createAnalyser();an.fftSize=16384;an.smoothingTimeConstant=0;src.connect(an);
