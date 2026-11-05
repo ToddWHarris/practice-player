@@ -118,7 +118,8 @@ body.modalOpen{overflow:hidden}
 .bkSaveBtn{width:100%;min-height:64px;margin:8px 0}.bkCancel{width:100%;margin-top:6px}.bkProg{margin:8px 0}.bkProgTxt{font-size:18px;font-weight:700;color:var(--ac);margin-bottom:6px}.bkBar{height:12px;border-radius:6px;background:#1f2937;overflow:hidden}#bkBarFill{height:100%;width:0;background:var(--ac);transition:width .3s}
 .stTotal{font-size:22px;font-weight:700;color:var(--ac);margin:6px 0}.stTbl{list-style:none;padding:0;margin:0}.stTbl li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #1f2937}.stTbl li .sz{white-space:nowrap;font-variant-numeric:tabular-nums}.stTbl li small{color:#9ca3af}.stTbl .stName{word-break:break-word}
 
-nav button{padding:14px 2px;font-size:15px}
+nav button{padding:12px 1px;font-size:12px;letter-spacing:-0.01em}
+@media(min-width:400px){nav button{font-size:14px;padding:14px 2px}}
 .mDisp{min-height:calc(100vh - 60px);padding:16px;display:flex;flex-direction:column;gap:14px;align-items:stretch;transition:background .08s}
 .mDisp.f1{background:var(--ac);color:var(--on-ac)}.mDisp.fn{background:#1e3a8a}
 .mBpmBig{text-align:center;font-size:96px;font-weight:800;line-height:1}.mBpmBig small{display:block;font-size:20px;font-weight:600;opacity:.8}
@@ -128,3 +129,25 @@ nav button{padding:14px 2px;font-size:15px}
 .mPm{font-size:28px;min-width:56px}#mBpmIn{width:90px;font-size:24px;padding:10px;border-radius:10px;border:1px solid #374151;background:#111827;color:inherit;text-align:center}
 .mTap{flex:1;font-size:20px;padding:14px}#mSig,#mBeats{font-size:18px;padding:10px;border-radius:10px;background:#111827;color:inherit;border:1px solid #374151}#mBeats{flex:1;min-width:0}
 .mVolL{flex:1}.mVolL input{flex:1}.mMic.on{background:#16a34a;color:#fff}.mVoiceTxt{flex:1;font-size:15px;opacity:.9}
+
+.tuDisp{min-height:calc(100vh - 60px);padding:16px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.tuNoteBig{text-align:center;font-size:96px;font-weight:800;line-height:1}.tuNoteBig small{display:block;font-size:28px;font-weight:600;opacity:.85;margin-top:4px}
+.tuCents{text-align:center;font-size:28px;font-weight:700}.tuCents.ok{color:#16a34a}
+.tuTarget{text-align:center;font-size:16px;opacity:.9;min-height:1.2em}
+.tuHz{text-align:center;font-size:20px;font-variant-numeric:tabular-nums;opacity:.9}
+.tuMeter{position:relative;height:28px;border-radius:14px;background:#1f2937;margin:4px 0 8px;overflow:hidden;border:2px solid #374151}
+.tuMeter.ok{border-color:#16a34a;background:#052e16}
+.tuMeterMid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#9ca3af}
+.tuNeedle{position:absolute;top:2px;bottom:2px;width:6px;margin-left:-3px;border-radius:3px;background:#f59e0b;left:50%;transition:left .08s linear}
+.tuMeter.ok .tuNeedle{background:#16a34a}
+.tuGo{font-size:34px;padding:26px;border-radius:18px}.tuGo.on{background:#dc2626;color:#fff}
+.tuRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tuRow label{display:flex;gap:8px;align-items:center;font-size:17px;flex:1}
+#tuInst,#tuEuphMode,#tuTargetSel{font-size:17px;padding:10px;border-radius:10px;background:#111827;color:inherit;border:1px solid #374151;flex:1;min-width:0}
+#tuA4{width:90px;font-size:20px;padding:10px;border-radius:10px;border:1px solid #374151;background:#111827;color:inherit;text-align:center}
+.tuStrBtns{display:flex;flex-wrap:wrap;gap:8px;width:100%}.tuStr{flex:1;min-width:52px;font-size:16px;padding:12px 8px}.tuStr.on{background:var(--ac);color:var(--on-ac)}.tuStr.near{outline:2px solid var(--ac)}
+.tuCheck{display:flex;gap:10px;align-items:center;font-size:17px}.tuHint{margin:0}
+
+.tuSampleBox{padding:12px;border:1px solid #374151;border-radius:12px;background:#111827;display:flex;flex-direction:column;gap:8px}
+.tuSampleProg{font-weight:700;font-size:17px;margin:0}.tuSampleNote{margin:0;font-size:18px;color:var(--ac)}
+#tuPiano .tuPianoActs{flex-wrap:wrap}#tuPiano .tuPianoActs .btn{flex:1;min-width:120px;font-size:15px;padding:12px 8px}
+#tuTargetSel{font-size:17px;padding:10px;border-radius:10px;background:#111827;color:inherit;border:1px solid #374151;flex:1;min-width:0}
