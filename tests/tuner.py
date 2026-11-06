@@ -67,8 +67,8 @@ with sync_playwright() as p:
   # Leaving tab keeps Start label (mic released)
   pg.click('nav button[data-t=lib]');pg.click('nav button[data-t=tun]');assert pg.inner_text('#tuGo')=='Start'
   # What's new / version
-  assert ev('APP_VERSION')==34
-  assert ev('RELEASE_NOTES[33].length')>=4 and ev('RELEASE_NOTES[34].length')>=4
+  assert ev('APP_VERSION')==35
+  assert ev('RELEASE_NOTES[34].length')>=4 and ev('RELEASE_NOTES[35].length')>=3
   b.close()
 assert not errs,errs
 print('TUNER OK')
