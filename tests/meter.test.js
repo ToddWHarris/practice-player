@@ -29,6 +29,6 @@ function db(amp){return 20*Math.log10(amp/Math.SQRT2)}
 {const app=fs.readFileSync('app.js','utf8'),db=fs.readFileSync('db.js','utf8'),sw=fs.readFileSync('sw.js','utf8');
  a.ok(app.includes("PREFS:['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met','pp-tuner','pp-tuner-profiles','pp-meter','pp-pianotune']"));
  a.ok(db.includes("indexedDB.open('practice-player',1)"));
- a.ok(app.includes('APP_VERSION=35')&&sw.includes('const V=35')&&sw.includes("'./meter.js'")&&sw.includes("'./pianotune.js'"));
+ a.ok(app.includes('APP_VERSION=36')&&sw.includes('const V=36')&&sw.includes("'./meter.js'")&&sw.includes("'./pianotune.js'"));
  a.ok(!app.includes('pp-preview')&&!sw.includes('pp-preview'))}
 console.log('meter ok');

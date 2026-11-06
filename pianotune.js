@@ -15,7 +15,9 @@ const PianoTune=(function(){
   spinet:{id:'spinet',label:'Spinet',bA4:0.00072,exp:0.95,bass:0.00100}
  };
  const HOLD_MS=450,TOL=2,RAISE_IF_FLAT=8,OVERPULL=0.25;
- const PRESCAN=[21,33,45,57,69,81,93,108];
+ const PRESCAN_WINDOW=700,PRESCAN_SPAN=400,PRESCAN_SPREAD=15,OUTLIER=50,DIFFERENT=600,METER=200,PRESCAN_WAIT=8000,GOT_MS=700;
+ const PRESCAN=[];for(let m=21;m<=108;m++)PRESCAN.push(m);
+ const FLAT={1:'D flat',3:'E flat',6:'G flat',8:'A flat',10:'B flat'};
  function label(m){m=m|0;return NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1)}
  function isWhite(m){const n=((m%12)+12)%12;return n===0||n===2||n===4||n===5||n===7||n===9||n===11}
  function smoothTypical(midi){
@@ -78,20 +80,44 @@ const PianoTune=(function(){
   for(let lag=minL;lag<=maxL;lag++){let s=0,c=0;for(let i=0;i+lag<n;i++){s+=a[i]*a[i+lag];c++}const r=c?s/c:0;if(r>best){best=r;bestL=lag}}
   if(!(bestL>0)||best<0.15*(energy/n))return null;
   return 1/(bestL*dt)}
- function needsPitchRaise(prescan){
-  const vals=[];for(const k in prescan)if(isFinite(prescan[k]))vals.push(prescan[k]);
-  if(!vals.length)return false;
-  const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
-  return avg<=-RAISE_IF_FLAT}
- function averageFlat(prescan){
-  const vals=[];for(const k in prescan)if(isFinite(prescan[k]))vals.push(prescan[k]);
-  if(!vals.length)return 0;
-  return vals.reduce((s,v)=>s+v,0)/vals.length}
+ function plainName(midi){midi=midi|0;const n=((midi%12)+12)%12,oct=Math.floor(midi/12)-1;return (FLAT[n]||NAMES[n])+' '+oct}
+ function asReading(v){
+  if(v==null)return null;
+  if(typeof v==='number')return isFinite(v)?{cents:v,confidence:'high'}:null;
+  if(!v||v.confidence==='unread'||!isFinite(v.cents))return null;
+  return v}
+ function weightOf(r){return r&&r.confidence==='low'?0.25:1}
+ function weightedAvg(prescan){
+  let s=0,w=0;
+  for(const k in prescan||{}){const r=asReading(prescan[k]);if(!r)continue;const wt=weightOf(r);s+=r.cents*wt;w+=wt}
+  return w?s/w:null}
+ function needsPitchRaise(prescan){const avg=weightedAvg(prescan);return avg!=null&&avg<=-RAISE_IF_FLAT}
+ function averageFlat(prescan){const avg=weightedAvg(prescan);return avg==null?0:avg}
  function nearestMeasured(prescan,midi){
-  if(prescan&&isFinite(prescan[midi]))return prescan[midi];
-  let best=null,bd=1e9;
-  for(const k in prescan||{}){if(!isFinite(prescan[k]))continue;const d=Math.abs((+k)-midi);if(d<bd){bd=d;best=prescan[k]}}
+  let best=null,score=1e9;
+  for(const k in prescan||{}){const r=asReading(prescan[k]);if(!r)continue;const d=Math.abs((+k)-midi)+(r.confidence==='low'?12:0);if(d<score){score=d;best=r.cents}}
   return best==null?averageFlat(prescan):best}
+ function centsBetween(f,target){return 1200*Math.log2(f/target)}
+ function interpretFreq(freq,midi,targetHz){
+  if(!(freq>0)||!(targetHz>0))return null;
+  let best=freq,bestAbs=Math.abs(centsBetween(freq,targetHz));
+  const folds=midi<=45?[2,3,4]:[2];
+  for(const n of folds){const f=freq/n;if(f<20)continue;const err=Math.abs(centsBetween(f,targetHz));if(err+30<bestAbs){best=f;bestAbs=err}}
+  const cents=centsBetween(best,targetHz);
+  return{freq:best,cents,folded:best!==freq,other:Math.abs(cents)>DIFFERENT}}
+ function isRing(freq,prevFreq){if(!(freq>0)||!(prevFreq>0))return false;return Math.abs(centsBetween(freq,prevFreq))<45}
+ function allowPrescan(o){
+  o=o||{};
+  if(o.gotUntil&&o.now<o.gotUntil)return false;
+  if(isRing(o.freq,o.prevFreq)&&!o.attack)return false;
+  if(o.settleUntil&&o.prevFreq&&o.now<o.settleUntil&&!o.attack)return false;
+  return true}
+ function confidenceFor(midi,spread){return(midi<=33||midi>=96||spread>8)?'low':'high'}
+ function meterView(cents){
+  if(typeof cents!=='number'||!isFinite(cents))return{text:'--',pct:50,past:false};
+  const past=Math.abs(cents)>METER,shown=Math.max(-METER,Math.min(METER,cents));
+  const text=(cents>=0?'+':'')+cents.toFixed(1)+' cents'+(past?(cents>0?' (past +200)':' (past -200)'):'');
+  return{text,pct:(shown+METER)/(2*METER)*100,past}}
  function overpullTarget(finalCents,measured){
   const flat=Math.max(0,-(+measured||0));
   return (+finalCents||0)+OVERPULL*flat}
@@ -106,7 +132,7 @@ const PianoTune=(function(){
  function step(partial){partial.midis=partial.midis||[partial.midi];return partial}
  function buildSequence(opts){
   opts=opts||{};const raise=!!opts.raise;const steps=[];
-  PRESCAN.forEach(m=>steps.push(step({phase:'prescan',midi:m,title:'Pre-scan '+label(m),prompt:'Play '+label(m)+' and hold it. This stores how far it sits from the target. It does not have to be in tune yet.'})));
+  PRESCAN.forEach(m=>steps.push(step({phase:'prescan',midi:m,title:'Pre-scan '+label(m),prompt:'Play '+plainName(m)+' and hold it. A steady reading is saved however sharp or flat it is. If it cannot be read, the scan moves on.'})));
   if(raise)for(let m=LO;m<=HI;m++)steps.push(step({phase:'raise',midi:m,title:'Pitch raise '+label(m),prompt:promptFor('raise',m)}));
   const skeleton=[69,57,53,61,65];
   skeleton.forEach(m=>steps.push(step({phase:m===69?'a4':'temper',midi:m,title:(m===69?'Set ':'Tune ')+label(m),prompt:promptFor(m===69?'a4':'temper',m)})));
@@ -118,41 +144,60 @@ const PianoTune=(function(){
   for(let m=LO;m<=HI;m++)steps.push(step({phase:'fine',midi:m,title:'Fine '+label(m),prompt:promptFor('fine',m)}));
   steps.forEach((s,i)=>{s.index=i});
   return steps}
- function emptyState(){return{step:0,holdStart:null,holdMidi:null,green:{},hist:[],prescan:{},lean:0}}
+ function emptyState(){return{step:0,holdStart:null,holdMidi:null,green:{},hist:[],prescan:{},lean:0,outSince:null}}
  function applySample(state,step,sample,now){
   const s=Object.assign({},state,{green:Object.assign({},state.green),hist:(state.hist||[]).slice(),prescan:Object.assign({},state.prescan)});
   let chime=false,advance=false,lean=0,color='next';
   if(!step||!sample||!isFinite(sample.cents)||!isFinite(sample.midi)){s.holdStart=null;s.lean=0;return{state:s,chime,advance,lean:0,color:'idle'}}
   const midi=sample.midi|0,cents=+sample.cents;
   if(step.phase==='prescan'){
-   s.hist.push(cents);if(s.hist.length>8)s.hist.shift();
-   let lo=s.hist[0],hi=s.hist[0];s.hist.forEach(x=>{if(x<lo)lo=x;if(x>hi)hi=x});
-   if(s.hist.length>=6&&(hi-lo)<=3){const med=s.hist.slice().sort((a,b)=>a-b)[s.hist.length>>1];s.prescan[midi]=med;s.green[midi]=true;chime=true;advance=true;color='green';s.hist=[]}
+   if(Math.abs(cents)>DIFFERENT){s.lean=0;return{state:s,chime:false,advance:false,lean:0,color:'idle',midi}}
+   const t=isFinite(now)?now:0;
+   s.hist.push({c:cents,t});
+   s.hist=s.hist.filter(h=>t-(h.t||0)<=PRESCAN_WINDOW);
+   if(s.hist.length>=5){
+    const sorted=s.hist.map(h=>h.c).sort((a,b)=>a-b);
+    const med=sorted[sorted.length>>1];
+    const inliers=s.hist.filter(h=>Math.abs(h.c-med)<=OUTLIER);
+    if(inliers.length>=5){
+     const ic=inliers.map(h=>h.c).sort((a,b)=>a-b);
+     const im=ic[ic.length>>1];
+     const loI=Math.floor((ic.length-1)*0.15),hiI=Math.min(ic.length-1,Math.max(0,Math.ceil(ic.length*0.85)-1));
+     const spread=ic[hiI]-ic[loI];
+     const span=inliers[inliers.length-1].t-inliers[0].t;
+     if(span>=PRESCAN_SPAN&&spread<=PRESCAN_SPREAD){
+      s.prescan[midi]={cents:im,confidence:confidenceFor(midi,spread)};
+      s.green[midi]=true;advance=true;color='green';s.hist=[]}
+     else color='next'}
+    else color='next'}
    else color='next';
-   s.lean=0;return{state:s,chime,advance,lean:0,color}}
+   s.lean=0;return{state:s,chime:false,advance,lean:0,color,midi}}
   const wanted=step.midis||[step.midi];
   if(wanted.indexOf(midi)<0){s.holdStart=null;s.lean=0;return{state:s,chime,advance,lean:0,color:'idle'}}
   if(Math.abs(cents)<=TOL){
    if(s.holdMidi!==midi||s.holdStart==null){s.holdMidi=midi;s.holdStart=now}
-   color='green';lean=0;
+   s.outSince=null;color='green';lean=0;
    const started=s.holdStart==null?now:s.holdStart;
    if(now-started>=HOLD_MS){s.green[midi]=true;s.holdStart=null}
-  }else{s.holdStart=null;s.holdMidi=null;color='red';lean=cents>0?1:-1}
+  }else{
+   if(s.outSince==null)s.outSince=now;
+   if(now-s.outSince>180){s.holdStart=null;s.holdMidi=null}
+   color='red';lean=cents>0?1:-1}
   s.lean=lean;
   if(wanted.every(m=>s.green[m])){chime=true;advance=true}
   return{state:s,chime,advance,lean,color,midi}}
  function jump(state,index,count){
   const i=Math.max(0,Math.min(count-1,index|0));
-  return Object.assign({},state,{step:i,holdStart:null,holdMidi:null,green:{},hist:[],lean:0})}
- return{LO,HI,NAMES,TYPICAL,SIZES,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,INTERVALS,label,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,needsPitchRaise,overpullTarget,nearestMeasured,buildSequence,emptyState,applySample,jump}})();
+  return Object.assign({},state,{step:i,holdStart:null,holdMidi:null,green:{},hist:[],lean:0,outSince:null})}
+ return{LO,HI,NAMES,TYPICAL,SIZES,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,buildSequence,emptyState,applySample,jump}})();
 if(typeof module!=='undefined')module.exports=PianoTune;
 
 if(typeof document!=='undefined'){
 const PT=PianoTune,coreJump=PianoTune.jump,GK='pp-pianotune';
-const G={on:false,listening:false,sounding:false,stream:null,ctx:null,play:null,an:null,raf:0,buf:null,sess:null,seq:[],curve:null,built:false,env:[],envT:0};
+const G={on:false,listening:false,sounding:false,stream:null,ctx:null,play:null,an:null,raf:0,buf:null,sess:null,seq:[],curve:null,built:false,env:[],showGot:false,showNext:false,showUnread:false,blinking:false,gotMidi:null,prevFreq:0,attack:false,sawQuiet:false,peak:0,gotUntil:0,settleUntil:0,armAt:0};
 const $g=id=>document.getElementById(id);
-function loadSess(){try{const o=JSON.parse(localStorage.getItem(GK)||'null');if(o&&o.v===1)return o}catch(e){}return{v:1,type:'concert',a4:440,step:0,prescan:{},updated:0}}
-function saveSess(){try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:1,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,updated:G.sess.updated}))}catch(e){}}
+function loadSess(){try{const o=JSON.parse(localStorage.getItem(GK)||'null');if(o&&o.v===2)return o}catch(e){}return{v:2,type:'concert',a4:440,step:0,prescan:{},updated:0}}
+function saveSess(){try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:2,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,updated:G.sess.updated}))}catch(e){}}
 function profiles(){try{const a=JSON.parse(localStorage.getItem('pp-tuner-profiles')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function findProfile(id){return profiles().find(p=>p.id===id)||null}
 function activeCurve(){
@@ -187,29 +232,36 @@ function renderKeys(){
 function paintKeys(colors,lean){
   const step=stepNow();const want=(step&&step.midis)||[];
   document.querySelectorAll('#gtKeys button').forEach(el=>{
-    const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near');
+    const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');
+    if(G.showGot&&G.gotMidi!=null){el.classList.add(m===G.gotMidi?'ok':'dim');return}
     const c=colors&&colors[m];
     if(G.hold&&G.hold.green[m])el.classList.add('ok');
     else if(c==='red')el.classList.add('bad',lean>0?'sharp':'flat');
     else if(c==='green')el.classList.add('near');
-    else if(want.indexOf(m)>=0)el.classList.add('next');
+    else if(want.indexOf(m)>=0){el.classList.add('next');if(G.blinking)el.classList.add('blink')}
     else el.classList.add('dim')});
 }
 function render(){
   const step=stepNow();if(!step)return;
-  $g('gtTitle').textContent=step.title||'';
-  $g('gtPrompt').textContent=step.prompt||'';
-  $g('gtCount').textContent=(G.sess.step+1)+' / '+G.seq.length;
+  const shown=G.showGot?Math.max(0,G.sess.step-1):G.sess.step;
+  $g('gtTitle').textContent=(G.showGot&&G.gotMidi!=null)?('Pre-scan '+PT.label(G.gotMidi)):(step.title||'');
+  $g('gtPrompt').textContent=G.showGot?'Saved.':(step.prompt||'');
+  $g('gtCount').textContent=(shown+1)+' / '+G.seq.length;
   const beats=beatsText(step);
   const measured=G.measured;
   $g('gtBeats').textContent=(beats?('Expected: '+beats+'. '):'')+(step.phase==='check'?(typeof measured==='number'?'Measured about '+measured.toFixed(1)+' beats/s.':'Measured: play both notes together.'):'');
-  const show=step.midis?step.midis[0]:step.midi;
-  $g('gtNote').textContent=PT.label(show);
-  const cents=G.lastCents;
-  $g('gtCents').textContent=(typeof cents==='number'&&isFinite(cents))?((cents>=0?'+':'')+cents.toFixed(1)+' cents'):'--';
-  const pct=isFinite(cents)?Math.max(0,Math.min(100,(Math.max(-50,Math.min(50,cents))+50))):50;
-  $g('gtNeedle').style.left=pct+'%';
-  $g('gtNeedleWrap').classList.toggle('ok',isFinite(cents)&&Math.abs(cents)<=PT.TOL);
+  const show=G.showGot&&G.gotMidi!=null?G.gotMidi:(step.midis?step.midis[0]:step.midi);
+  $g('gtNote').textContent=PT.label(show)+(G.showGot?' ✓':'');
+  $g('gtNote').classList.toggle('got',!!G.showGot);
+  const cents=G.lastCents,view=PT.meterView(cents);
+  if(G.showGot){$g('gtCents').textContent='Got it';$g('gtCents').classList.add('got')}
+  else if(G.showUnread){$g('gtCents').textContent='No clear reading';$g('gtCents').classList.remove('got')}
+  else if(G.showNext&&step.phase==='prescan'&&!(typeof cents==='number')){$g('gtCents').textContent='Next: '+PT.plainName(step.midi);$g('gtCents').classList.remove('got')}
+  else{$g('gtCents').textContent=view.text;$g('gtCents').classList.remove('got')}
+  $g('gtNeedle').style.left=view.pct+'%';
+  $g('gtNeedleWrap').classList.toggle('ok',typeof cents==='number'&&isFinite(cents)&&Math.abs(cents)<=PT.TOL);
+  $g('gtNeedleWrap').classList.toggle('past',!!view.past);
+  if($g('gtRetry'))$g('gtRetry').hidden=unreadIndex()<0;
   paintKeys(G.colors,G.hold?G.hold.lean:0);
   $g('gtType').value=G.sess.type&&$g('gtType').querySelector('option[value="'+G.sess.type+'"]')?G.sess.type:'concert';
   $g('gtA4').value=G.sess.a4}
@@ -223,7 +275,7 @@ function renderList(){
   const ul=$g('gtList');ul.innerHTML='';
   G.seq.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+'. '+s.title;if(i===G.sess.step)b.className='on';b.onclick=()=>{jumpTo(i);$g('gtList').hidden=true};ul.append(b)});
 }
-function jumpTo(i){G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];saveSess();render();playStep()}
+function jumpTo(i){G.showGot=false;G.showUnread=false;G.showNext=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
 function jumpToMidi(m){const i=G.seq.findIndex((s,idx)=>idx>=G.sess.step&&s.midis&&s.midis.indexOf(m)>=0);if(i>=0)jumpTo(i)}
 function stopListen(){G.listening=false;if(G.raf){cancelAnimationFrame(G.raf);G.raf=0}
   if(G.stream){G.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});G.stream=null}}
@@ -235,28 +287,76 @@ function loop(){
     const rms=Math.sqrt(e/G.buf.length);
     const now=performance.now();
     G.env.push({t:now,v:rms});if(G.env.length>90)G.env.shift();
+    trackAttack(rms);
     if(stepNow()&&stepNow().phase==='check'&&G.env.length>=24){const dt=(G.env[G.env.length-1].t-G.env[0].t)/1000/(G.env.length-1);const mb=PT.measureBeats(G.env.map(x=>x.v),dt);if(mb)G.measured=mb}
+    const step=stepNow();
+    if(step&&step.phase==='prescan'&&!G.showGot&&!G.showUnread&&G.armAt&&now-G.armAt>PT.PRESCAN_WAIT&&!G.sess.prescan[step.midi])markUnread();
     const f=TunerCore.yin(G.buf,G.ctx.sampleRate,0.12);
     if(f)onFreq(f,now)}
   G.raf=requestAnimationFrame(loop)}
+function trackAttack(rms){
+  G.peak=Math.max(rms,(G.peak||0)*0.97);
+  if(G.peak>0.008&&rms<G.peak*0.28)G.sawQuiet=true;
+  if(G.sawQuiet&&rms>Math.max(0.012,G.peak*0.5)){G.attack=true;G.sawQuiet=false}}
 function onFreq(freq,now){
-  const step=stepNow();if(!step||G.sounding)return;
-  let midi=step.midi,best=1e9;
-  (step.midis||[step.midi]).forEach(m=>{const err=Math.abs(1200*Math.log2(freq/PT.targetFreq(m,targetCents(step,m),G.sess.a4)));if(err<best){best=err;midi=m}});
-  const cents=1200*Math.log2(freq/PT.targetFreq(midi,targetCents(step,midi),G.sess.a4));
-  G.lastCents=cents;
+  const step=stepNow();if(!step||G.sounding||G.showGot||G.showUnread)return;
+  let midi=step.midi,best=1e9,picked=freq;
+  (step.midis||[step.midi]).forEach(m=>{
+    const hz=PT.targetFreq(m,targetCents(step,m),G.sess.a4);
+    const heard=PT.interpretFreq(freq,m,hz);if(!heard)return;
+    const err=Math.abs(heard.cents);if(err<best){best=err;midi=m;picked=heard}});
+  if(!picked||typeof picked==='number')return;
+  if(step.phase==='prescan'){
+    if(picked.other)return;
+    if(!PT.allowPrescan({now,gotUntil:G.gotUntil||0,settleUntil:G.settleUntil||0,prevFreq:G.prevFreq||0,freq:picked.freq,attack:!!G.attack}))return}
+  const cents=picked.cents;
+  G.lastFreq=picked.freq;G.lastCents=cents;
   const res=PT.applySample(G.hold,step,{cents,midi},now);
   G.hold=res.state;G.sess.prescan=Object.assign({},G.hold.prescan);
   G.colors={};if(res.midi)G.colors[res.midi]=res.color==='green'&&G.hold.green[res.midi]?'green':res.color;
-  if(res.advance){chime();const was=step.phase;G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);const raiseNow=PT.needsPitchRaise(G.sess.prescan);
-   if(was==='prescan'&&G.sess.step<G.seq.length&&G.seq[G.sess.step].phase!=='prescan')rebuild(false),G.sess.step=G.seq.findIndex(s=>s.phase!=='prescan');
-   else if(raiseNow&&!G.seq.some(s=>s.phase==='raise'))rebuild(true);
-   G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);G.colors={};G.env=[];setTimeout(playStep,280)}
+  if(res.advance){const was=step.phase;advanceStep(was,picked.freq,was!=='prescan');return}
   saveSess();render()}
+function advanceStep(was,freq,doChime){
+  if(doChime)chime();
+  G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);
+  if(was==='prescan'&&G.seq[G.sess.step]&&G.seq[G.sess.step].phase!=='prescan'){
+    rebuild(false);G.sess.step=Math.max(0,G.seq.findIndex(s=>s.phase!=='prescan'))}
+  G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);
+  G.colors={};G.env=[];G.armAt=0;saveSess();
+  if(was==='prescan')beginGot(freq);else{G.showGot=false;G.showNext=false;render();setTimeout(playStep,280)}}
+function beginGot(freq){
+  G.showGot=true;G.showUnread=false;G.showNext=false;G.blinking=false;
+  G.gotMidi=G.seq[Math.max(0,G.sess.step-1)]?G.seq[Math.max(0,G.sess.step-1)].midi:null;
+  G.prevFreq=freq||0;G.attack=false;G.sawQuiet=false;G.peak=0;
+  G.gotUntil=performance.now()+PT.GOT_MS;G.settleUntil=G.gotUntil+350;G.armAt=0;
+  render();
+  setTimeout(()=>{if(!G.on)return;G.showGot=false;cueNext()},PT.GOT_MS)}
+function cueNext(){
+  const step=stepNow();G.showNext=!!(step&&step.phase==='prescan');G.blinking=G.showNext;G.lastCents=null;G.armAt=performance.now();
+  render();
+  if(G.showNext)setTimeout(()=>{G.blinking=false;if(G.on)render()},1500);
+  else playStep()}
+function markUnread(){
+  const step=stepNow();if(!step||step.phase!=='prescan'||G.showGot||G.showUnread)return;
+  G.sess.prescan[step.midi]={cents:null,confidence:'unread'};
+  G.hold.prescan=Object.assign({},G.sess.prescan);
+  G.showUnread=true;G.showGot=false;G.showNext=false;G.lastCents=null;
+  G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);
+  if(G.seq[G.sess.step]&&G.seq[G.sess.step].phase!=='prescan'){
+    rebuild(false);G.sess.step=Math.max(0,G.seq.findIndex(s=>s.phase!=='prescan'))}
+  G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);
+  G.armAt=0;saveSess();render();
+  setTimeout(()=>{if(!G.on)return;G.showUnread=false;cueNext()},PT.GOT_MS)}
+function retryUnread(){
+  for(let i=0;i<G.seq.length;i++){const s=G.seq[i];if(s.phase!=='prescan')continue;const r=G.sess.prescan[s.midi];if(r&&r.confidence==='unread'){delete G.sess.prescan[s.midi];jumpTo(i);return}}}
+function unreadIndex(){
+  for(let i=0;i<G.seq.length;i++){const s=G.seq[i];if(s.phase==='prescan'&&G.sess.prescan[s.midi]&&G.sess.prescan[s.midi].confidence==='unread')return i}
+  return -1}
 function chime(){try{const ctx=tuneAudio();const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=880;o.type='sine';g.gain.setValueAtTime(0.0001,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.08,ctx.currentTime+0.02);g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.22);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.24)}catch(e){}}
 function tuneAudio(){if(G.play)return G.play;const AC=window.AudioContext||window.webkitAudioContext;G.play=new AC();return G.play}
 function playStep(){
-  const step=stepNow();if(!step)return;const midi=(step.midis&&step.midis[0])||step.midi;
+  const step=stepNow();if(!step||step.phase==='prescan')return;
+  const midi=(step.midis&&step.midis[0])||step.midi;
   const freqs=(step.phase==='check'?step.midis:[midi]).map(m=>PT.targetFreq(m,targetCents(step,m),G.sess.a4));
   sound(freqs)}
 function sound(freqs){
@@ -285,7 +385,7 @@ function openTune(){
   try{if(window.Metro&&Metro.M&&Metro.M.on)Metro.stop()}catch(e){}
   try{if(typeof au!=='undefined'&&au&&!au.paused)au.pause()}catch(e){}
   G.sess=loadSess();G.on=true;$g('gtune').hidden=false;document.body.classList.add('gtOpen');
-  fillTypes();rebuild(true);renderKeys();render();renderList();playStep();setTimeout(listen,400)}
+  fillTypes();rebuild(true);renderKeys();render();renderList();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep();listen()}
 function closeTune(){G.on=false;stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
 function init(){
   const b=$g('gtOpen');if(!b||G.ready)return;G.ready=true;
@@ -295,10 +395,11 @@ function init(){
   $g('gtAgain').onclick=playStep;
   $g('gtSteps').onclick=()=>{renderList();$g('gtList').hidden=!$g('gtList').hidden};
   $g('gtType').onchange=e=>{G.sess.type=e.target.value;rebuild(true);render();playStep()};
-  $g('gtA4').onchange=e=>{let v=+e.target.value;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));G.sess.a4=v;saveSess();render();playStep()};
+  $g('gtA4').onchange=e=>{let v=+e.target.value;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));G.sess.a4=v;saveSess();render();if(stepNow()&&stepNow().phase!=='prescan')playStep()};
+  if($g('gtRetry'))$g('gtRetry').onclick=retryUnread;
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.on)stopListen()});
 }
-Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_session:()=>G.sess});
+Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
 window.PianoTune=PianoTune;
 document.addEventListener('DOMContentLoaded',init);
 if(document.readyState!=='loading')init();

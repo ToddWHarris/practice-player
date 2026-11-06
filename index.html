@@ -152,7 +152,7 @@
 <li><b>Piano</b> has a <b>Target</b> menu: <b>Stretch (typical)</b> uses a typical Railsback curve (bass a little flat, treble a little sharp, A4 at 0), <b>Equal temperament</b> uses plain equal temperament, or pick a saved profile from this piano. The screen shows the target offset, for example Target +12 cents (stretch). Real piano tuners tailor the curve to each piano, so the typical stretch is a guide and not a replacement for a professional tuner.</li>
 <li><b>Sample this piano</b> walks through the 88 keys from A0 to C8. Play each key and hold it until the reading is steady; the app stores that offset from equal temperament. Tap <b>Skip key</b> to leave a gap (gaps are filled by interpolating the sampled curve). Tap <b>Save profile</b> to name it (for example Church piano). The date and A reference are stored with it. You can rename, delete, or re-sample one note later. Profiles are saved on this device and go into your Backup.</li>
 <li>The mic only runs while the Tuner tab is open and Start is on. Playing a song, opening Level, or leaving the tab stops it.</li>
-<li><b>Guided piano tune</b> opens a landscape screen. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. The app plays the note or chord (<b>Play again</b>), then listens. It pauses listening while its own tone plays. A key turns green within about 2 cents after a short hold, then the step advances. Sharp or flat pulses red and leans to that side. <b>Back</b> and <b>Steps</b> repeat any step. Progress is saved on this device and included in Backup.</li></ul>
+<li><b>Guided piano tune</b> opens a landscape screen. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. The pre-scan plays no tone and speaks nothing. It measures every note from A0 to C8, however sharp or flat, then shows <b>Got it</b> and <b>Next</b>. The mic stays on. Unreadable notes can be retried. Later tuning steps still play the note, and a key turns green within about 2 cents. <b>Back</b> and <b>Steps</b> repeat any step. Progress is saved on this device and included in Backup.</li></ul>
 
 <h2 id="h-stretch">Piano stretch curves</h2>
 <p>Smaller pianos stretch more. Their strings are shorter, so they are stiffer. A stiff string rings a little sharp in its upper partials. That is called inharmonicity. Tuners stretch the scale so those partials line up. Bass notes sit flat of equal temperament. Treble notes sit sharp. A spinet stretches more than a studio upright. A studio upright stretches more than a baby grand. A baby grand stretches more than a 9 ft concert grand.</p>
@@ -318,6 +318,7 @@
 <button type="button" id="gtBack" class="btn">Back</button>
 <button type="button" id="gtAgain" class="btn primary">Play again</button>
 <button type="button" id="gtSteps" class="btn">Steps</button>
+<button type="button" id="gtRetry" class="btn" hidden>Retry unread</button>
 <span id="gtTitle" class="gtTitle"></span><span id="gtCount" class="gtCount"></span>
 </div>
 <div class="gtRead">

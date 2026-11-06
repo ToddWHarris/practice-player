@@ -87,4 +87,26 @@ const app=fs.readFileSync('app.js','utf8');
 a.ok(app.includes("'pp-pianotune'"));
 a.ok(app.includes("indexedDB.open('practice-player',1)")===false);
 a.ok(fs.readFileSync('db.js','utf8').includes("indexedDB.open('practice-player',1)"));
+// Full pre-scan is every note from A0 to C8, in order. It does not start by judging tune.
+a.equal(P.PRESCAN.length,88);
+a.equal(P.PRESCAN[0],21);
+a.equal(P.PRESCAN[87],108);
+a.equal(new Set(P.PRESCAN).size,88);
+function steady(step,base){let r={state:P.emptyState(),advance:false};for(let i=0;i<8;i++){r=P.applySample(r.state,step,{midi:step.midi,cents:base+(i%2?4:-4)},i*80);if(r.advance)return r}return r}
+const a0={phase:'prescan',midi:21,midis:[21]};
+const a4p={phase:'prescan',midi:69,midis:[69]};
+r=steady(a0,80);a.equal(r.advance,true);a.ok(Math.abs(r.state.prescan[21].cents-80)<6);a.equal(r.state.prescan[21].confidence,'low');
+r=steady(a4p,-120);a.equal(r.advance,true);a.ok(Math.abs(r.state.prescan[69].cents+120)<6);a.equal(r.state.prescan[69].confidence,'high');
+r=steady(a4p,700);a.equal(r.advance,false,'a different note must not be stored');
+r=steady(a4p,10);if(r.advance){/* span of 7*80 is enough */}
+{let q={state:P.emptyState(),advance:false};for(let i=0;i<6;i++)q=P.applySample(q.state,a4p,{midi:69,cents:10},i*20);a.equal(q.advance,false,'a short blip is not a steady reading')}
+const tgt=P.targetFreq(21,P.curveFor('studio').cents[21],440);
+const folded=P.interpretFreq(tgt*2,21,tgt);a.ok(folded.folded&&Math.abs(folded.cents)<5,'A0 overtone folds to the fundamental');
+const kept=P.interpretFreq(440,69,440);a.ok(!kept.folded&&Math.abs(kept.cents)<1);
+a.equal(P.allowPrescan({now:1000,gotUntil:0,settleUntil:0,prevFreq:27.5,freq:27.6,attack:false}),false);
+a.equal(P.allowPrescan({now:1000,gotUntil:0,settleUntil:0,prevFreq:27.5,freq:27.6,attack:true}),true);
+a.equal(P.allowPrescan({now:200,gotUntil:700,prevFreq:0,freq:30,attack:true}),false);
+const hi=P.meterView(80),lo=P.meterView(-120);a.ok(hi.text.indexOf('+80.0')===0&&!hi.past&&hi.pct>50&&hi.pct<100);a.ok(lo.text.indexOf('-120.0')===0&&!lo.past&&lo.pct>0&&lo.pct<50);a.ok(P.meterView(250).past);
+a.equal(P.needsPitchRaise({69:{cents:-2,confidence:'high'},21:{cents:null,confidence:'unread'}}),false);
+a.equal(P.needsPitchRaise({69:{cents:-20,confidence:'high'}}),true);
 console.log('pianotune ok');
