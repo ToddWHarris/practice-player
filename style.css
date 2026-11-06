@@ -144,6 +144,38 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .lvCal{border:1px solid #374151;border-radius:14px;padding:10px 12px}
 .lvRefL{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:17px;margin:8px 0}
 #lvRef{width:6em;font-size:22px;padding:8px;border-radius:10px;border:1px solid #374151;background:#111827;color:#fff}
+#gtune{position:fixed;inset:0;z-index:70;background:#0b0f17;color:#e5e7eb;overflow:hidden}
+#gtune[hidden]{display:none!important}
+#gtRotate{display:none;margin:18vh 16px;text-align:center;font-size:22px;line-height:1.4}
+@media (orientation:portrait){#gtune .gtBody{display:none}#gtune #gtRotate{display:block}}
+.gtBody{height:100%;display:flex;flex-direction:column;min-height:0}
+.gtTop{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;padding:4px 8px;overflow:auto;flex:0 0 auto}
+.gtTop label{display:flex;gap:4px;align-items:center;font-size:14px;white-space:nowrap}
+.gtTop select,.gtTop input{font-size:16px;background:#111827;color:#fff;border:1px solid #374151;border-radius:8px;padding:6px}
+#gtA4{width:4.5em}
+.gtTitle{font-weight:700;white-space:nowrap}.gtCount{color:#9ca3af;font-size:14px;white-space:nowrap}
+.gtRead{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1.2fr 1.5fr;gap:8px;align-items:center;padding:0 10px}
+.gtNote{font-size:56px;font-weight:800;text-align:center;line-height:.9}
+.gtCents{text-align:center;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.gtNeedle{position:relative;height:22px;border-radius:11px;background:#1f2937;border:2px solid #374151;margin-top:6px}
+#gtNeedle{position:absolute;top:0;bottom:0;width:3px;margin-left:-1px;background:#e5e7eb;left:50%}
+.gtNeedle.ok{border-color:#4ade80}
+.gtPrompt,.gtBeats{margin:0;font-size:14px;line-height:1.3}
+.gtBeats{color:#9ca3af}
+.gtKeys{position:relative;flex:0 0 108px;height:108px;display:flex;align-items:stretch;padding:0 2px 8px;gap:1px}
+.gtKeys .wk,.gtKeys .bk{min-height:0;padding:0;border-radius:0 0 3px 3px}
+.gtKeys .wk{flex:1;background:#f8fafc;border:1px solid #cbd5e1}
+.gtKeys .bk{position:absolute;top:0;height:58%;width:1.35%;background:#0f172a;border:1px solid #000;z-index:2}
+.gtKeys .dim{opacity:.38}
+.gtKeys .next{outline:2px solid #38bdf8;z-index:3}
+.gtKeys .near{outline:2px solid #86efac}
+.gtKeys .ok{background:#166534!important;opacity:1}
+.gtKeys .bad{background:#991b1b!important;opacity:1;z-index:3}
+.gtKeys .bad.sharp{transform:translate(2px,-2px) rotate(8deg)}
+.gtKeys .bad.flat{transform:translate(-2px,2px) rotate(-8deg)}
+.gtList{position:absolute;left:8px;right:8px;top:46px;bottom:116px;overflow:auto;background:#0b0f17;border:1px solid #374151;border-radius:12px;z-index:6;padding:8px}
+.gtList button{display:block;width:100%;text-align:left;margin:3px 0}
+.gtList button.on{border-color:#4ade80;color:#4ade80}
 .tuDisp{min-height:calc(100vh - 60px);padding:16px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
 .tuNoteBig{text-align:center;font-size:96px;font-weight:800;line-height:1}.tuNoteBig small{display:block;font-size:28px;font-weight:600;opacity:.85;margin-top:4px}
 .tuCents{text-align:center;font-size:28px;font-weight:700}.tuCents.ok{color:#16a34a}

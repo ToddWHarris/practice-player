@@ -55,6 +55,8 @@
 </div>
 <div class="tuRow"><label>A= <input id="tuA4" type="number" inputmode="decimal" min="430" max="450" step="0.1" aria-label="A4 reference in Hz"> <span id="tuA4v">440</span> Hz</label></div>
 <p id="tuHint" class="tuHint hintline"></p>
+<button type="button" id="gtOpen" class="btn primary">Guided piano tune</button>
+<p class="hintline">A landscape guide for tuning a piano: pre-scan, pitch raise when the piano is flat, temperament, octaves, then a fine pass. Turn the phone sideways.</p>
 </div></section>
 <section id="lvl" class="tab"><div id="lvDisp" class="lvDisp">
 <p id="lvKind" class="lvKind">Not calibrated</p>
@@ -149,7 +151,8 @@
 <li><b>Instrument</b> picks how notes are shown. <b>Auto / Chromatic</b> and <b>Piano</b> show any note. <b>Guitar</b> and <b>Bass guitar</b> highlight open strings (and Bass can add a low B0 for 5-string). <b>Trumpet (B flat)</b> shows written pitch, a major second above concert. <b>Euphonium</b> defaults to concert pitch (bass clef); you can switch to treble clef B flat, written a major 9th above concert.</li>
 <li><b>Piano</b> has a <b>Target</b> menu: <b>Stretch (typical)</b> uses a typical Railsback curve (bass a little flat, treble a little sharp, A4 at 0), <b>Equal temperament</b> uses plain equal temperament, or pick a saved profile from this piano. The screen shows the target offset, for example Target +12 cents (stretch). Real piano tuners tailor the curve to each piano, so the typical stretch is a guide and not a replacement for a professional tuner.</li>
 <li><b>Sample this piano</b> walks through the 88 keys from A0 to C8. Play each key and hold it until the reading is steady; the app stores that offset from equal temperament. Tap <b>Skip key</b> to leave a gap (gaps are filled by interpolating the sampled curve). Tap <b>Save profile</b> to name it (for example Church piano). The date and A reference are stored with it. You can rename, delete, or re-sample one note later. Profiles are saved on this device and go into your Backup.</li>
-<li>The mic only runs while the Tuner tab is open and Start is on. Playing a song, opening Level, or leaving the tab stops it.</li></ul>
+<li>The mic only runs while the Tuner tab is open and Start is on. Playing a song, opening Level, or leaving the tab stops it.</li>
+<li><b>Guided piano tune</b> opens a landscape screen. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. The app plays the note or chord (<b>Play again</b>), then listens. It pauses listening while its own tone plays. A key turns green within about 2 cents after a short hold, then the step advances. Sharp or flat pulses red and leans to that side. <b>Back</b> and <b>Steps</b> repeat any step. Progress is saved on this device and included in Backup.</li></ul>
 
 <h2 id="h-lvl">Level</h2>
 <ul><li>Open the <b>Level</b> tab. Tap <b>Start</b> to use the microphone. Tap <b>Stop</b>, leave the tab, switch apps, or play a song, and the mic turns off. Nothing is recorded or uploaded.</li>
@@ -283,5 +286,32 @@
  <p class="hintline">Sends the songs and the playlist order to someone else with Practice Player. They open the app and tap Import playlist.</p>
  <button id="plsGo" class="btn primary big">Prepare</button><p id="plsStatus" class="hintline" role="status"></p>
 </div></div>
+<div id="gtune" hidden>
+<p id="gtRotate">Turn the phone sideways to use Guided piano tune. The keyboard, needle and readout stay on one screen.</p>
+<div class="gtBody">
+<div class="gtTop">
+<button type="button" id="gtClose" class="btn">Close</button>
+<label>Piano <select id="gtType" aria-label="Piano type"></select></label>
+<label>Goal A4 <input id="gtA4" type="number" min="430" max="450" step="0.1" aria-label="Goal pitch"> Hz</label>
+<button type="button" id="gtBack" class="btn">Back</button>
+<button type="button" id="gtAgain" class="btn primary">Play again</button>
+<button type="button" id="gtSteps" class="btn">Steps</button>
+<span id="gtTitle" class="gtTitle"></span><span id="gtCount" class="gtCount"></span>
+</div>
+<div class="gtRead">
+<div id="gtNote" class="gtNote">A0</div>
+<div>
+<div id="gtCents" class="gtCents">--</div>
+<div id="gtNeedleWrap" class="gtNeedle"><div id="gtNeedle"></div></div>
+</div>
+<div>
+<p id="gtPrompt" class="gtPrompt"></p>
+<p id="gtBeats" class="gtBeats"></p>
+</div>
+</div>
+<div id="gtKeys" class="gtKeys"></div>
+<div id="gtList" class="gtList" hidden></div>
+</div>
+</div>
 <audio id="audio" preload="metadata"></audio>
-<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>
+<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="pianotune.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>

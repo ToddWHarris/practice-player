@@ -27,8 +27,8 @@ function db(amp){return 20*Math.log10(amp/Math.SQRT2)}
 {a.equal(M.barPct(-60),0);a.equal(M.barPct(0),100);a.equal(M.barPct(-30),50);a.equal(M.barPct(-Infinity),0);a.equal(M.barPct(10),100)}
 // Existing storage names stay, and the new pref is added beside them
 {const app=fs.readFileSync('app.js','utf8'),db=fs.readFileSync('db.js','utf8'),sw=fs.readFileSync('sw.js','utf8');
- a.ok(app.includes("PREFS:['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met','pp-tuner','pp-tuner-profiles','pp-meter']"));
+ a.ok(app.includes("PREFS:['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met','pp-tuner','pp-tuner-profiles','pp-meter','pp-pianotune']"));
  a.ok(db.includes("indexedDB.open('practice-player',1)"));
- a.ok(app.includes('APP_VERSION=33')&&sw.includes('const V=33')&&sw.includes("'./meter.js'"));
+ a.ok(app.includes('APP_VERSION=34')&&sw.includes('const V=34')&&sw.includes("'./meter.js'")&&sw.includes("'./pianotune.js'"));
  a.ok(!app.includes('pp-preview')&&!sw.includes('pp-preview'))}
 console.log('meter ok');
