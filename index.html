@@ -87,6 +87,7 @@
 <h2 class="acc">Color</h2><button id="colorBtn" class="btn colorBtn" aria-haspopup="dialog"><span id="colorSw" class="csw"></span><span class="clab">Highlight color<small id="colorName">Green</small></span><span class="chev">›</span></button>
 <h2 class="acc">Loop and practice</h2><button id="prBtn" class="btn colorBtn" aria-haspopup="dialog"><span class="csw prIcon">⏱</span><span class="clab">Loop and practice settings<small id="prSum"></small></span><span class="chev">›</span></button></section>
 <section id="help" class="tab"><div id="helpBody">
+<button type="button" id="gtHelpBack" class="btn" hidden>Back to piano</button>
 <h2 class="acc" id="h-top">Help</h2>
 <p class="hintline">Tap a topic to jump to it. Music keeps playing while you read.</p>
 <div id="toc" role="navigation" aria-label="Help topics"></div>
@@ -152,7 +153,7 @@
 <li><b>Piano</b> has a <b>Target</b> menu: <b>Stretch (typical)</b> uses a typical Railsback curve (bass a little flat, treble a little sharp, A4 at 0), <b>Equal temperament</b> uses plain equal temperament, or pick a saved profile from this piano. The screen shows the target offset, for example Target +12 cents (stretch). Real piano tuners tailor the curve to each piano, so the typical stretch is a guide and not a replacement for a professional tuner.</li>
 <li><b>Sample this piano</b> walks through the 88 keys from A0 to C8. Play each key and hold it until the reading is steady; the app stores that offset from equal temperament. Tap <b>Skip key</b> to leave a gap (gaps are filled by interpolating the sampled curve). Tap <b>Save profile</b> to name it (for example Church piano). The date and A reference are stored with it. You can rename, delete, or re-sample one note later. Profiles are saved on this device and go into your Backup.</li>
 <li>The mic only runs while the Tuner tab is open and Start is on. Playing a song, opening Level, or leaving the tab stops it.</li>
-<li><b>Guided piano tune</b> opens a landscape screen. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. The pre-scan plays no tone and speaks nothing. It measures every note from A0 to C8, however sharp or flat, then shows <b>Got it</b> and <b>Next</b>. The mic stays on. Unreadable notes can be retried. Tap <b>OK</b> on the Tuning mode card before any string is tuned. Each string is tuned on its own, and the next note waits until you tap <b>Done</b>. A new piano asks you to pick the style and the string splits. Saved pianos can be loaded later. Later tuning steps still play the note, and a key turns green within about 2 cents. <b>Back</b> and <b>Steps</b> repeat any step. Progress is saved on this device and included in Backup.</li></ul>
+<li><b>Guided piano tune</b> opens a landscape screen. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. The pre-scan plays no tone and speaks nothing. It measures every note from A0 to C8, however sharp or flat, then shows <b>Got it</b> and <b>Next</b>. The mic stays on. Unreadable notes can be retried. Tap <b>OK</b> on the Tuning mode card before any string is tuned. Each string is tuned on its own, and the next note waits until you tap <b>Done</b>. A new piano asks you to pick the style and the string splits. Saved pianos can be loaded later. Later tuning steps still play the note, and a key turns green within about 2 cents. <b>Back</b> and <b>Steps</b> repeat any step. Tap <b>Help</b> on that screen for the hammer, the mutes, and how to turn a pin. Progress is saved on this device and included in Backup.</li></ul>
 
 <h2 id="h-stretch">Piano stretch curves</h2>
 <p>Smaller pianos stretch more. Their strings are shorter, so they are stiffer. A stiff string rings a little sharp in its upper partials. That is called inharmonicity. Tuners stretch the scale so those partials line up. Bass notes sit flat of equal temperament. Treble notes sit sharp. A spinet stretches more than a studio upright. A studio upright stretches more than a baby grand. A baby grand stretches more than a 9 ft concert grand.</p>
@@ -175,6 +176,37 @@
 </figcaption>
 </figure>
 <p>Typical uses the Fernhart Labs grand standard anchor points already in this app (A0, C1, C2, C3, A3, C4, A4, C5, C6, C7, and C8). Those points are sourced. The app fills the notes between them. Concert grand (9 ft), Baby grand, Studio upright, and Spinet are calculated from string stiffness. They are derived, not a measurement of one piano, and not copied from another tuner. Real tuners fit each piano. Use the chart as a starting map.</p>
+
+<h2 id="h-piano-tools">Piano tuning tools</h2>
+<p>This app tells you when a string is sharp or flat. The tools below are what you use on the piano itself.</p>
+<h3>What you need</h3>
+<p><b>Tuning hammer (also called a tuning lever)</b><br>A handle with a star tip that fits over the tuning pin. Most home pianos use a size 2 tip. This is the tool that turns the pin to raise or lower the pitch. Use a tip that fits snugly. A loose tip can slip and damage the pin.</p>
+<p><b>Mute strip (felt temperament strip)</b><br>A long strip of felt you weave between the strings in the middle of the piano. It quiets the outer strings of each three-string note so only the center string speaks. That lets you set the middle of the piano one string at a time.</p>
+<p><b>Rubber mutes (wedges)</b><br>Small rubber wedges, often with a wire handle. Push one between strings to quiet the ones you are not tuning. You only want to hear the string you are turning.</p>
+<p><b>Felt mutes (wedges)</b><br>Same idea as rubber mutes, but made of felt. Many people like felt because it holds well and mutes cleanly, especially on grands and bass notes.</p>
+<p><b>Papp's mutes (mainly for uprights)</b><br>Small mutes for tight spots in the high treble of an upright, where a long strip or big wedge will not fit. Optional on many grands.</p>
+<p><b>Tuning fork</b><br>Optional. This app already gives you the target pitch. Keep a fork only if you want a backup you can hear.</p>
+<p>A simple starter kit is usually a decent hammer with a size 2 tip, a felt mute strip, and several rubber or felt wedges. Add Papp's mutes if you tune uprights a lot.</p>
+<h3>How to use the tuning hammer</h3>
+<ol>
+<li>Mute so only one string speaks for the note you are on.</li>
+<li>Seat the tip fully on that string's tuning pin.</li>
+<li>Hold the handle so it points roughly along the string (think of a clock near 12:00 to 1:30). That reduces unwanted bending of the pin.</li>
+<li>Turn with small moves. Feel the pin actually turn in the wood, not just twist at the top.</li>
+<li>Raise the pitch up to the green target when you can. Coming up from a little flat is often more stable than easing down from sharp.</li>
+<li>Play a firm test blow and watch the needle. If it drifts, nudge again and retest.</li>
+<li>Do not lean hard on the pin to fake the pitch. Heavy lean can bend the pin and the note will not hold.</li>
+</ol>
+<p>Some pins like a smooth pull. Tight pins often like tiny controlled jerks (sometimes called notch tuning). Adapt to what that pin needs. If a pin will not move without force, stop and get help rather than forcing it.</p>
+<h3>Why mutes matter with this app</h3>
+<p>The screen guides one string at a time. If extra strings are ringing, the needle can jump between them. Mute the others, tune the open string to green, then unmute and match the partners.</p>
+<h3>Safety notes</h3>
+<ul>
+<li>Protect your hearing when you give hard test blows.</li>
+<li>Use a tip that fits. Slipping tips chew pins.</li>
+<li>Do not yank. Broken strings and damaged pinblocks are not worth a hurried turn.</li>
+</ul>
+<p>This section is a starting guide. Professional training (for example through the Piano Technicians Guild) goes deeper. Use this app's guided steps together with careful hammer feel and firm test blows.</p>
 
 <h2 id="h-lvl">Level</h2>
 <ul><li>Open the <b>Level</b> tab. Tap <b>Start</b> to use the microphone. Tap <b>Stop</b>, leave the tab, switch apps, or play a song, and the mic turns off. Nothing is recorded or uploaded.</li>
@@ -342,6 +374,7 @@
 <div class="gtBody">
 <div class="gtTop">
 <button type="button" id="gtClose" class="btn">Close</button>
+<button type="button" id="gtHelp" class="btn">Help</button>
 <label>Piano <select id="gtType" aria-label="Piano type"></select></label>
 <label>Goal A4 <input id="gtA4" type="number" min="430" max="450" step="0.1" aria-label="Goal pitch"> Hz</label>
 <button type="button" id="gtBack" class="btn">Back</button>

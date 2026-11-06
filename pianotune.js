@@ -437,11 +437,31 @@ function openTune(){
   renderPianos();showOnly('gtPick')}
 function acceptTuning(){if(!G.showTuningCard)return;G.showTuningCard=false;G.tuningOk=true;G.sess.tuningOk=true;advanceStep('prescan',G.pendingFreq||0,false)}
 function tapDone(){if(!G.showDone)return;G.showDone=false;G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);G.hold=coreJump(G.hold||PT.emptyState(),G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);G.lastCents=null;G.colors={};saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
-function closeTune(){G.on=false;stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
+function helpChrome(on){
+  document.body.classList.toggle('tuneHelp',!!on);
+  const back=document.getElementById('gtHelpBack');if(back)back.hidden=!on;
+  const tb=document.getElementById('gtToolsBack');if(tb)tb.textContent=on?'Back to piano':'Back to topics'}
+function openToolsHelp(){
+  if(!G.on)return;
+  G.holdHelp=true;G.wasListening=!!G.listening;stopListen();saveSess();
+  $g('gtune').hidden=true;document.body.classList.remove('gtOpen');helpChrome(true);
+  if(window.tab)tab('help');
+  const h=document.getElementById('h-piano-tools');if(h)h.scrollIntoView({block:'start'})}
+function returnFromHelp(){
+  if(!G.holdHelp)return;
+  G.holdHelp=false;helpChrome(false);
+  const on=document.querySelector('nav button.on');
+  if(!on||on.dataset.t!=='tun'){if(window.tab)tab('tun')}
+  try{if(window.Tuner)Tuner.leave()}catch(e){}
+  $g('gtune').hidden=false;document.body.classList.add('gtOpen');
+  if(G.wasListening)listen()}
+function closeTune(){G.holdHelp=false;G.wasListening=false;helpChrome(false);G.on=false;stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
 function init(){
   const b=$g('gtOpen');if(!b||G.ready)return;G.ready=true;
   b.onclick=openTune;
   $g('gtClose').onclick=closeTune;
+  if($g('gtHelp'))$g('gtHelp').onclick=openToolsHelp;
+  if($g('gtHelpBack'))$g('gtHelpBack').onclick=returnFromHelp;
   $g('gtBack').onclick=()=>jumpTo((G.sess.step||0)-1);
   $g('gtAgain').onclick=playStep;
   $g('gtSteps').onclick=()=>{renderList();$g('gtList').hidden=!$g('gtList').hidden};
@@ -458,7 +478,7 @@ function init(){
   if($g('gtSave'))$g('gtSave').onclick=savePiano;
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.on)stopListen()});
 }
-Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
+Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
 window.PianoTune=PianoTune;
 document.addEventListener('DOMContentLoaded',init);
 if(document.readyState!=='loading')init();
