@@ -11,8 +11,10 @@ with sync_playwright() as p:
   pg.click('nav button[data-t=tun]')
   pg.wait_for_function("document.getElementById('tun').classList.contains('on')")
   pg.locator('#gtOpen').scroll_into_view_if_needed()
-  pg.click('#gtOpen');pg.wait_for_timeout(400)
-  assert pg.is_visible('#gtune') and pg.is_hidden('#gtRotate')
+  pg.click('#gtOpen');pg.wait_for_timeout(250)
+  assert pg.is_visible('#gtPick') and pg.inner_text('#gtPick').find('Choose a piano')>=0
+  pg.click('#gtNew');pg.click('#gtStyle button[data-style=concert]');pg.click('#gtStyleNext');pg.click('#gtSplitsStart');pg.wait_for_timeout(400)
+  assert pg.is_visible('#gtune') and pg.is_hidden('#gtRotate') and pg.is_hidden('#gtPick')
   assert pg.locator('#gtKeys button').count()==88
   fit=ev("""()=>{const g=document.getElementById('gtune');const k=document.getElementById('gtKeys');const n=document.getElementById('gtNeedle');
     const kb=k.getBoundingClientRect(),nb=n.getBoundingClientRect();
@@ -34,11 +36,11 @@ with sync_playwright() as p:
   # Use the Steps list after opening it once so buttons exist
   pg.click('#gtSteps');pg.wait_for_timeout(100)
   labels=pg.locator('#gtList button').all_inner_texts()
-  a4=next(i for i,t in enumerate(labels) if t.endswith('Set A4'))
+  a4=next(i for i,t in enumerate(labels) if 'Set A4 string 1 of 3' in t)
   thirds=next(i for i,t in enumerate(labels) if 'Progressive thirds' in t)
   ev('(i)=>PianoTune.jump(i)',a4);pg.wait_for_timeout(200)
   assert pg.inner_text('#gtNote')=='A4'
-  assert 'Mute' in pg.inner_text('#gtPrompt') and 'unison' in pg.inner_text('#gtPrompt')
+  assert pg.inner_text('#gtPrompt')=='Tune this string first.'
   assert pg.locator('#gtKeys button.next').count()>=1
   ev("document.getElementById('gtList').hidden=true")
   pg.screenshot(path='/opt/cursor/artifacts/v34-guided-tune-a4-landscape.png')

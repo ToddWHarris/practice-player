@@ -186,18 +186,47 @@ const PianoTune=(function(){
   s.lean=lean;
   if(wanted.every(m=>s.green[m])){chime=true;advance=true}
   return{state:s,chime,advance,lean,color,midi}}
+ const SPLITS={concert:{split2:24,split3:53},baby:{split2:26,split3:55},studio:{split2:28,split3:57},spinet:{split2:29,split3:60}};
+ function stringCount(midi,split2,split3){midi=midi|0;if(!(split2<split3))return 1;if(midi<split2)return 1;if(midi<split3)return 2;return 3}
+ function stringPrompt(i,n){
+  if(n<=1)return 'Tune this string.';
+  if(i===1)return 'Tune this string first.';
+  if(n===2)return 'Tune the other string to match.';
+  if(i===n)return 'Tune the last string to match.';
+  return 'Tune the next string to match.'}
+ function expandTuning(steps,split2,split3){
+  const out=[];
+  (steps||[]).forEach(s=>{
+   if(s.phase==='prescan'){out.push(Object.assign({},s,{stringIndex:1,stringCount:1,lastString:false,waitDone:false}));return}
+   if(s.phase==='check'||!s.midi){out.push(Object.assign({},s,{stringIndex:1,stringCount:1,lastString:true,waitDone:true}));return}
+   const n=stringCount(s.midi,split2,split3);
+   for(let i=1;i<=n;i++)out.push(Object.assign({},s,{stringIndex:i,stringCount:n,lastString:i===n,waitDone:i===n,title:s.title+' string '+i+' of '+n,prompt:stringPrompt(i,n)}));
+  });
+  out.forEach((s,i)=>{s.index=i});
+  return out}
+ function upsertProfile(list,rec){
+  const a=(list||[]).slice();const i=a.findIndex(p=>p.id===rec.id);
+  if(i>=0)a[i]=rec;else a.push(rec);
+  a.sort((x,y)=>String(x.name).localeCompare(String(y.name)));
+  return a}
+ function renameProfile(list,id,name){return (list||[]).map(p=>p.id===id?Object.assign({},p,{name:name}):p)}
+ function deleteProfile(list,id){return (list||[]).filter(p=>p.id!==id)}
  function jump(state,index,count){
   const i=Math.max(0,Math.min(count-1,index|0));
   return Object.assign({},state,{step:i,holdStart:null,holdMidi:null,green:{},hist:[],lean:0,outSince:null})}
- return{LO,HI,NAMES,TYPICAL,SIZES,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,buildSequence,emptyState,applySample,jump}})();
+ return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
 if(typeof module!=='undefined')module.exports=PianoTune;
 
 if(typeof document!=='undefined'){
 const PT=PianoTune,coreJump=PianoTune.jump,GK='pp-pianotune';
 const G={on:false,listening:false,sounding:false,stream:null,ctx:null,play:null,an:null,raf:0,buf:null,sess:null,seq:[],curve:null,built:false,env:[],showGot:false,showNext:false,showUnread:false,blinking:false,gotMidi:null,prevFreq:0,attack:false,sawQuiet:false,peak:0,gotUntil:0,settleUntil:0,armAt:0};
 const $g=id=>document.getElementById(id);
-function loadSess(){try{const o=JSON.parse(localStorage.getItem(GK)||'null');if(o&&o.v===2)return o}catch(e){}return{v:2,type:'concert',a4:440,step:0,prescan:{},updated:0}}
-function saveSess(){try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:2,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,updated:G.sess.updated}))}catch(e){}}
+const PKEY='pp-piano-profiles';
+function blankSess(){return{v:3,type:null,a4:440,step:0,prescan:{},split2:null,split3:null,tuningOk:false,profileId:null,ready:false,updated:0}}
+function loadSess(){try{const o=JSON.parse(localStorage.getItem(GK)||'null');if(o&&o.v===3)return o;if(o&&o.v===2&&o.type&&PT.SPLITS[o.type])return Object.assign(blankSess(),o,{v:3,ready:true,split2:PT.SPLITS[o.type].split2,split3:PT.SPLITS[o.type].split3})}catch(e){}return blankSess()}
+function saveSess(){try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:3,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,split2:G.sess.split2,split3:G.sess.split3,tuningOk:!!G.sess.tuningOk,profileId:G.sess.profileId,ready:!!G.sess.ready,updated:G.sess.updated}))}catch(e){}}
+function loadPianos(){try{const a=JSON.parse(localStorage.getItem(PKEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
+function savePianos(a){try{localStorage.setItem(PKEY,JSON.stringify(a))}catch(e){}}
 function profiles(){try{const a=JSON.parse(localStorage.getItem('pp-tuner-profiles')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function findProfile(id){return profiles().find(p=>p.id===id)||null}
 function activeCurve(){
@@ -208,7 +237,7 @@ function bFn(){const id=G.sess.type;return PT.SIZES[id]?midi=>PT.bOf(PT.SIZES[id
 function rebuild(keepStep){
   const raise=PT.needsPitchRaise(G.sess.prescan||{});
   G.curve=activeCurve();
-  G.seq=PT.buildSequence({raise});
+  G.seq=PT.expandTuning(PT.buildSequence({raise}),G.sess.split2,G.sess.split3);
   if(!keepStep)G.sess.step=0;
   if(G.sess.step>=G.seq.length)G.sess.step=G.seq.length-1;
   if(G.sess.step<0)G.sess.step=0;
@@ -226,8 +255,8 @@ function beatsText(step){
 function renderKeys(){
   const box=$g('gtKeys');if(!box||box.childElementCount)return;
   const whites=[];for(let m=PT.LO;m<=PT.HI;m++)if(PT.isWhite(m))whites.push(m);
-  whites.forEach(m=>{const k=document.createElement('button');k.type='button';k.className='wk';k.dataset.m=m;k.setAttribute('aria-label',PT.label(m));k.onclick=()=>jumpToMidi(m);box.append(k)});
-  whites.forEach((m,i)=>{const n=m+1;if(n>PT.HI||PT.isWhite(n))return;const k=document.createElement('button');k.type='button';k.className='bk';k.dataset.m=n;k.style.left=((i+0.62)/whites.length*100)+'%';k.setAttribute('aria-label',PT.label(n));k.onclick=()=>jumpToMidi(n);box.append(k)});
+  whites.forEach(m=>{const k=document.createElement('button');k.type='button';k.className='wk';k.dataset.m=m;k.setAttribute('aria-label',PT.label(m));k.onclick=()=>onKey(m);box.append(k)});
+  whites.forEach((m,i)=>{const n=m+1;if(n>PT.HI||PT.isWhite(n))return;const k=document.createElement('button');k.type='button';k.className='bk';k.dataset.m=n;k.style.left=((i+0.62)/whites.length*100)+'%';k.setAttribute('aria-label',PT.label(n));k.onclick=()=>onKey(n);box.append(k)});
 }
 function paintKeys(colors,lean){
   const step=stepNow();const want=(step&&step.midis)||[];
@@ -249,7 +278,8 @@ function render(){
   $g('gtCount').textContent=(shown+1)+' / '+G.seq.length;
   const beats=beatsText(step);
   const measured=G.measured;
-  $g('gtBeats').textContent=(beats?('Expected: '+beats+'. '):'')+(step.phase==='check'?(typeof measured==='number'?'Measured about '+measured.toFixed(1)+' beats/s.':'Measured: play both notes together.'):'');
+  const beatLine=(beats?('Expected: '+beats+'. '):'')+(step.phase==='check'?(typeof measured==='number'?'Measured about '+measured.toFixed(1)+' beats/s.':'Measured: play both notes together.'):'');
+  $g('gtBeats').textContent=beatLine;$g('gtBeats').hidden=!beatLine;
   const show=G.showGot&&G.gotMidi!=null?G.gotMidi:(step.midis?step.midis[0]:step.midi);
   $g('gtNote').textContent=PT.label(show)+(G.showGot?' ✓':'');
   $g('gtNote').classList.toggle('got',!!G.showGot);
@@ -262,6 +292,9 @@ function render(){
   $g('gtNeedleWrap').classList.toggle('ok',typeof cents==='number'&&isFinite(cents)&&Math.abs(cents)<=PT.TOL);
   $g('gtNeedleWrap').classList.toggle('past',!!view.past);
   if($g('gtRetry'))$g('gtRetry').hidden=unreadIndex()<0;
+  if($g('gtDone'))$g('gtDone').hidden=!G.showDone;
+  if($g('gtTuneCard'))$g('gtTuneCard').hidden=!G.showTuningCard;
+  $g('gtune').classList.toggle('hasDone',!!G.showDone);
   paintKeys(G.colors,G.hold?G.hold.lean:0);
   $g('gtType').value=G.sess.type&&$g('gtType').querySelector('option[value="'+G.sess.type+'"]')?G.sess.type:'concert';
   $g('gtA4').value=G.sess.a4}
@@ -269,14 +302,15 @@ function fillTypes(){
   const s=$g('gtType');const curV=G.sess.type;s.innerHTML='';
   [['concert','Concert grand (9 ft)'],['baby','Baby grand'],['studio','Studio upright'],['spinet','Spinet'],['typical','Typical']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;s.append(o)});
   profiles().forEach(p=>{const o=document.createElement('option');o.value='profile:'+p.id;o.textContent='Saved: '+p.name;s.append(o)});
-  if(!s.querySelector('option[value="'+curV+'"]'))G.sess.type='concert';
-  s.value=G.sess.type}
+  if(curV&&s.querySelector('option[value="'+curV+'"]'))s.value=curV}
 function renderList(){
   const ul=$g('gtList');ul.innerHTML='';
   G.seq.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+'. '+s.title;if(i===G.sess.step)b.className='on';b.onclick=()=>{jumpTo(i);$g('gtList').hidden=true};ul.append(b)});
 }
-function jumpTo(i){G.showGot=false;G.showUnread=false;G.showNext=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
+function jumpTo(i){G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
+function onKey(m){if(G.pickSplit){if(G.pickSplit===3)G.sess.split3=m;else G.sess.split2=m;if(G.sess.split2!=null&&G.sess.split3!=null&&G.sess.split2>=G.sess.split3)G.sess.split2=G.sess.split3-1;renderSplits();return}jumpToMidi(m)}
 function jumpToMidi(m){const i=G.seq.findIndex((s,idx)=>idx>=G.sess.step&&s.midis&&s.midis.indexOf(m)>=0);if(i>=0)jumpTo(i)}
+function renderSplits(){renderKeys();if($g('gtSplit3Lab'))$g('gtSplit3Lab').textContent='Lowest 3-string key: '+(G.sess.split3!=null?PT.label(G.sess.split3):'');if($g('gtSplit2Lab'))$g('gtSplit2Lab').textContent='Lowest 2-string key: '+(G.sess.split2!=null?PT.label(G.sess.split2):'');document.querySelectorAll('#gtSplits .pick').forEach(b=>b.classList.toggle('on',+b.dataset.which===G.pickSplit));document.querySelectorAll('#gtKeys button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');el.classList.add(m===G.sess.split2||m===G.sess.split3?'next':'dim')})}
 function stopListen(){G.listening=false;if(G.raf){cancelAnimationFrame(G.raf);G.raf=0}
   if(G.stream){G.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});G.stream=null}}
 function loop(){
@@ -299,7 +333,7 @@ function trackAttack(rms){
   if(G.peak>0.008&&rms<G.peak*0.28)G.sawQuiet=true;
   if(G.sawQuiet&&rms>Math.max(0.012,G.peak*0.5)){G.attack=true;G.sawQuiet=false}}
 function onFreq(freq,now){
-  const step=stepNow();if(!step||G.sounding||G.showGot||G.showUnread)return;
+  const step=stepNow();if(!step||!G.sess||!G.sess.ready||G.showTuningCard||G.sounding||G.showGot||G.showUnread)return;
   let midi=step.midi,best=1e9,picked=freq;
   (step.midis||[step.midi]).forEach(m=>{
     const hz=PT.targetFreq(m,targetCents(step,m),G.sess.a4);
@@ -314,16 +348,24 @@ function onFreq(freq,now){
   const res=PT.applySample(G.hold,step,{cents,midi},now);
   G.hold=res.state;G.sess.prescan=Object.assign({},G.hold.prescan);
   G.colors={};if(res.midi)G.colors[res.midi]=res.color==='green'&&G.hold.green[res.midi]?'green':res.color;
-  if(res.advance){const was=step.phase;advanceStep(was,picked.freq,was!=='prescan');return}
-  saveSess();render()}
+  if(res.advance){
+   if(step.phase==='prescan'){advanceStep('prescan',picked.freq,false);return}
+   if(step.waitDone||step.lastString||step.phase==='check'){G.showDone=true;saveSess();render();return}
+   G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);
+   G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);
+   G.showDone=false;G.lastCents=null;saveSess();render();return}
+  G.showDone=false;saveSess();render()}
 function advanceStep(was,freq,doChime){
+  const next=G.sess.step+1;
+  if(was==='prescan'&&G.seq[next]&&G.seq[next].phase!=='prescan'&&!G.tuningOk){G.showTuningCard=true;G.pendingFreq=freq;saveSess();render();return}
   if(doChime)chime();
   G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);
   if(was==='prescan'&&G.seq[G.sess.step]&&G.seq[G.sess.step].phase!=='prescan'){
-    rebuild(false);G.sess.step=Math.max(0,G.seq.findIndex(s=>s.phase!=='prescan'))}
+    rebuild(true);G.sess.step=Math.max(0,G.seq.findIndex(s=>s.phase!=='prescan'))}
   G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);
   G.colors={};G.env=[];G.armAt=0;saveSess();
-  if(was==='prescan')beginGot(freq);else{G.showGot=false;G.showNext=false;render();setTimeout(playStep,280)}}
+  if(was==='prescan'&&G.seq[G.sess.step]&&G.seq[G.sess.step].phase==='prescan')beginGot(freq);
+  else{G.showGot=false;G.showNext=false;render();if(was==='prescan')playStep();else setTimeout(playStep,280)}}
 function beginGot(freq){
   G.showGot=true;G.showUnread=false;G.showNext=false;G.blinking=false;
   G.gotMidi=G.seq[Math.max(0,G.sess.step-1)]?G.seq[Math.max(0,G.sess.step-1)].midi:null;
@@ -379,13 +421,22 @@ async function listen(){
     const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();
     const src=ctx.createMediaStreamSource(stream);const an=ctx.createAnalyser();an.fftSize=8192;an.smoothingTimeConstant=0;src.connect(an);
     G.stream=stream;G.ctx=ctx;G.an=an;G.buf=new Float32Array(an.fftSize);G.listening=true;G.raf=requestAnimationFrame(loop)}catch(e){$g('gtPrompt').textContent=(stepNow()&&stepNow().prompt?stepNow().prompt+' ':'')+(e&&e.name==='NotAllowedError'?'Microphone not allowed.':'No microphone available.')}}
+function showOnly(id){['gtPick','gtStyle','gtSplits','gtTuneCard'].forEach(k=>{const n=$g(k);if(n)n.hidden=k!==id});if(id)$g('gtune').classList.add('setup')}
+function hideSetup(){showOnly(null);$g('gtune').classList.remove('setup')}
+function renderPianos(){const box=$g('gtSaved');if(!box)return;box.innerHTML='';loadPianos().forEach(p=>{const row=document.createElement('div');row.className='gtPiano';const nm=document.createElement('span');nm.className='gtPianoName';nm.textContent=p.name;const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Load';b.onclick=()=>loadPiano(p.id);const rn=document.createElement('button');rn.type='button';rn.className='btn';rn.textContent='Rename';rn.onclick=()=>{const n=(prompt('New name',p.name)||'').trim();if(!n)return;savePianos(PT.renameProfile(loadPianos(),p.id,n));renderPianos()};const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='Delete';del.onclick=()=>{if(!confirm('Delete '+p.name+'?'))return;savePianos(PT.deleteProfile(loadPianos(),p.id));renderPianos()};row.append(nm,b,rn,del);box.append(row)})}
+function loadPiano(id){const p=loadPianos().find(x=>x.id===id);if(!p)return;G.sess=Object.assign(blankSess(),{ready:true,type:p.style,a4:p.a4||440,split2:p.split2,split3:p.split3,prescan:p.prescan||{},step:p.step|0,tuningOk:!!p.tuningOk,profileId:p.id});G.tuningOk=!!p.tuningOk;hideSetup();startWork()}
+function savePiano(){const name=($g('gtPianoName').value||'').trim();if(!name){$g('gtPianoName').focus();return}const id=G.sess.profileId||('k'+Date.now());const rec={id,name,style:G.sess.type,a4:G.sess.a4,split2:G.sess.split2,split3:G.sess.split3,prescan:G.sess.prescan,step:G.sess.step,tuningOk:!!G.tuningOk,updated:Date.now()};savePianos(PT.upsertProfile(loadPianos(),rec));G.sess.profileId=id;saveSess()}
+function startWork(){G.tuningOk=!!G.sess.tuningOk;rebuild(true);renderKeys();render();renderList();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep();listen()}
 function openTune(){
   try{if(window.Tuner)Tuner.leave()}catch(e){}
   try{if(window.Meter)Meter.stop()}catch(e){}
   try{if(window.Metro&&Metro.M&&Metro.M.on)Metro.stop()}catch(e){}
   try{if(typeof au!=='undefined'&&au&&!au.paused)au.pause()}catch(e){}
-  G.sess=loadSess();G.on=true;$g('gtune').hidden=false;document.body.classList.add('gtOpen');
-  fillTypes();rebuild(true);renderKeys();render();renderList();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep();listen()}
+  G.sess=loadSess();G.tuningOk=!!G.sess.tuningOk;G.on=true;$g('gtune').hidden=false;document.body.classList.add('gtOpen');
+  fillTypes();
+  renderPianos();showOnly('gtPick')}
+function acceptTuning(){if(!G.showTuningCard)return;G.showTuningCard=false;G.tuningOk=true;G.sess.tuningOk=true;advanceStep('prescan',G.pendingFreq||0,false)}
+function tapDone(){if(!G.showDone)return;G.showDone=false;G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);G.hold=coreJump(G.hold||PT.emptyState(),G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);G.lastCents=null;G.colors={};saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
 function closeTune(){G.on=false;stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
 function init(){
   const b=$g('gtOpen');if(!b||G.ready)return;G.ready=true;
@@ -397,6 +448,14 @@ function init(){
   $g('gtType').onchange=e=>{G.sess.type=e.target.value;rebuild(true);render();playStep()};
   $g('gtA4').onchange=e=>{let v=+e.target.value;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));G.sess.a4=v;saveSess();render();if(stepNow()&&stepNow().phase!=='prescan')playStep()};
   if($g('gtRetry'))$g('gtRetry').onclick=retryUnread;
+  if($g('gtNew'))$g('gtNew').onclick=()=>{G.pickStyle=null;$g('gtStyleNext').disabled=true;document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.classList.remove('on'));showOnly('gtStyle')};
+  document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.onclick=()=>{G.pickStyle=b.dataset.style;document.querySelectorAll('#gtStyle button[data-style]').forEach(x=>x.classList.toggle('on',x===b));$g('gtStyleNext').disabled=false});
+  if($g('gtStyleNext'))$g('gtStyleNext').onclick=()=>{if(!G.pickStyle)return;const sp=PT.SPLITS[G.pickStyle];G.sess.type=G.pickStyle;G.sess.split2=sp.split2;G.sess.split3=sp.split3;G.pickSplit=3;renderSplits();fillTypes();showOnly('gtSplits')};
+  document.querySelectorAll('#gtSplits .pick').forEach(b=>b.onclick=()=>{G.pickSplit=+b.dataset.which;renderSplits()});
+  if($g('gtSplitsStart'))$g('gtSplitsStart').onclick=()=>{if(!(G.sess.split2<G.sess.split3))return;G.sess.ready=true;G.sess.step=0;G.sess.prescan={};G.tuningOk=false;G.sess.tuningOk=false;G.pickSplit=0;hideSetup();startWork()};
+  if($g('gtTuneOk'))$g('gtTuneOk').onclick=acceptTuning;
+  if($g('gtDone'))$g('gtDone').onclick=tapDone;
+  if($g('gtSave'))$g('gtSave').onclick=savePiano;
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.on)stopListen()});
 }
 Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});

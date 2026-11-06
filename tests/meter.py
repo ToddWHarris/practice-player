@@ -95,7 +95,7 @@ with sync_playwright() as p:
   pg.click('#lvGo')
   # Backup pref list keeps old names and adds pp-meter
   prefs=ev('BK.PREFS')
-  for k in ['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met','pp-tuner','pp-tuner-profiles','pp-meter','pp-pianotune']:
+  for k in ['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met','pp-tuner','pp-tuner-profiles','pp-meter','pp-pianotune','pp-piano-profiles']:
     assert k in prefs,k
   # Screenshot of an uncalibrated live RMS reading
   pg.fill('#lvRef','')

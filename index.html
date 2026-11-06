@@ -152,7 +152,7 @@
 <li><b>Piano</b> has a <b>Target</b> menu: <b>Stretch (typical)</b> uses a typical Railsback curve (bass a little flat, treble a little sharp, A4 at 0), <b>Equal temperament</b> uses plain equal temperament, or pick a saved profile from this piano. The screen shows the target offset, for example Target +12 cents (stretch). Real piano tuners tailor the curve to each piano, so the typical stretch is a guide and not a replacement for a professional tuner.</li>
 <li><b>Sample this piano</b> walks through the 88 keys from A0 to C8. Play each key and hold it until the reading is steady; the app stores that offset from equal temperament. Tap <b>Skip key</b> to leave a gap (gaps are filled by interpolating the sampled curve). Tap <b>Save profile</b> to name it (for example Church piano). The date and A reference are stored with it. You can rename, delete, or re-sample one note later. Profiles are saved on this device and go into your Backup.</li>
 <li>The mic only runs while the Tuner tab is open and Start is on. Playing a song, opening Level, or leaving the tab stops it.</li>
-<li><b>Guided piano tune</b> opens a landscape screen. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. The pre-scan plays no tone and speaks nothing. It measures every note from A0 to C8, however sharp or flat, then shows <b>Got it</b> and <b>Next</b>. The mic stays on. Unreadable notes can be retried. Later tuning steps still play the note, and a key turns green within about 2 cents. <b>Back</b> and <b>Steps</b> repeat any step. Progress is saved on this device and included in Backup.</li></ul>
+<li><b>Guided piano tune</b> opens a landscape screen. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. The pre-scan plays no tone and speaks nothing. It measures every note from A0 to C8, however sharp or flat, then shows <b>Got it</b> and <b>Next</b>. The mic stays on. Unreadable notes can be retried. Tap <b>OK</b> on the Tuning mode card before any string is tuned. Each string is tuned on its own, and the next note waits until you tap <b>Done</b>. A new piano asks you to pick the style and the string splits. Saved pianos can be loaded later. Later tuning steps still play the note, and a key turns green within about 2 cents. <b>Back</b> and <b>Steps</b> repeat any step. Progress is saved on this device and included in Backup.</li></ul>
 
 <h2 id="h-stretch">Piano stretch curves</h2>
 <p>Smaller pianos stretch more. Their strings are shorter, so they are stiffer. A stiff string rings a little sharp in its upper partials. That is called inharmonicity. Tuners stretch the scale so those partials line up. Bass notes sit flat of equal temperament. Treble notes sit sharp. A spinet stretches more than a studio upright. A studio upright stretches more than a baby grand. A baby grand stretches more than a 9 ft concert grand.</p>
@@ -310,6 +310,35 @@
 </div></div>
 <div id="gtune" hidden>
 <p id="gtRotate">Turn the phone sideways to use Guided piano tune. The keyboard, needle and readout stay on one screen.</p>
+<div id="gtPick" class="gtCover" hidden>
+<h2>Choose a piano</h2>
+<button type="button" id="gtNew" class="btn primary">New piano</button>
+<div id="gtSaved" class="gtSaved"></div>
+</div>
+<div id="gtStyle" class="gtCover" hidden>
+<h2>Choose the piano style</h2>
+<button type="button" class="btn" data-style="concert">Concert grand (9 ft)</button>
+<button type="button" class="btn" data-style="baby">Baby grand</button>
+<button type="button" class="btn" data-style="studio">Studio upright</button>
+<button type="button" class="btn" data-style="spinet">Spinet</button>
+<button type="button" id="gtStyleNext" class="btn primary" disabled>Continue</button>
+</div>
+<div id="gtSplits" class="gtCover" hidden>
+<h2>String layout</h2>
+<p id="gtSplit3Lab">Lowest 3-string key</p>
+<p id="gtSplit2Lab">Lowest 2-string key</p>
+<p class="hintline">Notes below the 2-string key have one string. Tap a key to change.</p>
+<div class="gtSplitBtns">
+<button type="button" class="btn pick" data-which="3">Set lowest 3-string key</button>
+<button type="button" class="btn pick" data-which="2">Set lowest 2-string key</button>
+</div>
+<button type="button" id="gtSplitsStart" class="btn primary">Start pre-scan</button>
+</div>
+<div id="gtTuneCard" class="gtCover" hidden>
+<h2>Tuning mode</h2>
+<p>The pre-scan is finished. Each string is tuned on its own. Nothing moves to the next note until you tap Done.</p>
+<button type="button" id="gtTuneOk" class="btn primary">OK</button>
+</div>
 <div class="gtBody">
 <div class="gtTop">
 <button type="button" id="gtClose" class="btn">Close</button>
@@ -319,18 +348,17 @@
 <button type="button" id="gtAgain" class="btn primary">Play again</button>
 <button type="button" id="gtSteps" class="btn">Steps</button>
 <button type="button" id="gtRetry" class="btn" hidden>Retry unread</button>
+<input id="gtPianoName" class="gtName" placeholder="Piano name" aria-label="Piano name">
+<button type="button" id="gtSave" class="btn">Save piano</button>
 <span id="gtTitle" class="gtTitle"></span><span id="gtCount" class="gtCount"></span>
 </div>
 <div class="gtRead">
 <div id="gtNote" class="gtNote">A0</div>
-<div>
 <div id="gtCents" class="gtCents">--</div>
 <div id="gtNeedleWrap" class="gtNeedle"><div id="gtNeedle"></div></div>
-</div>
-<div>
 <p id="gtPrompt" class="gtPrompt"></p>
 <p id="gtBeats" class="gtBeats"></p>
-</div>
+<button type="button" id="gtDone" class="btn primary gtDone" hidden>Done</button>
 </div>
 <div id="gtKeys" class="gtKeys"></div>
 <div id="gtList" class="gtList" hidden></div>

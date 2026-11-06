@@ -1,6 +1,7 @@
-const APP_VERSION=36;
+const APP_VERSION=37;
 // Release notes: add one entry per version. The popup shows RELEASE_NOTES[APP_VERSION].
 const RELEASE_NOTES={
+ 37:["After the pre-scan, a Tuning mode card waits until you tap OK.","Each note walks one string at a time. The next note waits until you tap Done.","A new piano asks for a style and where the single, double, and triple strings begin. Tap a key to set those.","Pianos can be saved by name, loaded, renamed, and deleted. A saved piano opens where you left off."],
  36:["The pre-scan now listens to every note from A0 to C8. It measures where the note sits. Sharp, flat, or in tune are all saved.","A steady reading turns the note green with Got it, then the next key blinks and stays lit. There is no chime and no spoken prompt. The mic stays on.","A note that cannot be read is marked unread and the scan moves on. Retry unread brings it back. Very low and very high notes are saved with lower confidence so they do not dominate the pitch raise."],
  35:["Help now has a Piano stretch curves chart. It shows Concert grand (9 ft), Baby grand, Studio upright, Spinet, and Typical from A0 to C8.","Smaller pianos stretch more because shorter strings are stiffer. The four size lines are calculated. Typical uses sourced anchor points, and the notes between those points are filled in.","Real tuners still fit each piano. The chart is a starting map, not a finished tuning."],
  34:["New Guided piano tune, opened from the Tuner tab. Turn the phone sideways: the 88 keys sit along the bottom, with the needle and cents above them.","The guide sets A4 first, builds the temperament from A3 and the thirds F3, A3, C#4 and F4, checks fourths, fifths and sixths, then tunes up the treble and down the bass by octaves.","It plays the note or chord for you to match. Listening pauses while that tone plays. A key turns green within about 2 cents, then the step moves on. Sharp or flat leans red.","Back and Steps repeat any step. A pre-scan can add a pitch-raise pass with overpull when the piano is flat, followed by a fine pass.","Choose Concert grand (9 ft), Baby grand, Studio upright, Spinet, Typical, or a saved profile. The choice is saved with the session and included in Backup."],
@@ -148,7 +149,7 @@ $('clipSave').onclick=async()=>{const name=$('clipName').value.trim()||$('clipNa
 $('clipName').addEventListener('keydown',e=>{if(e.key==='Enter')$('clipSave').click()});
 
 // ---- v23 Backup and restore (zip, STORE). Parts of about 40 MB, built one at a time (v28). ----
-const BK={PART_MB:40,plan:null,file:null,i:0,next:null,nextI:-1,tok:0,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met','pp-tuner','pp-tuner-profiles','pp-meter','pp-pianotune']};
+const BK={PART_MB:40,plan:null,file:null,i:0,next:null,nextI:-1,tok:0,LAST:'pp-lastBackup',DIRTY:'pp-backupDirty',SNOOZE:'pp-backupSnooze',PREFS:['accent','pp-pre','pp-post','pp-name','pp-beats','pp-met','pp-tuner','pp-tuner-profiles','pp-meter','pp-pianotune','pp-piano-profiles']};
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,v)}catch(e){}}
 function bkRender(){const t=+lsGet(BK.LAST)||0;$('bkLast').textContent='Last backup: '+(t?new Date(t).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}):'never');

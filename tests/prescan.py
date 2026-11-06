@@ -10,7 +10,8 @@ with sync_playwright() as p:
   pg.goto('http://127.0.0.1:8765/');pg.wait_for_timeout(800)
   pg.click('nav button[data-t=tun]')
   pg.wait_for_function("document.getElementById('tun').classList.contains('on')")
-  pg.locator('#gtOpen').scroll_into_view_if_needed();pg.click('#gtOpen');pg.wait_for_timeout(250)
+  pg.locator('#gtOpen').scroll_into_view_if_needed();pg.click('#gtOpen');pg.wait_for_timeout(200)
+  pg.click('#gtNew');pg.click('#gtStyle button[data-style=concert]');pg.click('#gtStyleNext');pg.click('#gtSplitsStart');pg.wait_for_timeout(300)
   assert pg.inner_text('#gtTitle').startswith('Pre-scan A0')
   assert 'Next: A 0' in pg.inner_text('#gtCents')
   note_h=pg.locator('#gtNote').bounding_box()['height']
