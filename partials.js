@@ -248,7 +248,13 @@ function renderStretch(){
  if(out.status!=='experimental'){box.textContent='Stretch unavailable. Not a tuning target.';if(more)more.textContent=out.reason;return}
  box.textContent='Experimental stretch. Not a tuning target.';
  if(more)more.textContent=long}
-function renderAll(){renderListen();drawDial(S.result);renderTable();renderStretch();markKeys();
+function renderKeep(){
+ const k=$p('pdKeep');if(!k)return;
+ if(S.refused){k.textContent='Not accepted. The reading is not sure enough.';return}
+ const saved=S.target!=null&&S.profile.notes[S.target]&&S.profile.notes[S.target].bStatus==='measured';
+ if(saved){k.textContent='Measurement accepted. Not tuned.';return}
+ k.textContent=''}
+function renderAll(){renderListen();drawDial(S.result);renderTable();renderStretch();renderKeep();markKeys();
  const sim=$p('pdSim');if(sim)sim.hidden=!S.sim}
 function keys(){
  const box=$p('pdKeys');if(!box||box.querySelector('button'))return;
@@ -270,7 +276,7 @@ function markKeys(){
  flag.hidden=false;flag.textContent=PartialCore.label(S.target);
  flag.style.left=(on.offsetLeft+on.offsetWidth/2)+'px'}
 function NAMES_BLACK(m){const n=((m%12)+12)%12;return n===1||n===3||n===6||n===8||n===10}
-function pick(m){S.target=m;S.sim=false;S.result=null;clearWave();renderAll()}
+function pick(m){S.target=m;S.sim=false;S.refused=false;S.result=null;clearWave();renderAll()}
 function loop(){
  if(!S.listening||!S.an||S.sim)return;
  S.an.getFloatTimeDomainData(S.buf);
@@ -307,9 +313,11 @@ function preview(opts){
  const sim=$p('pdSim');if(sim){sim.hidden=false;sim.textContent='Simulated preview. Not a live microphone.'}
  renderAll();return S.result}
 function storeCurrent(){
- const r=S.result;if(!r||r.bStatus!=='measured'||S.target==null)return false;
+ const r=S.result;
+ if(!r||r.bStatus!=='measured'||!(r.B>0)||S.target==null){S.refused=true;renderKeep();return false}
+ S.refused=false;
  S.profile.notes[S.target]={midi:S.target,B:r.B,bStatus:'measured',f1Heard:r.f1Heard,partials:r.partials.map(p=>p.n),at:Date.now()};
- renderStretch();markKeys();return true}
+ renderStretch();markKeys();renderKeep();return true}
 function saveNamed(){
  const name=($p('pdName')&&$p('pdName').value||'').trim();if(!name){$p('pdName')&&$p('pdName').focus();return}
  const id='pd'+Date.now();
@@ -322,7 +330,7 @@ function init(){
  if($p('pdHelp'))$p('pdHelp').onclick=openHelp;
  if($p('pdHelpBack'))$p('pdHelpBack').onclick=returnHelp;
  if($p('pdSaveNote'))$p('pdSaveNote').onclick=storeCurrent;
- if($p('pdRetry'))$p('pdRetry').onclick=()=>{if(S.target!=null)delete S.profile.notes[S.target];S.result=null;S.sim=false;clearWave();renderAll();if(!S.listening)startMic()};
+ if($p('pdRetry'))$p('pdRetry').onclick=()=>{if(S.target!=null)delete S.profile.notes[S.target];S.refused=false;S.result=null;S.sim=false;clearWave();renderAll();if(!S.listening)startMic()};
  if($p('pdSave'))$p('pdSave').onclick=saveNamed;
  if($p('pdDetailsBtn'))$p('pdDetailsBtn').onclick=()=>{const d=$p('pdDetails');setDetails(!!(d&&d.hidden))};
  window.addEventListener('resize',()=>{renderListen();markKeys()})}

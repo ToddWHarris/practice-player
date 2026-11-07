@@ -21,7 +21,16 @@ def fit(pg):
     if(overlap(note,keys))hits.push('note/keys');
     if(overlap(target,svg))hits.push('target/dial');
     if(overlap(target,listen))hits.push('target/listen');
-    const els=[note,listen,keys,svg,status].filter(Boolean);
+    const measure=box(document.getElementById('pdMeasure'));
+    const useBtn=box(document.getElementById('pdSaveNote'));
+    const dropBtn=box(document.getElementById('pdRetry'));
+    [measure,useBtn,dropBtn].forEach(el=>{
+      if(!el)return;
+      if(overlap(el,svg))hits.push(el.id+'/dial');
+      if(overlap(el,listen))hits.push(el.id+'/listen');
+      if(overlap(el,keys))hits.push(el.id+'/keys');
+    });
+    const els=[note,listen,keys,svg,status,measure,useBtn,dropBtn].filter(Boolean);
     const clip=els.filter(e=>e.l<g.left-2||e.r>g.right+2||e.t<g.top-2||e.b>g.bottom+2).map(e=>e.id);
     const whites=[...document.querySelectorAll('#pdKeys .wk')];
     const a0=whites[0]&&whites[0].getBoundingClientRect();
@@ -61,6 +70,11 @@ with sync_playwright() as p:
   assert pg.locator('#pdKeys .wk').count()==52 and pg.locator('#pdKeys .bk').count()==36
   assert pg.locator('#pdSamples').count()==0 and pg.locator('.pdEx').count()==0
   assert 'Example notes' not in pg.inner_text('#pdial')
+  assert pg.inner_text('#pdSaveNote')=='Use this measurement'
+  assert pg.inner_text('#pdRetry')=='Discard and measure again'
+  assert "does not mark the note as tuned" in pg.inner_text('#pdMeasure')
+  assert 'Use this measurement' in pg.inner_text('#helpBody') and 'Discard and measure again' in pg.inner_text('#helpBody')
+  assert 'Keep this note' not in pg.inner_text('#helpBody') and 'Retry note' not in pg.inner_text('#helpBody')
   assert 'Tap a key on the keyboard' in pg.inner_text('#helpBody')
   assert 'example notes' not in pg.inner_text('#helpBody').lower()
   pg.click('#pdDetailsBtn'); pg.wait_for_timeout(100)
@@ -121,6 +135,17 @@ with sync_playwright() as p:
   assert pg.inner_text('#pdTargetName')=='A3'
   assert pg.locator('#gtKeys').count()==1
   assert pg.locator('#pdial button', has_text='A0').count()==0
+  pg.evaluate("()=>PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]})")
+  assert pg.evaluate('()=>PartialDial.storeCurrent()') is True
+  assert 'Measurement accepted' in pg.inner_text('#pdKeep') and 'Not tuned' in pg.inner_text('#pdKeep')
+  pg.evaluate("()=>PartialDial.preview({midi:60,f1:261.63,B:0.0004,partials:[1]})")
+  assert pg.evaluate('()=>PartialDial.storeCurrent()') is False
+  assert 'Not accepted' in pg.inner_text('#pdKeep')
+  assert pg.evaluate("()=>!PartialDial._profile().notes[60]")
+  pg.click('#pdRetry')
+  pg.wait_for_timeout(100)
+  assert pg.inner_text('#pdKeep')==''
+  assert pg.evaluate("()=>!PartialDial._profile().notes[60]")
   b.close()
 assert not errs, errs
 print('PARTIAL DIAL OK')

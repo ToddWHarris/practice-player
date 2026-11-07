@@ -242,7 +242,7 @@
 <p><b>The dial.</b> Zero stays at the top. Sharp is to the right. Flat is to the left. The big note and the cents in the center are partial 1 when that overtone is heard. If partial 1 is not heard, the center says so and ring 1 is not drawn.</p>
 <p><b>Rings.</b> Each ring is one overtone that was actually found, numbered 1, 2, 3, and so on. The mark on the ring is how far that overtone sits from the same number times the equal-temperament pitch of the note. Cents are a fraction of a semitone. Hertz are the measured frequency. A missing overtone is left off the dial. The app does not invent ring 1.</p>
 <p><b>Stiffness.</b> When enough overtones are clear, the app fits a stiffness number called B. In that fit, f0 is the ideal unstiffened fundamental, not the tone you hear. Partial 1 is a different number. If the evidence is thin, B says unavailable.</p>
-<p><b>Sampling.</b> Keep this note stores a measured note. Retry note clears it so you can try again. Save profile keeps the set on this device under a new name and includes it in Backup. Older piano profiles and the guided session are not changed. A note you did not measure is not treated as measured. Between measured notes the experimental curve may interpolate. Outside them it says unavailable.</p>
+<p><b>Sampling.</b> Use this measurement keeps a stiffness reading only when the fit is clear. It does not mark the note as tuned. If the reading is not sure enough, nothing is kept. Discard and measure again clears that reading and listens once more. Save profile stores the set on this device under a new name and includes it in Backup. Until you save a profile, the reading is only for this visit. Older piano profiles and the guided session are not changed. A note you did not measure is not treated as measured. Between measured notes the experimental curve may interpolate. Outside them it says unavailable.</p>
 <p><b>Custom stretch.</b> If at least three notes have measured stiffness, including A4, the app can show an experimental 4:2 octave walk from A4. That view is not a tuning target. The guided tune does not switch to it.</p>
 <p><b>Microphone.</b> The dial asks the browser to turn off automatic gain, noise suppression, and echo cancellation. A phone may ignore that. A short, quiet, or noisy take stays uncertain. Two notes at once, or two strings that do not match, are not drawn as one clean note.</p>
 <p><b>Interval beats are separate.</b> The guided check that says "Comparing overtones to measure their beats" is two notes at once. This dial is one note. Intentional beats are not always zero. Nothing here claims an accuracy number for a real piano.</p>
@@ -464,8 +464,10 @@
 <div class="pdRight">
 <button type="button" id="pdDetailsBtn" class="btn" aria-expanded="false">Details</button>
 <div class="pdActs">
-<button type="button" id="pdSaveNote" class="btn">Keep this note</button>
-<button type="button" id="pdRetry" class="btn">Retry note</button>
+<p id="pdMeasure" class="pdMeasure">This measures the string's stiffness; it does not mark the note as tuned.</p>
+<p id="pdKeep" class="pdKeep"></p>
+<button type="button" id="pdSaveNote" class="btn">Use this measurement</button>
+<button type="button" id="pdRetry" class="btn">Discard and measure again</button>
 <input id="pdName" class="gtName" placeholder="Profile name" aria-label="Partial profile name">
 <button type="button" id="pdSave" class="btn">Save profile</button>
 </div>
