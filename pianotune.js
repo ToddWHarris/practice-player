@@ -64,11 +64,99 @@ const PianoTune=(function(){
  const INTERVALS={M3:{semi:4,p:5,q:4,name:'major third'},P4:{semi:5,p:4,q:3,name:'fourth'},P5:{semi:7,p:3,q:2,name:'fifth'},M6:{semi:9,p:5,q:3,name:'major sixth'},P8:{semi:12,p:4,q:2,name:'octave'}};
  function expectedBeat(curve,bFn,a4,a,kind){
   const spec=INTERVALS[kind];if(!spec)return null;
-  const b=a+spec.semi,ca=curve[a]||0,cb=curve[b]||0;
+  const b=a+spec.semi,ca=(curve&&curve[a])||0,cb=(curve&&curve[b])||0;
   const fa=targetFreq(a,ca,a4),fb=targetFreq(b,cb,a4);
   const Ba=bFn?bFn(a):0,Bb=bFn?bFn(b):0;
-  const beat=Math.abs(partialFreq(fa,spec.p,Ba)-partialFreq(fb,spec.q,Bb));
-  return{a,b,kind,name:spec.name,beat,label:label(a)+'-'+label(b)}}
+  const low=partialFreq(fa,spec.p,Ba),high=partialFreq(fb,spec.q,Bb);
+  const lowH=partialFreq(fa,spec.p,0),highH=partialFreq(fb,spec.q,0);
+  return{a,b,kind,name:spec.name,p:spec.p,q:spec.q,fa,fb,low,high,beat:Math.abs(low-high),harmonic:Math.abs(lowH-highH),label:label(a)+'-'+label(b),model:'size'}}
+ function fftMag(frame){
+  const n0=frame.length|0;if(n0<32)return null;
+  let n=1;while(n<n0)n<<=1;if(n<1024)n=1024;
+  const re=new Float64Array(n),im=new Float64Array(n);
+  for(let i=0;i<n0;i++){const w=0.5*(1-Math.cos((2*Math.PI*i)/Math.max(1,n0-1)));re[i]=frame[i]*w}
+  for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}
+  for(let len=2;len<=n;len<<=1){const ang=-2*Math.PI/len,wr=Math.cos(ang),wi=Math.sin(ang);
+   for(let i=0;i<n;i+=len){let wrk=1,wik=0;const half=len>>1;
+    for(let k=0;k<half;k++){const ur=re[i+k],ui=im[i+k],vr=re[i+k+half]*wrk-im[i+k+half]*wik,vi=re[i+k+half]*wik+im[i+k+half]*wrk;
+     re[i+k]=ur+vr;im[i+k]=ui+vi;re[i+k+half]=ur-vr;im[i+k+half]=ui-vi;
+     const nr=wrk*wr-wik*wi;wik=wrk*wi+wik*wr;wrk=nr}}}
+  const mag=new Float64Array(n>>1);
+  for(let i=0;i<mag.length;i++)mag[i]=Math.hypot(re[i],im[i]);
+  return{mag,n,n0}}
+ function localPeaks(spec,sr,f0,halfHz){
+  if(!spec||!(f0>0))return [];
+  const mag=spec.mag,binHz=sr/spec.n;
+  const i0=Math.max(1,Math.round((f0-halfHz)/binHz)),i1=Math.min(mag.length-2,Math.round((f0+halfHz)/binHz));
+  const out=[];
+  for(let i=i0;i<=i1;i++){
+   if(!(mag[i]>=mag[i-1]&&mag[i]>=mag[i+1])||!(mag[i]>0))continue;
+   const a=mag[i-1],b=mag[i],c=mag[i+1],den=a-2*b+c;
+   let d=0;if(Math.abs(den)>1e-12)d=Math.max(-0.5,Math.min(0.5,(a-c)/(2*den)));
+   const vals=[];
+   for(let k=Math.max(1,i-36);k<=Math.min(mag.length-1,i+36);k++)if(Math.abs(k-i)>3)vals.push(mag[k]);
+   vals.sort((x,y)=>x-y);
+   const med=vals.length?vals[vals.length>>1]:0;
+   out.push({freq:(i+d)*binHz,mag:b,snr:med>1e-12?b/med:999})}
+  out.sort((x,y)=>y.mag-x.mag);
+  return out}
+ function peakNear(spec,sr,f0,halfHz){
+  if(!spec||!(f0>0))return null;
+  const mag=spec.mag,binHz=sr/spec.n;
+  let i0=Math.max(1,Math.round((f0-halfHz)/binHz)),i1=Math.min(mag.length-2,Math.round((f0+halfHz)/binHz));
+  if(i1<=i0+1)return null;
+  let best=i0,bestM=-1;
+  for(let i=i0;i<=i1;i++)if(mag[i]>bestM){bestM=mag[i];best=i}
+  if(!(mag[best]>=mag[best-1]&&mag[best]>=mag[best+1]))return null;
+  const a=mag[best-1],b=mag[best],c=mag[best+1],den=a-2*b+c;
+  let d=0;if(Math.abs(den)>1e-12)d=Math.max(-0.5,Math.min(0.5,(a-c)/(2*den)));
+  const vals=[];
+  for(let i=Math.max(1,best-36);i<=Math.min(mag.length-1,best+36);i++)if(Math.abs(i-best)>3)vals.push(mag[i]);
+  vals.sort((x,y)=>x-y);
+  const med=vals.length?vals[vals.length>>1]:0;
+  return{freq:(best+d)*binHz,mag:bestM,snr:med>1e-12?bestM/med:999}}
+ function strongFundamentals(spec,sr,funds){
+  let best=0;const hits=[];
+  (funds||[]).forEach(f=>{const pk=peakNear(spec,sr,f,Math.max(8,f*0.02));if(pk&&pk.snr>=5){hits.push(pk);if(pk.mag>best)best=pk.mag}});
+  if(!(best>0))return 0;
+  return hits.filter(pk=>pk.mag>=best*0.45).length}
+ function analyzeIntervalAudio(samples,sampleRate,query){
+  query=query||{};const sr=+sampleRate,n0=samples?samples.length|0:0;
+  const blank=(reason)=>({status:'uncertain',confidence:'uncertain',reason,beat:null,label:'',pair:null,resolutionHz:n0>0&&sr>0?sr/n0:null,windowSec:sr>0?n0/sr:0});
+  if(!query.pairs||!query.pairs.length)return blank('unsupported');
+  const pairs=query.pairs.filter(p=>p&&p.p>p.q);
+  if(!pairs.length)return blank('unsupported');
+  if(!(sr>=8000)||n0<32)return blank('short');
+  let e=0;for(let i=0;i<n0;i++)e+=samples[i]*samples[i];
+  const rms=Math.sqrt(e/Math.max(1,n0));
+  if(!(rms>0.004))return blank('silence');
+  const windowSec=n0/sr,resolutionHz=sr/n0;
+  if(windowSec<0.45)return Object.assign(blank('short'),{resolutionHz,windowSec,rms});
+  const spec=fftMag(samples);if(!spec)return blank('short');
+  const funds=query.notes||[];
+  if(strongFundamentals(spec,sr,funds)>=3)return Object.assign(blank('three-notes'),{resolutionHz,windowSec,rms});
+  const found=[];let unresolved=null,sawOne=false;
+  for(let pi=0;pi<pairs.length;pi++){
+   const pair=pairs[pi];if(!(pair.fa>0)||!(pair.fb>0))continue;
+   const expectLo=pair.low||partialFreq(pair.fa,pair.p,0),expectHi=pair.high||partialFreq(pair.fb,pair.q,0);
+   const center=(expectLo+expectHi)/2;
+   const half=Math.min(Math.max(20,center*0.04),Math.max(pair.fa,pair.fb)*0.45);
+   const peaks=localPeaks(spec,sr,center,half).filter(pk=>pk.snr>=3.2);
+   if(peaks.length>=1)sawOne=true;
+   if(peaks.length<2||peaks[1].mag<peaks[0].mag*0.15)continue;
+   const lo=peaks[0],hi=peaks[1];
+   const beat=Math.abs(lo.freq-hi.freq);
+   const sepBins=beat/resolutionHz;
+   const snr=Math.min(lo.snr,hi.snr);
+   if(sepBins<2.2){unresolved=Object.assign(blank('resolution'),{resolutionHz,windowSec,rms,lowHz:lo.freq,highHz:hi.freq});continue}
+   if(!(snr>=6&&sepBins>=3)){unresolved=Object.assign(blank('noise'),{resolutionHz,windowSec,rms});continue}
+   found.push({status:'ok',confidence:'high',reason:'ok',beat,label:pair.label||'',pair:pair.kind||null,p:pair.p,q:pair.q,lowHz:lo.freq,highHz:hi.freq,resolutionHz,windowSec,rms,snr})}
+  if(!found.length){
+   if(unresolved)return unresolved;
+   const reason=sawOne?'missing-partial':(rms>0.02?'noise':'missing-partial');
+   return Object.assign(blank(reason),{resolutionHz,windowSec,rms})}
+  if(found.length>1)return Object.assign(blank('ambiguous'),{resolutionHz,windowSec,rms});
+  return found[0]}
  function measureBeats(frames,dt){
   if(!frames||frames.length<12||!(dt>0))return null;
   const n=frames.length;let mean=0;for(let i=0;i<n;i++)mean+=frames[i];mean/=n;
@@ -136,9 +224,9 @@ const PianoTune=(function(){
   if(raise)for(let m=LO;m<=HI;m++)steps.push(step({phase:'raise',midi:m,title:'Pitch raise '+label(m),prompt:promptFor('raise',m)}));
   const skeleton=[69,57,53,61,65];
   skeleton.forEach(m=>steps.push(step({phase:m===69?'a4':'temper',midi:m,title:(m===69?'Set ':'Tune ')+label(m),prompt:promptFor(m===69?'a4':'temper',m)})));
-  steps.push(step({phase:'check',title:'Progressive thirds',prompt:'Play F3-A3, then A3-C#4, then C#4-F4. The beats should get faster. Each highlighted key turns green when it is in tune.',midis:[53,57,61,65],intervals:[{a:53,kind:'M3'},{a:57,kind:'M3'},{a:61,kind:'M3'}]}));
+  steps.push(step({phase:'check',title:'Progressive thirds',prompt:'Play two notes of one pair and hold them. F3 with A3, then A3 with C sharp 4, then C sharp 4 with F4. The app reads partials for that pair. It does not pass the step. Tap Done after you have read the numbers.',midis:[53,57,61,65],intervals:[{a:53,kind:'M3'},{a:57,kind:'M3'},{a:61,kind:'M3'}]}));
   [62,55,60,64,59,54,56,58,63].forEach(m=>steps.push(step({phase:'temper',midi:m,title:'Tune '+label(m),prompt:promptFor('temper',m)})));
-  steps.push(step({phase:'check',title:'Check fourth, fifth and sixth',prompt:'Play each pair. Compare the beat you hear with the expected rate.',midis:[57,62,64,53],intervals:[{a:57,kind:'P4'},{a:57,kind:'P5'},{a:53,kind:'M6'}]}));
+  steps.push(step({phase:'check',title:'Check fourth, fifth and sixth',prompt:'Play two notes of one pair and hold them. This step cannot read three notes at once. The numbers are models plus a partial reading. They are not a pass. Tap Done after you have read them.',midis:[57,62,64,53],intervals:[{a:57,kind:'P4'},{a:57,kind:'P5'},{a:53,kind:'M6'}]}));
   for(let m=66;m<=HI;m++)steps.push(step({phase:'up',midi:m,title:'Treble '+label(m),prompt:promptFor('up',m)}));
   for(let m=52;m>=LO;m--)steps.push(step({phase:'down',midi:m,title:'Bass '+label(m),prompt:promptFor('down',m)}));
   for(let m=LO;m<=HI;m++)steps.push(step({phase:'fine',midi:m,title:'Fine '+label(m),prompt:promptFor('fine',m)}));
@@ -214,7 +302,7 @@ const PianoTune=(function(){
  function jump(state,index,count){
   const i=Math.max(0,Math.min(count-1,index|0));
   return Object.assign({},state,{step:i,holdStart:null,holdMidi:null,green:{},hist:[],lean:0,outSince:null})}
- return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
+ return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,analyzeIntervalAudio,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
 if(typeof module!=='undefined')module.exports=PianoTune;
 
 if(typeof document!=='undefined'){
@@ -250,7 +338,49 @@ function targetCents(step,midi){
   return base}
 function beatsText(step){
   if(!step||!step.intervals)return'';
-  return step.intervals.map(iv=>{const e=PT.expectedBeat(G.curve.cents,bFn(),G.sess.a4,iv.a,iv.kind);return e&&isFinite(e.beat)?e.label+' '+e.name+' about '+e.beat.toFixed(1)+' beats/s':''}).filter(Boolean).join('. ');
+  const lines=step.intervals.map(iv=>{const e=PT.expectedBeat(G.curve.cents,bFn(),G.sess.a4,iv.a,iv.kind);if(!e||!isFinite(e.beat))return'';return e.label+' size model '+e.beat.toFixed(1)+' beats/s, harmonic model '+e.harmonic.toFixed(1)+' beats/s (partials '+e.p+'/'+e.q+')'}).filter(Boolean);
+  return lines.length?lines.join('. ')+'. Models only. Not measured on this piano.':'';
+}
+function intervalQuery(step){
+  const pairs=(step.intervals||[]).map(iv=>PT.expectedBeat(G.curve.cents,bFn(),G.sess.a4,iv.a,iv.kind)).filter(Boolean);
+  const notes=[],seen={};
+  (step.midis||[]).forEach(m=>{if(seen[m])return;seen[m]=1;notes.push(PT.targetFreq(m,(G.curve&&G.curve.cents&&G.curve.cents[m])||0,G.sess.a4))});
+  return{pairs,notes};
+}
+function reasonText(code){
+  if(code==='silence')return 'The sound was too quiet.';
+  if(code==='short')return 'Hold the two notes a little longer.';
+  if(code==='resolution')return 'The beats are too slow to separate in this take.';
+  if(code==='missing-partial')return 'One of the two partials was missing.';
+  if(code==='noise')return 'The partials were lost in noise.';
+  if(code==='three-notes')return 'Three or more notes are sounding. Play only two.';
+  if(code==='ambiguous')return 'More than one pair was heard. Play one pair.';
+  if(code==='unsupported')return 'This check does not read unison beats.';
+  return 'The partials were not clear.';
+}
+function measuredText(){
+  const r=G.beatRead;
+  if(!r)return 'Measured: waiting for two notes held together. Not a pass.';
+  if(r.status!=='ok'||!(r.beat>=0)||r.confidence==='uncertain')return 'Measured: uncertain. '+(reasonText(r.reason)||'')+' Not a pass.';
+  return 'Measured '+(r.label?r.label+' ':'')+r.beat.toFixed(1)+' beats/s. Confidence '+r.confidence+'. Not a pass.';
+}
+function clearWave(){G.wave=null;G.waveN=0;G.waveSr=0;G.beatAt=0;G.beatRead=null}
+function appendWave(buf,sr){
+  if(!G.wave||G.waveSr!==sr){G.wave=new Float32Array(Math.floor(sr*1.25));G.waveN=0;G.waveSr=sr}
+  const cap=G.wave.length;
+  for(let i=0;i<buf.length;i++){G.wave[G.waveN%cap]=buf[i];G.waveN++}
+}
+function waveSlice(n){
+  const out=new Float32Array(n),cap=G.wave.length,start=G.waveN-n;
+  for(let i=0;i<n;i++)out[i]=G.wave[(start+i)%cap];
+  return out}
+function readInterval(step,now){
+  if(!G.wave||!G.waveSr){G.beatRead={status:'uncertain',confidence:'uncertain',reason:'short'};return}
+  const need=Math.floor(G.waveSr*1);
+  if(G.waveN<need){G.beatRead={status:'uncertain',confidence:'uncertain',reason:'short'};return}
+  const t0=now||0;
+  G.beatRead=PT.analyzeIntervalAudio(waveSlice(need),G.waveSr,intervalQuery(step));
+  if(G.beatRead)G.beatRead.lagMs=t0?Math.max(0,(performance.now()-t0)):null;
 }
 function renderKeys(){
   const box=$g('gtKeys');if(!box||box.childElementCount)return;
@@ -277,9 +407,10 @@ function render(){
   $g('gtPrompt').textContent=G.showGot?'Saved.':(step.prompt||'');
   $g('gtCount').textContent=(shown+1)+' / '+G.seq.length;
   const beats=beatsText(step);
-  const measured=G.measured;
-  const beatLine=(beats?('Expected: '+beats+'. '):'')+(step.phase==='check'?(typeof measured==='number'?'Measured about '+measured.toFixed(1)+' beats/s.':'Measured: play both notes together.'):'');
+  const beatLine=step.phase==='check'?(beats?beats+' ':'')+measuredText():beats;
   $g('gtBeats').textContent=beatLine;$g('gtBeats').hidden=!beatLine;
+  $g('gtune').classList.toggle('checking',step.phase==='check');
+  if(step.phase==='check')G.showDone=true;
   const show=G.showGot&&G.gotMidi!=null?G.gotMidi:(step.midis?step.midis[0]:step.midi);
   $g('gtNote').textContent=PT.label(show)+(G.showGot?' ✓':'');
   $g('gtNote').classList.toggle('got',!!G.showGot);
@@ -307,7 +438,7 @@ function renderList(){
   const ul=$g('gtList');ul.innerHTML='';
   G.seq.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+'. '+s.title;if(i===G.sess.step)b.className='on';b.onclick=()=>{jumpTo(i);$g('gtList').hidden=true};ul.append(b)});
 }
-function jumpTo(i){G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
+function jumpTo(i){G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];clearWave();saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
 function onKey(m){if(G.pickSplit){if(G.pickSplit===3)G.sess.split3=m;else G.sess.split2=m;if(G.sess.split2!=null&&G.sess.split3!=null&&G.sess.split2>=G.sess.split3)G.sess.split2=G.sess.split3-1;renderSplits();return}jumpToMidi(m)}
 function jumpToMidi(m){const i=G.seq.findIndex((s,idx)=>idx>=G.sess.step&&s.midis&&s.midis.indexOf(m)>=0);if(i>=0)jumpTo(i)}
 function renderSplits(){renderKeys();if($g('gtSplit3Lab'))$g('gtSplit3Lab').textContent='Lowest 3-string key: '+(G.sess.split3!=null?PT.label(G.sess.split3):'');if($g('gtSplit2Lab'))$g('gtSplit2Lab').textContent='Lowest 2-string key: '+(G.sess.split2!=null?PT.label(G.sess.split2):'');document.querySelectorAll('#gtSplits .pick').forEach(b=>b.classList.toggle('on',+b.dataset.which===G.pickSplit));document.querySelectorAll('#gtKeys button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');el.classList.add(m===G.sess.split2||m===G.sess.split3?'next':'dim')})}
@@ -322,18 +453,21 @@ function loop(){
     const now=performance.now();
     G.env.push({t:now,v:rms});if(G.env.length>90)G.env.shift();
     trackAttack(rms);
-    if(stepNow()&&stepNow().phase==='check'&&G.env.length>=24){const dt=(G.env[G.env.length-1].t-G.env[0].t)/1000/(G.env.length-1);const mb=PT.measureBeats(G.env.map(x=>x.v),dt);if(mb)G.measured=mb}
     const step=stepNow();
     if(step&&step.phase==='prescan'&&!G.showGot&&!G.showUnread&&G.armAt&&now-G.armAt>PT.PRESCAN_WAIT&&!G.sess.prescan[step.midi])markUnread();
-    const f=TunerCore.yin(G.buf,G.ctx.sampleRate,0.12);
-    if(f)onFreq(f,now)}
+    if(step&&step.phase==='check'){
+     appendWave(G.buf,G.ctx.sampleRate);
+     if(!G.beatAt||now-G.beatAt>450){G.beatAt=now;readInterval(step,now);render()}
+    }else{
+     const f=TunerCore.yin(G.buf,G.ctx.sampleRate,0.12);
+     if(f)onFreq(f,now)}}
   G.raf=requestAnimationFrame(loop)}
 function trackAttack(rms){
   G.peak=Math.max(rms,(G.peak||0)*0.97);
   if(G.peak>0.008&&rms<G.peak*0.28)G.sawQuiet=true;
   if(G.sawQuiet&&rms>Math.max(0.012,G.peak*0.5)){G.attack=true;G.sawQuiet=false}}
 function onFreq(freq,now){
-  const step=stepNow();if(!step||!G.sess||!G.sess.ready||G.showTuningCard||G.sounding||G.showGot||G.showUnread)return;
+  const step=stepNow();if(!step||!G.sess||!G.sess.ready||G.showTuningCard||G.sounding||G.showGot||G.showUnread||step.phase==='check')return;
   let midi=step.midi,best=1e9,picked=freq;
   (step.midis||[step.midi]).forEach(m=>{
     const hz=PT.targetFreq(m,targetCents(step,m),G.sess.a4);
@@ -478,7 +612,11 @@ function init(){
   if($g('gtSave'))$g('gtSave').onclick=savePiano;
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.on)stopListen()});
 }
-Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
+function previewInterval(samples,sampleRate){
+ const step=stepNow();if(!step||step.phase!=='check')return null;
+ G.beatRead=PT.analyzeIntervalAudio(samples,sampleRate,intervalQuery(step));
+ G.showDone=true;render();return G.beatRead}
+Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,previewInterval,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
 window.PianoTune=PianoTune;
 document.addEventListener('DOMContentLoaded',init);
 if(document.readyState!=='loading')init();

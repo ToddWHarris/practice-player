@@ -172,6 +172,11 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 #gtNeedle{position:absolute;top:0;bottom:0;width:3px;margin-left:-1px;background:#e5e7eb;left:50%}
 .gtNeedle.ok{border-color:#4ade80}
 .gtPrompt,.gtBeats{margin:0;font-size:20px;line-height:1.2;text-align:center;max-width:680px}
+#gtune.checking .gtBeats{font-size:14px;line-height:1.2;max-width:920px}
+#gtune.checking .gtPrompt{font-size:15px}
+#gtune.checking .gtNote{font-size:40px}
+#gtune.checking #gtCents,#gtune.checking #gtNeedleWrap{display:none}
+#gtune.checking .gtDone{min-height:44px;font-size:22px}
 .gtCover{position:absolute;left:0;right:0;top:56px;bottom:0;z-index:8;background:#0b0f17;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 16px;text-align:center}
 #gtSplits{bottom:98px;justify-content:flex-start;overflow:hidden;gap:4px;padding-top:4px}
 #gtSplits h2{font-size:28px}
