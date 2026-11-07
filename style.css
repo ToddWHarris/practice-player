@@ -173,6 +173,38 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtNeedle.ok{border-color:#4ade80}
 .gtPrompt,.gtBeats{margin:0;font-size:18px;line-height:1.25;text-align:center;max-width:720px}
 .gtDetail{margin:0;font-size:14px;line-height:1.25;text-align:center;max-width:720px;color:#cbd5e1}
+#pdial{position:fixed;inset:0;z-index:72;background:#0b0f17;color:#e5e7eb;overflow:auto;padding:max(8px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:6px}
+#pdial[hidden]{display:none!important}
+.pdSim{margin:0;text-align:center;font-weight:800;color:#fde68a;font-size:14px}
+.pdTop{display:flex;gap:8px;align-items:center}
+.pdMain{display:flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto}
+.pdTarget{display:none;flex-direction:column;align-items:center;min-width:4.2em}
+#pdTarget[hidden]{display:none!important}
+.pdKicker{font-size:12px;letter-spacing:.14em;font-weight:800;color:#d6d3d1}
+#pdTargetName{font-size:48px;font-weight:800;line-height:.9}
+.pdDialWrap{position:relative;width:min(72vw,300px);flex:0 0 auto}
+#pdSvg{width:100%;height:auto;display:block}
+.pdCenter{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;color:#3f2a1d;pointer-events:none}
+#pdNote{font:800 42px Georgia,serif;line-height:.9}
+#pdCents{font-size:16px;font-weight:700}
+.pdListen{margin:0;text-align:center;font-size:17px;font-weight:700;line-height:1.25}
+.pdDetail,.pdTable,.pdStretch,.pdCap{margin:0;text-align:center;font-size:13px;line-height:1.3;color:#e5e7eb}
+.pdSamples{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.pdEx.measured{outline:2px solid #4ade80}
+.pdActs{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.pdKeys{position:relative;height:72px;display:flex;align-items:stretch;gap:1px}
+.pdKeys .wk{flex:1;background:#f8fafc;border:1px solid #cbd5e1;border-radius:0 0 3px 3px;min-height:0;padding:0}
+.pdKeys .bk{position:absolute;top:0;height:58%;width:1.35%;background:#0f172a;border:1px solid #000;z-index:2;min-height:0;padding:0}
+@media (orientation:landscape) and (max-height:520px){
+ #pdial{gap:4px}
+ .pdMain{justify-content:flex-start}
+ #pdTarget:not([hidden]){display:flex}
+ .pdDialWrap{width:min(34vh,220px)}
+ #pdNote{font-size:32px}
+ .pdListen{font-size:15px}
+ .pdKeys{height:58px}
+ .pdActs .btn{min-height:40px;padding:6px 10px}
+}
 #gtune.checking .gtBeats{font-size:14px;line-height:1.2;max-width:920px}
 #gtune.checking .gtPrompt{font-size:15px}
 #gtune.checking .gtNote{font-size:40px}

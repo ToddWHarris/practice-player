@@ -81,6 +81,8 @@
 <p id="tuHint" class="tuHint hintline"></p>
 <button type="button" id="gtOpen" class="btn primary">Guided piano tune</button>
 <p class="hintline">A landscape guide for tuning a piano: pre-scan, pitch raise when the piano is flat, temperament, octaves, then a fine pass. Turn the phone sideways.</p>
+<button type="button" id="pdOpen" class="btn">Partial dial (experimental)</button>
+<p class="hintline">Measures overtones of one note you choose. It does not replace the 88-note pre-scan. The stretch view is not a tuning target.</p>
 </div></section>
 <section id="lvl" class="tab"><div id="lvDisp" class="lvDisp">
 <p id="lvKind" class="lvKind">Not calibrated</p>
@@ -231,6 +233,18 @@
 <li>Do not yank. Broken strings and damaged pinblocks are not worth a hurried turn.</li>
 </ul>
 <p>This section is a starting guide. Professional training (for example through the Piano Technicians Guild) goes deeper. Use this app's guided steps together with careful hammer feel and firm test blows.</p>
+
+<h2 id="h-partial-dial">Partial dial (experimental)</h2>
+<button type="button" id="pdHelpBack" class="btn" hidden>Back to partial dial</button>
+<p>This screen measures the overtones of one note. It is an experiment. It is not certified, and it is not a tuning exam. It does not replace the 88-note pre-scan.</p>
+<p><b>What to play.</b> Tap a key, or one of the example notes. Then play that note alone and mute the other strings. The screen says this while it is listening. Example notes such as A0 through A6 are only a suggestion. Seven notes are not a rule.</p>
+<p><b>The dial.</b> Zero stays at the top. Sharp is to the right. Flat is to the left. The big note and the cents in the center are partial 1 when that overtone is heard. If partial 1 is not heard, the center says so and ring 1 is not drawn.</p>
+<p><b>Rings.</b> Each ring is one overtone that was actually found, numbered 1, 2, 3, and so on. The mark on the ring is how far that overtone sits from the same number times the equal-temperament pitch of the note. Cents are a fraction of a semitone. Hertz are the measured frequency. A missing overtone is left off the dial. The app does not invent ring 1.</p>
+<p><b>Stiffness.</b> When enough overtones are clear, the app fits a stiffness number called B. In that fit, f0 is the ideal unstiffened fundamental, not the tone you hear. Partial 1 is a different number. If the evidence is thin, B says unavailable.</p>
+<p><b>Sampling.</b> Keep this note stores a measured note. Retry note clears it so you can try again. Save profile keeps the set on this device under a new name and includes it in Backup. Older piano profiles and the guided session are not changed. A note you did not measure is not treated as measured. Between measured notes the experimental curve may interpolate. Outside them it says unavailable.</p>
+<p><b>Custom stretch.</b> If at least three notes have measured stiffness, including A4, the app can show an experimental 4:2 octave walk from A4. That view is not a tuning target. The guided tune does not switch to it.</p>
+<p><b>Microphone.</b> The dial asks the browser to turn off automatic gain, noise suppression, and echo cancellation. A phone may ignore that. A short, quiet, or noisy take stays uncertain. Two notes at once, or two strings that do not match, are not drawn as one clean note.</p>
+<p><b>Interval beats are separate.</b> The guided check that says "Comparing overtones to measure their beats" is two notes at once. This dial is one note. Intentional beats are not always zero. Nothing here claims an accuracy number for a real piano.</p>
 
 <h2 id="h-lvl">Level</h2>
 <ul><li>Open the <b>Level</b> tab. Tap <b>Start</b> to use the microphone. Tap <b>Stop</b>, leave the tab, switch apps, or play a song, and the mic turns off. Nothing is recorded or uploaded.</li>
@@ -402,7 +416,6 @@
 <label>Piano <select id="gtType" aria-label="Piano type"></select></label>
 <label>Goal A4 <input id="gtA4" type="number" min="430" max="450" step="0.1" aria-label="Goal pitch"> Hz</label>
 <button type="button" id="gtBack" class="btn">Back</button>
-<button type="button" id="gtAgain" class="btn primary">Play again</button>
 <button type="button" id="gtSteps" class="btn">Steps</button>
 <button type="button" id="gtRetry" class="btn" hidden>Retry unread</button>
 <input id="gtPianoName" class="gtName" placeholder="Piano name" aria-label="Piano name">
@@ -422,5 +435,44 @@
 <div id="gtList" class="gtList" hidden></div>
 </div>
 </div>
+<div id="pdial" hidden>
+<p id="pdSim" class="pdSim" hidden>Simulated preview. Not a live microphone.</p>
+<div class="pdTop">
+<button type="button" id="pdClose" class="btn">Close</button>
+<button type="button" id="pdHelp" class="btn">Help</button>
+<strong>Partial dial, experimental</strong>
+</div>
+<div class="pdMain">
+<div id="pdTarget" class="pdTarget" hidden><span class="pdKicker">Tune</span><div id="pdTargetName"></div></div>
+<div class="pdDialWrap">
+<svg id="pdSvg" viewBox="0 0 320 320" role="img" aria-label="Partial dial">
+<defs>
+<radialGradient id="pdRim" cx="50%" cy="40%" r="70%">
+<stop offset="0%" stop-color="#f4f7fb"/><stop offset="45%" stop-color="#c5ccd6"/><stop offset="100%" stop-color="#7d868f"/>
+</radialGradient>
+</defs>
+<circle cx="160" cy="160" r="152" fill="url(#pdRim)"/>
+<circle cx="160" cy="160" r="138" fill="#f6f1e6"/>
+<line x1="160" y1="28" x2="160" y2="48" stroke="#1f2937" stroke-width="3"/>
+<text x="78" y="248" text-anchor="middle" fill="#6b5438" font-size="13" font-family="Georgia, serif">flat</text>
+<text x="242" y="248" text-anchor="middle" fill="#6b5438" font-size="13" font-family="Georgia, serif">sharp</text>
+<g id="pdRings"></g>
+</svg>
+<div class="pdCenter"><div id="pdNote">--</div><div id="pdCents"></div></div>
+</div>
+</div>
+<p id="pdListen" class="pdListen"></p>
+<p id="pdDetail" class="pdDetail"></p>
+<p id="pdTable" class="pdTable">Partials: unavailable.</p>
+<p id="pdStretch" class="pdStretch"></p>
+<div id="pdSamples" class="pdSamples"></div>
+<div class="pdActs">
+<button type="button" id="pdSaveNote" class="btn">Keep this note</button>
+<button type="button" id="pdRetry" class="btn">Retry note</button>
+<input id="pdName" class="gtName" placeholder="Profile name" aria-label="Partial profile name">
+<button type="button" id="pdSave" class="btn">Save profile</button>
+</div>
+<div id="pdKeys" class="pdKeys"></div>
+</div>
 <audio id="audio" preload="metadata"></audio>
-<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="pianotune.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>
+<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="pianotune.js"></script><script src="partials.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>

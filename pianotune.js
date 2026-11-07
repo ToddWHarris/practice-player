@@ -641,7 +641,6 @@ function init(){
   if($g('gtHelp'))$g('gtHelp').onclick=openToolsHelp;
   if($g('gtHelpBack'))$g('gtHelpBack').onclick=returnFromHelp;
   $g('gtBack').onclick=()=>jumpTo((G.sess.step||0)-1);
-  $g('gtAgain').onclick=playStep;
   $g('gtSteps').onclick=()=>{renderList();$g('gtList').hidden=!$g('gtList').hidden};
   $g('gtType').onchange=e=>{G.sess.type=e.target.value;rebuild(true);render();playStep()};
   $g('gtA4').onchange=e=>{let v=+e.target.value;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));G.sess.a4=v;saveSess();render();if(stepNow()&&stepNow().phase!=='prescan')playStep()};
