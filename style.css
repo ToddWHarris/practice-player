@@ -171,7 +171,69 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtNeedle{position:relative;height:22px;border-radius:11px;background:#1f2937;border:2px solid #374151;margin-top:6px}
 #gtNeedle{position:absolute;top:0;bottom:0;width:3px;margin-left:-1px;background:#e5e7eb;left:50%}
 .gtNeedle.ok{border-color:#4ade80}
-.gtPrompt,.gtBeats{margin:0;font-size:20px;line-height:1.2;text-align:center;max-width:680px}
+.gtPrompt,.gtBeats{margin:0;font-size:18px;line-height:1.25;text-align:center;max-width:720px}
+.gtDetail{margin:0;font-size:14px;line-height:1.25;text-align:center;max-width:720px;color:#cbd5e1}
+#pdial{position:fixed;inset:0;z-index:72;background:#0b0f17;color:#e5e7eb;overflow:hidden;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:4px}
+#pdial[hidden]{display:none!important}
+.pdLeft{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:0 0 auto;order:1}
+.pdStage{order:2}
+.pdPanel{order:3}
+.pdRight{order:4}
+.pdKeys{order:5}
+.pdSim{margin:0;flex:1 1 100%;text-align:center;font-weight:800;color:#fde68a;font-size:14px}
+.pdTarget{display:none;flex-direction:column;align-items:center;min-width:3.2em}
+#pdTarget[hidden]{display:none!important}
+.pdKicker{font-size:12px;letter-spacing:.14em;font-weight:800;color:#d6d3d1}
+#pdTargetName{font-size:44px;font-weight:800;line-height:.9}
+.pdStage{display:flex;justify-content:center;flex:0 0 auto}
+.pdDialWrap{position:relative;width:min(82vw,340px);container-type:inline-size}
+#pdSvg{width:100%;height:auto;display:block}
+.pdCenter{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);text-align:center;color:#3f2a1d;pointer-events:none;width:42%}
+#pdNote{font:800 20cqi Georgia,serif;line-height:.85}
+#pdCents{font-size:6.4cqi;font-weight:800;line-height:1.1}
+#pdCents.long{font-size:5cqi}
+.pdRight{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center}
+.pdRight .btn,.pdLeft .btn,.pdActs .btn,.pdEx{min-height:34px;padding:4px 8px;font-size:14px}
+.pdPanel{text-align:center;padding:2px 8px;flex:0 0 auto}
+.pdListen{margin:0;font-size:16px;font-weight:700;line-height:1.2}
+.pdStatus{margin:2px 0 0;font-size:16px;font-weight:800;line-height:1.15;color:#fde68a}
+.pdDetail,.pdTable,.pdStretch,.pdCap{margin:0;font-size:14px;line-height:1.25;color:#e5e7eb}
+.pdStretch{margin-top:2px}
+.pdSamples{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.pdEx.measured{outline:2px solid #4ade80}
+.pdActs{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.pdActs .gtName{width:7.2em;min-height:34px;padding:4px 6px}
+#pdDetails{position:absolute;z-index:8;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));top:52px;max-height:46%;overflow:auto;background:rgba(17,24,39,.97);border:1px solid #374151;border-radius:12px;padding:10px 12px}
+#pdDetails[hidden]{display:none!important}
+.pdKeys{position:relative;display:flex;align-items:stretch;flex:0 0 92px;height:92px;min-height:84px;background:#1f2937;border-radius:8px;overflow:visible}
+.pdKeys .wk,.pdKeys .bk{min-height:0;padding:0;border-radius:0 0 2px 2px}
+.pdKeys .wk{flex:1;height:100%;background:#f8fafc;border:1px solid #94a3b8;position:relative}
+.pdKeys .bk{position:absolute;top:0;height:58%;width:1.15%;background:#0f172a;border:1px solid #000;z-index:2}
+.pdKeys .wk.on{background:#38bdf8;z-index:3;box-shadow:inset 0 0 0 2px #0369a1}
+.pdKeys .bk.on{background:#0369a1;outline:2px solid #7dd3fc;z-index:5}
+.pdKeys .wk.measured{box-shadow:inset 0 5px 0 #16a34a}
+.pdKeys .bk.measured{box-shadow:inset 0 4px 0 #4ade80}
+.pdFlag{position:absolute;bottom:2px;transform:translateX(-50%);background:#0369a1;color:#fff;font-size:13px;font-weight:800;line-height:1.1;padding:1px 4px;border-radius:4px;z-index:7;pointer-events:none;white-space:nowrap}
+@media (orientation:landscape) and (max-height:560px){
+ #pdial{display:block;padding:0}
+ .pdLeft{position:absolute;z-index:5;left:max(6px,env(safe-area-inset-left));top:max(6px,env(safe-area-inset-top));width:22%;display:flex;flex-direction:column;align-items:center;gap:4px}
+ .pdSim{flex:0 0 auto;font-size:12px;text-align:center}
+ #pdTarget:not([hidden]){display:flex}
+ #pdTargetName{font-size:42px}
+ .pdStage{position:absolute;z-index:1;left:29.3%;width:41.5%;top:2.1%;height:auto;aspect-ratio:1}
+ .pdDialWrap{width:100%}
+ .pdRight{position:absolute;z-index:5;right:max(6px,env(safe-area-inset-right));top:max(6px,env(safe-area-inset-top));width:22%;max-height:60%;overflow:auto;display:flex;flex-direction:column;align-items:stretch;gap:3px}
+ .pdSamples,.pdActs{justify-content:flex-start}
+ .pdPanel{position:absolute;z-index:3;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:61.5%;height:26.3%;display:flex;flex-direction:column;justify-content:center;background:rgba(11,15,23,.94);border-radius:12px;padding:6px 12px;text-align:center;overflow:hidden}
+ .pdListen,.pdStatus,.pdStretch{text-align:center}
+ .pdKeys{position:absolute;z-index:4;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:87.9%;bottom:max(2px,env(safe-area-inset-bottom));height:auto;min-height:0;flex:none;border-radius:6px}
+ #pdDetails{top:10%;max-height:50%;left:max(16%,env(safe-area-inset-left));right:max(16%,env(safe-area-inset-right))}
+}
+#gtune.checking .gtBeats{font-size:14px;line-height:1.2;max-width:920px}
+#gtune.checking .gtPrompt{font-size:15px}
+#gtune.checking .gtNote{font-size:40px}
+#gtune.checking #gtCents,#gtune.checking #gtNeedleWrap{display:none}
+#gtune.checking .gtDone{min-height:44px;font-size:22px}
 .gtCover{position:absolute;left:0;right:0;top:56px;bottom:0;z-index:8;background:#0b0f17;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 16px;text-align:center}
 #gtSplits{bottom:98px;justify-content:flex-start;overflow:hidden;gap:4px;padding-top:4px}
 #gtSplits h2{font-size:28px}
@@ -207,16 +269,50 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtList{position:absolute;left:8px;right:8px;top:46px;bottom:116px;overflow:auto;background:#0b0f17;border:1px solid #374151;border-radius:12px;z-index:6;padding:8px}
 .gtList button{display:block;width:100%;text-align:left;margin:3px 0}
 .gtList button.on{border-color:#4ade80;color:#4ade80}
-.tuDisp{min-height:calc(100vh - 60px);padding:16px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
-.tuNoteBig{text-align:center;font-size:96px;font-weight:800;line-height:1}.tuNoteBig small{display:block;font-size:28px;font-weight:600;opacity:.85;margin-top:4px}
-.tuCents{text-align:center;font-size:28px;font-weight:700}.tuCents.ok{color:#16a34a}
+.tuDisp{min-height:calc(100vh - 60px);padding:12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.tuSim{margin:0;text-align:center;font-size:15px;font-weight:800;color:#fde68a}
+.tuStage{display:flex;align-items:center;gap:10px;min-width:0}
+.tuTargetNote{display:none;flex:0 0 auto;flex-direction:column;align-items:center;justify-content:center;min-width:4.4em}
+.tuTuneKicker{font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#d6d3d1}
+.tuTuneName{font-size:64px;font-weight:800;line-height:.85;color:#f8fafc}
+.tuTuneName small{display:inline;font-size:.5em;font-weight:800;margin:0}
+.tuScaleCol{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.tuCents{text-align:center;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}.tuCents.ok{color:#b6f5c6}
 .tuTarget{text-align:center;font-size:16px;opacity:.9;min-height:1.2em}
-.tuHz{text-align:center;font-size:20px;font-variant-numeric:tabular-nums;opacity:.9}
-.tuMeter{position:relative;height:28px;border-radius:14px;background:#1f2937;margin:4px 0 8px;overflow:hidden;border:2px solid #374151}
-.tuMeter.ok{border-color:#16a34a;background:#052e16}
-.tuMeterMid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#9ca3af}
-.tuNeedle{position:absolute;top:2px;bottom:2px;width:6px;margin-left:-3px;border-radius:3px;background:#f59e0b;left:50%;transition:left .08s linear}
-.tuMeter.ok .tuNeedle{background:#16a34a}
+.tuHz{text-align:center;font-size:18px;font-variant-numeric:tabular-nums;opacity:.9}
+.tuMeter{position:relative;height:auto;margin:0;overflow:visible;background:transparent;border:0}
+.tuFrame{border-radius:22px;padding:7px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 1px,transparent 1px 4px),linear-gradient(165deg,#fbe7b0,#c49645 30%,#f6e2a8 52%,#8d682c 78%,#e8c56a);box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 2px 5px rgba(0,0,0,.35)}
+.tuBezel{position:relative;border-radius:16px;overflow:hidden;background:#1c1f24}
+.tuUpper{background:#2b3036;padding:6px 8px 4px}
+.tuTrack{position:relative;height:42px;margin:0;border-radius:8px;background:#24282e;border:0;overflow:hidden}
+.tuTicks{position:absolute;inset:0}
+.tuTick{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#f8fafc}
+.tuTick.zero{width:0;background:transparent}
+.tuNeedle{position:absolute;top:4px;height:34px;bottom:auto;width:12%;margin-left:-6%;border-radius:7px;background:#3dff6a;left:50%;z-index:1;box-shadow:0 0 12px #39ff68;transition:left .08s linear}
+.tuMeter.ok .tuNeedle{background:#7dffa8;box-shadow:0 0 16px #5dff8a}
+.tuLabs{position:relative;height:16px;margin:3px 0 0}
+.tuLab{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:700;color:#f8fafc;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tuLab.zero{font-size:13px}
+.tuNoteWin{position:relative;height:84px;background:linear-gradient(180deg,#fbf6ea,#e7dcc4);overflow:hidden}
+.tuNoteStrip{position:absolute;inset:0}
+.tuSlideNote{position:absolute;top:0;bottom:0;transform:translateX(-50%);display:flex;align-items:center;font:700 40px Georgia,"Palatino Linotype",Palatino,serif;color:#4a2c17;white-space:nowrap;transition:left .08s linear}
+.tuSlideNote::before,.tuSlideNote::after{content:"";position:absolute;left:50%;width:2px;height:9px;margin-left:-1px;background:#3a2918}
+.tuSlideNote::before{top:3px}.tuSlideNote::after{bottom:3px}
+.tuSlideNote.isHear{font-size:46px}
+.tuVignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(48,32,16,.62),rgba(48,32,16,0) 16%,rgba(48,32,16,0) 84%,rgba(48,32,16,.62))}
+.tuRedNeedle{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:#e10600;z-index:5;box-shadow:0 0 0 1px rgba(80,0,0,.35)}
+@media (orientation:landscape){
+ .tuStage.forPiano .tuTargetNote{display:flex}
+ .tuDisp{gap:6px;padding-top:4px}
+ .tuTrack{height:36px}
+ .tuNeedle{height:28px;top:4px}
+ .tuNoteWin{height:68px}
+ .tuSlideNote{font-size:34px}
+ .tuSlideNote.isHear{font-size:40px}
+ .tuTuneName{font-size:54px}
+ .tuGo{font-size:22px;padding:10px}
+ .tuCents{font-size:20px}
+}
 .tuGo{font-size:34px;padding:26px;border-radius:18px}.tuGo.on{background:#dc2626;color:#fff}
 .tuRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tuRow label{display:flex;gap:8px;align-items:center;font-size:17px;flex:1}
 #tuInst,#tuEuphMode,#tuTargetSel{font-size:17px;padding:10px;border-radius:10px;background:#111827;color:inherit;border:1px solid #374151;flex:1;min-width:0}

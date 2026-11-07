@@ -126,17 +126,17 @@ with sync_playwright() as p:
   assert ev("JSON.parse(localStorage.getItem('pp-pianotune')).step") != before
   # prompts
   ev('(i)=>PianoTune.jump(i)', one); pg.wait_for_timeout(80)
-  assert pg.inner_text('#gtPrompt') == 'Tune this string.'
+  assert 'Play A0 alone' in pg.inner_text('#gtPrompt') and 'one string' in pg.inner_text('#gtPrompt') and 'pitch' in pg.inner_text('#gtPrompt')
   ev('(i)=>PianoTune.jump(i)', two); pg.wait_for_timeout(80)
-  assert pg.inner_text('#gtPrompt') == 'Tune the other string to match.'
+  assert 'Play E1 alone' in pg.inner_text('#gtPrompt') and 'last one' in pg.inner_text('#gtPrompt')
   ev('(i)=>PianoTune.jump(i)', mid); pg.wait_for_timeout(80)
-  assert pg.inner_text('#gtPrompt') == 'Tune the next string to match.'
+  assert 'Play A4 alone' in pg.inner_text('#gtPrompt') and 'match this one' in pg.inner_text('#gtPrompt')
   ev('(i)=>PianoTune.jump(i)', a4last); pg.wait_for_timeout(120)
   held = ev("JSON.parse(localStorage.getItem('pp-pianotune')).step")
   ev("""() => { PianoTune._setSounding(false); PianoTune.feedHz(440, 0); PianoTune.feedHz(440, 500); }""")
   assert pg.is_visible('#gtDone')
   assert pg.inner_text('#gtDone') == 'Done'
-  assert pg.inner_text('#gtPrompt') == 'Tune the last string to match.'
+  assert 'Play A4 alone' in pg.inner_text('#gtPrompt') and 'last one' in pg.inner_text('#gtPrompt')
   assert ev("JSON.parse(localStorage.getItem('pp-pianotune')).step") == held
   geom(pg, '844 done')
   pg.set_viewport_size({'width':932,'height':430}); pg.wait_for_timeout(150)
