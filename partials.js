@@ -176,32 +176,56 @@ function ringPoint(cx,cy,r,cents){
  const shown=Math.max(-50,Math.min(50,cents));
  const ang=(-90+(shown/50)*90)*Math.PI/180;
  return {x:cx+r*Math.cos(ang),y:cy+r*Math.sin(ang),pinned:Math.abs(cents)>50}}
+function ensureTicks(){
+ const g=$p('pdTicks');if(!g||g.childElementCount)return;
+ const ns='http://www.w3.org/2000/svg',cx=160,cy=160;
+ for(let c=-50;c<=50;c+=10){
+  const ang=(-90+(c/50)*90)*Math.PI/180;
+  const major=c%20===0;
+  const r0=136,r1=major?152:145;
+  const ln=document.createElementNS(ns,'line');
+  ln.setAttribute('x1',(cx+r0*Math.cos(ang)).toFixed(1));ln.setAttribute('y1',(cy+r0*Math.sin(ang)).toFixed(1));
+  ln.setAttribute('x2',(cx+r1*Math.cos(ang)).toFixed(1));ln.setAttribute('y2',(cy+r1*Math.sin(ang)).toFixed(1));
+  ln.setAttribute('stroke','#1f2937');ln.setAttribute('stroke-width',major?'3':'2');g.appendChild(ln);
+  if(major){
+   const rl=126,tx=cx+rl*Math.cos(ang),ty=cy+rl*Math.sin(ang);
+   const t=document.createElementNS(ns,'text');
+   t.setAttribute('x',tx.toFixed(1));t.setAttribute('y',(ty+4).toFixed(1));
+   t.setAttribute('text-anchor','middle');t.setAttribute('fill','#3f2a1d');t.setAttribute('font-size','12');t.setAttribute('font-family','Georgia, serif');
+   t.textContent=c>0?'+'+c:String(c);g.appendChild(t)}}}
 function drawDial(result){
+ ensureTicks();
  const g=$p('pdRings');if(!g)return;g.innerHTML='';
  const cx=160,cy=160;
  const parts=(result&&result.partials||[]).filter(p=>!(p.n===1&&result&&!result.f1Heard));
  parts.forEach((p,i)=>{
-  const radius=62+i*14;
+  const radius=58+i*12;
   const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
   c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',radius);
-  c.setAttribute('fill','none');c.setAttribute('stroke','#8a7760');c.setAttribute('stroke-width','2');
+  c.setAttribute('fill','none');c.setAttribute('stroke','#8a7760');c.setAttribute('stroke-width','2.5');
   c.setAttribute('stroke-dasharray','3 4');g.appendChild(c);
   const pt=ringPoint(cx,cy,radius,p.cents);
   const m=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  m.setAttribute('cx',pt.x.toFixed(1));m.setAttribute('cy',pt.y.toFixed(1));m.setAttribute('r','6');
-  m.setAttribute('fill','#1f6b45');m.dataset.n=String(p.n);g.appendChild(m);
-  const t=document.createElementNS('http://www.w3.org/2000/svg','text');
-  t.setAttribute('x',(cx-radius+10).toFixed(1));t.setAttribute('y',(cy-8).toFixed(1));t.setAttribute('fill','#4a3424');t.setAttribute('font-size','11');t.setAttribute('font-family','Georgia, serif');
-  t.textContent=String(p.n);t.dataset.n=String(p.n);g.appendChild(t)});
+  m.setAttribute('cx',pt.x.toFixed(1));m.setAttribute('cy',pt.y.toFixed(1));m.setAttribute('r','8');
+  m.setAttribute('fill','#1f6b45');m.dataset.n=String(p.n);g.appendChild(m)});
  const note=$p('pdNote'),cents=$p('pdCents');
  if(note)note.textContent=result&&result.note?result.note:'--';
  if(cents){
   const p1=result&&result.f1Heard&&result.partials.find(p=>p.n===1);
-  cents.textContent=p1?(p1.cents>=0?'+':'')+p1.cents.toFixed(1)+' cents':'Partial 1 not heard'}}
+  cents.textContent=p1?(p1.cents>=0?'+':'')+p1.cents.toFixed(1)+' cents':'Partial 1 not heard';
+  cents.classList.toggle('long',!p1)}}
+function statusLine(r){
+ if(!r)return '';
+ if(r.reason==='chord'||r.reason==='unison'||r.reason==='silence'||r.reason==='short')return 'Not sure yet.';
+ if(r.bStatus==='measured'&&r.confidence==='high')return 'Confidence high.';
+ if(r.bStatus==='measured')return 'Confidence low.';
+ if(r.partials&&r.partials.length)return 'Stiffness unavailable.';
+ return 'Not sure yet.'}
 function renderListen(){
  const cue=PartialCore.listenLine(S.target!=null?PartialCore.label(S.target):'',S.result);
  const el=$p('pdListen');if(el)el.textContent=cue.plain+' '+(S.listening||S.sim?cue.state:'Microphone is off.');
  const d=$p('pdDetail');if(d)d.textContent=cue.detail||'';
+ const st=$p('pdStatus');if(st)st.textContent=statusLine(S.result);
  const side=$p('pdTarget');
  if(side){const land=window.matchMedia('(orientation: landscape)').matches;
   side.hidden=!(land&&S.target!=null);
@@ -216,12 +240,15 @@ function renderTable(){
  tb.textContent=rows+'. '+f1+' '+b+' f0 is the unstiffened fundamental, not partial 1.'}
 function renderStretch(){
  const box=$p('pdStretch');if(!box)return;
+ const more=$p('pdStretchMore');
  const samples=Object.keys(S.profile.notes||{}).map(k=>S.profile.notes[k]);
  const out=PartialCore.experimentalStretch(samples,S.a4);
- if(out.status!=='experimental'){box.textContent=out.reason;return}
  const shown=out.points.filter(p=>p.source!=='unavailable').slice(0,8).map(p=>p.label+' '+(p.cents>=0?'+':'')+p.cents.toFixed(1)+' cents ('+p.source+')').join('. ');
  const missing=out.points.filter(p=>p.source==='unavailable').length;
- box.textContent=out.reason+' '+shown+(missing?'. '+missing+' octave stops are unavailable.':'')}
+ const long=out.reason+(shown?' '+shown:'')+(missing?'. '+missing+' octave stops are unavailable.':'');
+ if(out.status!=='experimental'){box.textContent='Stretch unavailable. Not a tuning target.';if(more)more.textContent=out.reason;return}
+ box.textContent='Experimental stretch. Not a tuning target.';
+ if(more)more.textContent=long}
 function renderSamples(){
  const box=$p('pdSamples');if(!box)return;box.innerHTML='';
  const cap=document.createElement('p');cap.className='pdCap';cap.textContent='Example notes, not a requirement.';box.appendChild(cap);
@@ -230,16 +257,29 @@ function renderSamples(){
   const saved=S.profile.notes[m];
   if(saved&&saved.bStatus==='measured')b.classList.add('measured');
   else if(saved)b.classList.add('held');
-  b.onclick=()=>{S.target=m;S.sim=false;S.result=null;clearWave();renderListen();drawDial(null);renderTable();renderStretch()};
+  b.onclick=()=>{S.target=m;S.sim=false;S.result=null;clearWave();renderListen();drawDial(null);renderTable();renderStretch();markKeys()};
   box.appendChild(b)})}
-function renderAll(){renderListen();drawDial(S.result);renderTable();renderStretch();renderSamples();
+function renderAll(){renderListen();drawDial(S.result);renderTable();renderStretch();renderSamples();markKeys();
  const sim=$p('pdSim');if(sim)sim.hidden=!S.sim}
 function keys(){
- const box=$p('pdKeys');if(!box||box.childElementCount)return;
+ const box=$p('pdKeys');if(!box||box.querySelector('button'))return;
  const whites=[];for(let m=21;m<=108;m++)if(!NAMES_BLACK(m))whites.push(m);
- whites.forEach(m=>{const k=document.createElement('button');k.type='button';k.className='wk';k.dataset.m=m;k.textContent='';k.onclick=()=>pick(m);box.appendChild(k)});
- whites.forEach((m,i)=>{const n=m+1;if(n>108||!NAMES_BLACK(n))return;const k=document.createElement('button');k.type='button';k.className='bk';k.dataset.m=n;k.style.left=((i+0.62)/whites.length*100)+'%';k.onclick=()=>pick(n);box.appendChild(k)});
+ whites.forEach(m=>{const k=document.createElement('button');k.type='button';k.className='wk';k.dataset.m=m;k.setAttribute('aria-label',PartialCore.label(m));k.onclick=()=>pick(m);box.appendChild(k)});
+ whites.forEach((m,i)=>{const n=m+1;if(n>108||!NAMES_BLACK(n))return;const k=document.createElement('button');k.type='button';k.className='bk';k.dataset.m=n;k.setAttribute('aria-label',PartialCore.label(n));k.style.left=((i+0.62)/whites.length*100)+'%';k.onclick=()=>pick(n);box.appendChild(k)});
 }
+function markKeys(){
+ const box=$p('pdKeys');if(!box)return;
+ box.querySelectorAll('button').forEach(el=>{
+  const m=+el.dataset.m;
+  el.classList.toggle('on',m===S.target);
+  const saved=S.profile.notes&&S.profile.notes[m];
+  el.classList.toggle('measured',!!(saved&&saved.bStatus==='measured'))});
+ let flag=box.querySelector('.pdFlag');
+ if(!flag){flag=document.createElement('div');flag.className='pdFlag';box.appendChild(flag)}
+ const on=box.querySelector('button.on');
+ if(!on||S.target==null){flag.hidden=true;return}
+ flag.hidden=false;flag.textContent=PartialCore.label(S.target);
+ flag.style.left=(on.offsetLeft+on.offsetWidth/2)+'px'}
 function NAMES_BLACK(m){const n=((m%12)+12)%12;return n===1||n===3||n===6||n===8||n===10}
 function pick(m){S.target=m;S.sim=false;S.result=null;clearWave();renderAll()}
 function loop(){
@@ -265,7 +305,8 @@ function openDial(){
  const el=$p('pdial');if(el)el.hidden=false;
  document.body.classList.add('pdOpen');
  keys();renderAll();if(!S.sim)startMic()}
-function closeDial(){S.on=false;S.hold=false;S.sim=false;stopMic();clearWave();const el=$p('pdial');if(el)el.hidden=true;document.body.classList.remove('pdOpen');const b=$p('pdHelpBack');if(b)b.hidden=true}
+function setDetails(open){const d=$p('pdDetails'),b=$p('pdDetailsBtn');if(d)d.hidden=!open;if(b){b.setAttribute('aria-expanded',open?'true':'false');b.textContent=open?'Hide details':'Details'}}
+function closeDial(){S.on=false;S.hold=false;S.sim=false;stopMic();clearWave();setDetails(false);const el=$p('pdial');if(el)el.hidden=true;document.body.classList.remove('pdOpen');const b=$p('pdHelpBack');if(b)b.hidden=true}
 function openHelp(){if(!S.on)return;S.hold=true;stopMic();$p('pdial').hidden=true;document.body.classList.remove('pdOpen');const b=$p('pdHelpBack');if(b)b.hidden=false;if(window.tab)tab('help');const h=$p('h-partial-dial');if(h)h.scrollIntoView({block:'start'})}
 function returnHelp(){if(!S.hold)return;S.hold=false;const b=$p('pdHelpBack');if(b)b.hidden=true;const on=document.querySelector('nav button.on');if(!on||on.dataset.t!=='tun'){if(window.tab)tab('tun')}try{if(window.Tuner&&Tuner.leave)Tuner.leave()}catch(e){}$p('pdial').hidden=false;document.body.classList.add('pdOpen');renderAll();if(!S.sim)startMic()}
 function preview(opts){
@@ -294,7 +335,8 @@ function init(){
  if($p('pdSaveNote'))$p('pdSaveNote').onclick=storeCurrent;
  if($p('pdRetry'))$p('pdRetry').onclick=()=>{if(S.target!=null)delete S.profile.notes[S.target];S.result=null;S.sim=false;clearWave();renderAll();if(!S.listening)startMic()};
  if($p('pdSave'))$p('pdSave').onclick=saveNamed;
- window.addEventListener('resize',renderListen)}
+ if($p('pdDetailsBtn'))$p('pdDetailsBtn').onclick=()=>{const d=$p('pdDetails');setDetails(!!(d&&d.hidden))};
+ window.addEventListener('resize',()=>{renderListen();markKeys()})}
 window.PartialDial={Core:PartialCore,open:openDial,close:closeDial,holdingHelp:()=>!!S.hold,returnFromHelp:returnHelp,preview,init,storeCurrent,_profile:()=>S.profile};
 document.addEventListener('DOMContentLoaded',init);
 if(document.readyState!=='loading')init();

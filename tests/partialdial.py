@@ -6,17 +6,32 @@ errs=[]
 
 def fit(pg):
   return pg.evaluate("""()=>{
-    const ids=['pdSvg','pdListen','pdKeys','pdTable'];
-    const box=el=>{if(!el||el.hidden)return null; const r=el.getBoundingClientRect(); if(r.width<2||r.height<2)return null; return {id:el.id,l:r.left,t:r.top,r:r.right,b:r.bottom};};
-    const els=ids.map(id=>box(document.getElementById(id))).filter(Boolean);
-    const hits=[];
-    for(let i=0;i<els.length;i++)for(let j=i+1;j<els.length;j++){
-      const a=els[i],b=els[j];
-      if(Math.min(a.r,b.r)-Math.max(a.l,b.l)>2 && Math.min(a.b,b.b)-Math.max(a.t,b.t)>2) hits.push(a.id+'/'+b.id);
-    }
+    const box=el=>{if(!el||el.hidden||el.closest('[hidden]'))return null; const r=el.getBoundingClientRect(); if(r.width<2||r.height<2)return null; return {id:el.id,l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height};};
+    const note=box(document.getElementById('pdNote'));
+    const listen=box(document.getElementById('pdListen'));
+    const keys=box(document.getElementById('pdKeys'));
+    const svg=box(document.getElementById('pdSvg'));
+    const target=box(document.getElementById('pdTarget'));
+    const status=box(document.getElementById('pdStatus'));
     const g=document.getElementById('pdial').getBoundingClientRect();
-    const clip=els.filter(e=>e.l<g.left-2||e.r>g.right+2||e.t<g.top-2).map(e=>e.id);
-    return {hits, clip, font:parseFloat(getComputedStyle(document.getElementById('pdListen')).fontSize)};
+    const overlap=(a,b)=>a&&b&&Math.min(a.r,b.r)-Math.max(a.l,b.l)>2&&Math.min(a.b,b.b)-Math.max(a.t,b.t)>2;
+    const hits=[];
+    if(overlap(note,listen))hits.push('note/listen');
+    if(overlap(listen,keys))hits.push('listen/keys');
+    if(overlap(note,keys))hits.push('note/keys');
+    if(overlap(target,svg))hits.push('target/dial');
+    if(overlap(target,listen))hits.push('target/listen');
+    const els=[note,listen,keys,svg,status].filter(Boolean);
+    const clip=els.filter(e=>e.l<g.left-2||e.r>g.right+2||e.t<g.top-2||e.b>g.bottom+2).map(e=>e.id);
+    const whites=[...document.querySelectorAll('#pdKeys .wk')];
+    const a0=whites[0]&&whites[0].getBoundingClientRect();
+    const c8=whites.length&&whites[whites.length-1].getBoundingClientRect();
+    const mid=(svg.l+svg.r)/2, center=(g.left+g.right)/2;
+    return {hits, clip, font:parseFloat(getComputedStyle(document.getElementById('pdListen')).fontSize),
+      dialW:svg&&svg.w, dialH:svg&&svg.h, keyH:keys&&keys.h, keyTop:keys&&keys.t, viewW:g.width, viewH:g.height,
+      off:svg?Math.abs(mid-center):null, whites:whites.length, blacks:document.querySelectorAll('#pdKeys .bk').length,
+      a0:a0&&a0.left, c8:c8&&c8.right, keyL:keys&&keys.l, keyR:keys&&keys.r,
+      note:note&&parseFloat(getComputedStyle(document.getElementById('pdNote')).fontSize)};
   }""")
 
 with sync_playwright() as p:
@@ -39,9 +54,18 @@ with sync_playwright() as p:
   assert r['f1Heard'] and r['bStatus']=='measured', r
   assert pg.locator('#pdRings [data-n="1"]').count()>=1
   assert 'Play A4 alone' in pg.inner_text('#pdListen') and 'overtones' in pg.inner_text('#pdListen')
+  assert 'Confidence high' in pg.inner_text('#pdStatus')
   assert 'Simulated preview' in pg.inner_text('#pdSim')
-  assert pg.locator('#pdKeys button').count()>40
+  vis=pg.inner_text('#pdial')
+  assert 'Overtone 1' not in vis and 'unstiffened' not in vis and '3.99' not in vis
+  assert pg.locator('#pdKeys .wk').count()==52 and pg.locator('#pdKeys .bk').count()==36
+  pg.click('#pdDetailsBtn'); pg.wait_for_timeout(100)
+  assert 'Overtone 1' in pg.inner_text('#pdTable') and 'unstiffened' in pg.inner_text('#pdTable')
+  pg.click('#pdDetailsBtn'); pg.wait_for_timeout(80)
+  assert pg.is_hidden('#pdDetails')
   f=fit(pg); assert not f['hits'] and not f['clip'] and f['font']>=14, f
+  assert f['dialW']>=280 and f['note']>=48, f
+  assert f['whites']==52 and f['a0']<=f['keyL']+8 and f['c8']>=f['keyR']-8, f
   pg.screenshot(path='/opt/cursor/artifacts/partial-dial-zero.png')
   sharp=pg.evaluate("()=>PartialDial.preview({midi:69,f1:440*Math.pow(2,12/1200),B:0.0003,partials:[1,2,3,4,5]})")
   p1=next(x for x in sharp['partials'] if x['n']==1)
@@ -56,9 +80,15 @@ with sync_playwright() as p:
   pg.evaluate("()=>PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]})")
   assert pg.is_visible('#pdTarget') and pg.inner_text('#pdTargetName')=='A4'
   f=fit(pg); assert not f['hits'] and not f['clip'], f
+  assert f['dialW']>=320 and f['dialW']/f['viewW']>0.36, f
+  assert f['off']<30, f
+  assert f['keyTop']/f['viewH']>0.80, f
+  assert f['a0']<=f['keyL']+8 and f['c8']>=f['keyR']-8, f
+  assert 'Overtone 1' not in pg.inner_text('#pdial')
   pg.screenshot(path='/opt/cursor/artifacts/partial-dial-landscape.png')
   pg.set_viewport_size({'width':932,'height':430}); pg.wait_for_timeout(150)
   f=fit(pg); assert not f['hits'] and not f['clip'] and pg.is_visible('#pdTarget'), f
+  assert f['dialW']/f['viewW']>0.36 and f['off']<36 and f['keyTop']/f['viewH']>0.80, f
   # Help returns to the same target note.
   pg.click('#pdHelp'); pg.wait_for_timeout(250)
   assert 'Partial dial (experimental)' in pg.inner_text('#h-partial-dial')

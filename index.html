@@ -238,6 +238,7 @@
 <button type="button" id="pdHelpBack" class="btn" hidden>Back to partial dial</button>
 <p>This screen measures the overtones of one note. It is an experiment. It is not certified, and it is not a tuning exam. It does not replace the 88-note pre-scan.</p>
 <p><b>What to play.</b> Tap a key, or one of the example notes. Then play that note alone and mute the other strings. The screen says this while it is listening. Example notes such as A0 through A6 are only a suggestion. Seven notes are not a rule.</p>
+<p><b>Details and the keyboard.</b> The main screen keeps the playing instructions and a short confidence line. Tap <b>Details</b> for each overtone's frequency, the cents, and the stiffness fit. The keyboard shows every note from A0 to C8 in order, with the chosen note marked.</p>
 <p><b>The dial.</b> Zero stays at the top. Sharp is to the right. Flat is to the left. The big note and the cents in the center are partial 1 when that overtone is heard. If partial 1 is not heard, the center says so and ring 1 is not drawn.</p>
 <p><b>Rings.</b> Each ring is one overtone that was actually found, numbered 1, 2, 3, and so on. The mark on the ring is how far that overtone sits from the same number times the equal-temperament pitch of the note. Cents are a fraction of a semitone. Hertz are the measured frequency. A missing overtone is left off the dial. The app does not invent ring 1.</p>
 <p><b>Stiffness.</b> When enough overtones are clear, the app fits a stiffness number called B. In that fit, f0 is the ideal unstiffened fundamental, not the tone you hear. Partial 1 is a different number. If the evidence is thin, B says unavailable.</p>
@@ -436,14 +437,13 @@
 </div>
 </div>
 <div id="pdial" hidden>
-<p id="pdSim" class="pdSim" hidden>Simulated preview. Not a live microphone.</p>
-<div class="pdTop">
+<div class="pdLeft">
 <button type="button" id="pdClose" class="btn">Close</button>
 <button type="button" id="pdHelp" class="btn">Help</button>
-<strong>Partial dial, experimental</strong>
-</div>
-<div class="pdMain">
+<p id="pdSim" class="pdSim" hidden>Simulated preview. Not a live microphone.</p>
 <div id="pdTarget" class="pdTarget" hidden><span class="pdKicker">Tune</span><div id="pdTargetName"></div></div>
+</div>
+<div class="pdStage">
 <div class="pdDialWrap">
 <svg id="pdSvg" viewBox="0 0 320 320" role="img" aria-label="Partial dial">
 <defs>
@@ -453,24 +453,33 @@
 </defs>
 <circle cx="160" cy="160" r="152" fill="url(#pdRim)"/>
 <circle cx="160" cy="160" r="138" fill="#f6f1e6"/>
-<line x1="160" y1="28" x2="160" y2="48" stroke="#1f2937" stroke-width="3"/>
-<text x="78" y="248" text-anchor="middle" fill="#6b5438" font-size="13" font-family="Georgia, serif">flat</text>
-<text x="242" y="248" text-anchor="middle" fill="#6b5438" font-size="13" font-family="Georgia, serif">sharp</text>
+<g id="pdTicks"></g>
+<text x="40" y="196" fill="#3f2a1d" font-size="14" font-family="Georgia, serif">flat</text>
+<text x="242" y="196" fill="#3f2a1d" font-size="14" font-family="Georgia, serif">sharp</text>
 <g id="pdRings"></g>
 </svg>
 <div class="pdCenter"><div id="pdNote">--</div><div id="pdCents"></div></div>
 </div>
 </div>
-<p id="pdListen" class="pdListen"></p>
-<p id="pdDetail" class="pdDetail"></p>
-<p id="pdTable" class="pdTable">Partials: unavailable.</p>
-<p id="pdStretch" class="pdStretch"></p>
+<div class="pdRight">
+<button type="button" id="pdDetailsBtn" class="btn" aria-expanded="false">Details</button>
 <div id="pdSamples" class="pdSamples"></div>
 <div class="pdActs">
 <button type="button" id="pdSaveNote" class="btn">Keep this note</button>
 <button type="button" id="pdRetry" class="btn">Retry note</button>
 <input id="pdName" class="gtName" placeholder="Profile name" aria-label="Partial profile name">
 <button type="button" id="pdSave" class="btn">Save profile</button>
+</div>
+</div>
+<div class="pdPanel">
+<p id="pdListen" class="pdListen"></p>
+<p id="pdStatus" class="pdStatus"></p>
+<p id="pdStretch" class="pdStretch"></p>
+</div>
+<div id="pdDetails" hidden>
+<p id="pdDetail" class="pdDetail"></p>
+<p id="pdTable" class="pdTable">Partials: unavailable.</p>
+<p id="pdStretchMore" class="pdStretch"></p>
 </div>
 <div id="pdKeys" class="pdKeys"></div>
 </div>
