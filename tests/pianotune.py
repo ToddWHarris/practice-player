@@ -40,7 +40,7 @@ with sync_playwright() as p:
   thirds=next(i for i,t in enumerate(labels) if 'Progressive thirds' in t)
   ev('(i)=>PianoTune.jump(i)',a4);pg.wait_for_timeout(200)
   assert pg.inner_text('#gtNote')=='A4'
-  assert pg.inner_text('#gtPrompt')=='Tune this string first.'
+  assert 'Play A4 alone' in pg.inner_text('#gtPrompt') and 'Mute the other strings' in pg.inner_text('#gtPrompt') and 'pitch' in pg.inner_text('#gtPrompt')
   assert pg.locator('#gtKeys button.next').count()>=1
   ev("document.getElementById('gtList').hidden=true")
   pg.screenshot(path='/opt/cursor/artifacts/v34-guided-tune-a4-landscape.png')

@@ -276,6 +276,43 @@ const PianoTune=(function(){
   return{state:s,chime,advance,lean,color,midi}}
  const SPLITS={concert:{split2:24,split3:53},baby:{split2:26,split3:55},studio:{split2:28,split3:57},spinet:{split2:29,split3:60}};
  function stringCount(midi,split2,split3){midi=midi|0;if(!(split2<split3))return 1;if(midi<split2)return 1;if(midi<split3)return 2;return 3}
+ function pairInfo(iv){
+  const spec=INTERVALS[iv&&iv.kind];if(!spec||!(iv.a>=0))return null;
+  const b=iv.a+spec.semi;
+  return{label:label(iv.a)+'-'+label(b),low:label(iv.a),high:label(b),p:spec.p,q:spec.q,kind:iv.kind}}
+ function pairChoices(pairs){
+  if(!pairs||!pairs.length)return 'the two notes of this step';
+  return pairs.map(p=>p.low+' and '+p.high).join(', or ')}
+ function retryListen(reason,pairs){
+  const who=pairChoices(pairs);
+  if(reason==='three-notes')return 'Too many notes are sounding. Play only '+who+' together.';
+  if(reason==='silence')return 'Play '+who+' again and hold them. The sound was too quiet.';
+  if(reason==='short')return 'Keep holding '+who+'. The take was too short.';
+  if(reason==='missing-partial')return 'Play '+who+' again, a little louder. One overtone was missing.';
+  if(reason==='noise')return 'Play '+who+' again. The overtones were muddy.';
+  if(reason==='resolution')return 'Hold '+who+' longer. The beats were too slow to separate.';
+  if(reason==='ambiguous')return 'Play only one pair: '+who+'.';
+  return 'Play '+who+' again and hold them.'}
+ function overtoneDetail(pairs){
+  if(!pairs||!pairs.length)return '';
+  return 'An overtone is a higher tone inside the note. '+pairs.map(p=>p.label+' uses overtone '+p.p+' of '+p.low+' and overtone '+p.q+' of '+p.high+'.').join(' ')}
+ function listenCue(step,read){
+  if(!step)return {plain:'',detail:'',hearing:''};
+  if(step.phase==='prescan')return {plain:'Play '+plainName(step.midi)+' alone and hold it. Listening for this note\'s pitch.',detail:'',hearing:'pitch'};
+  if(step.phase==='check'){
+   const pairs=(step.intervals||[]).map(pairInfo).filter(Boolean);
+   const heard=read&&read.status==='ok'&&read.label?pairs.find(p=>p.label===read.label):null;
+   if(heard)return {plain:'Play '+heard.low+' and '+heard.high+' together. Comparing overtones to measure their beats.',detail:overtoneDetail([heard]),hearing:'beats',state:'Heard '+heard.label+'.'};
+   if(read&&read.status!=='ok')return {plain:retryListen(read.reason,pairs),detail:overtoneDetail(pairs),hearing:'beats',state:'Not sure yet.'};
+   return {plain:'Play two notes together and hold them: '+pairChoices(pairs)+'. Comparing overtones to measure their beats.',detail:overtoneDetail(pairs),hearing:'beats',state:'Listening now.'}}
+  const name=step.midi?label(step.midi):'';
+  const n=step.stringCount||1,i=step.stringIndex||1;
+  let mute='This note has one string.';
+  if(n>1&&i===1)mute='Mute the other strings so only this one sounds.';
+  else if(n>1&&i===n)mute='Mute every string except this last one, and match it to the others.';
+  else if(n>1)mute='Mute the strings you are not tuning, and match this one to the string already set.';
+  if(!name)return {plain:mute,detail:'',hearing:'pitch'};
+  return {plain:'Play '+name+' alone. '+mute+' Listening for this string\'s pitch.',detail:'',hearing:'pitch'}}
  function stringPrompt(i,n){
   if(n<=1)return 'Tune this string.';
   if(i===1)return 'Tune this string first.';
@@ -302,7 +339,7 @@ const PianoTune=(function(){
  function jump(state,index,count){
   const i=Math.max(0,Math.min(count-1,index|0));
   return Object.assign({},state,{step:i,holdStart:null,holdMidi:null,green:{},hist:[],lean:0,outSince:null})}
- return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,analyzeIntervalAudio,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
+ return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,analyzeIntervalAudio,listenCue,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
 if(typeof module!=='undefined')module.exports=PianoTune;
 
 if(typeof document!=='undefined'){
@@ -404,7 +441,14 @@ function render(){
   const step=stepNow();if(!step)return;
   const shown=G.showGot?Math.max(0,G.sess.step-1):G.sess.step;
   $g('gtTitle').textContent=(G.showGot&&G.gotMidi!=null)?('Pre-scan '+PT.label(G.gotMidi)):(step.title||'');
-  $g('gtPrompt').textContent=G.showGot?'Saved.':(step.prompt||'');
+  const cue=PT.listenCue(step,step.phase==='check'?G.beatRead:null);
+  let plain=G.showGot?'Saved this note.':(G.showUnread?'No clear reading. Use Retry unread to hear this note again.':(cue.plain||step.prompt||''));
+  if(!G.showGot&&!G.showUnread){
+   if(!G.listening)plain+=' Microphone is off.';
+   else if(cue.state)plain+=' '+cue.state;
+   else plain+=' Listening now.'}
+  $g('gtPrompt').textContent=plain;
+  if($g('gtDetail')){$g('gtDetail').textContent=cue.detail||'';$g('gtDetail').hidden=!cue.detail}
   $g('gtCount').textContent=(shown+1)+' / '+G.seq.length;
   const beats=beatsText(step);
   const beatLine=step.phase==='check'?(beats?beats+' ':'')+measuredText():beats;
@@ -438,7 +482,7 @@ function renderList(){
   const ul=$g('gtList');ul.innerHTML='';
   G.seq.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+'. '+s.title;if(i===G.sess.step)b.className='on';b.onclick=()=>{jumpTo(i);$g('gtList').hidden=true};ul.append(b)});
 }
-function jumpTo(i){G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];clearWave();saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
+function jumpTo(i){G.previewHold=false;G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];clearWave();saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
 function onKey(m){if(G.pickSplit){if(G.pickSplit===3)G.sess.split3=m;else G.sess.split2=m;if(G.sess.split2!=null&&G.sess.split3!=null&&G.sess.split2>=G.sess.split3)G.sess.split2=G.sess.split3-1;renderSplits();return}jumpToMidi(m)}
 function jumpToMidi(m){const i=G.seq.findIndex((s,idx)=>idx>=G.sess.step&&s.midis&&s.midis.indexOf(m)>=0);if(i>=0)jumpTo(i)}
 function renderSplits(){renderKeys();if($g('gtSplit3Lab'))$g('gtSplit3Lab').textContent='Lowest 3-string key: '+(G.sess.split3!=null?PT.label(G.sess.split3):'');if($g('gtSplit2Lab'))$g('gtSplit2Lab').textContent='Lowest 2-string key: '+(G.sess.split2!=null?PT.label(G.sess.split2):'');document.querySelectorAll('#gtSplits .pick').forEach(b=>b.classList.toggle('on',+b.dataset.which===G.pickSplit));document.querySelectorAll('#gtKeys button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');el.classList.add(m===G.sess.split2||m===G.sess.split3?'next':'dim')})}
@@ -455,10 +499,10 @@ function loop(){
     trackAttack(rms);
     const step=stepNow();
     if(step&&step.phase==='prescan'&&!G.showGot&&!G.showUnread&&G.armAt&&now-G.armAt>PT.PRESCAN_WAIT&&!G.sess.prescan[step.midi])markUnread();
-    if(step&&step.phase==='check'){
+    if(step&&step.phase==='check'&&!G.previewHold){
      appendWave(G.buf,G.ctx.sampleRate);
      if(!G.beatAt||now-G.beatAt>450){G.beatAt=now;readInterval(step,now);render()}
-    }else{
+    }else if(!(step&&step.phase==='check')){
      const f=TunerCore.yin(G.buf,G.ctx.sampleRate,0.12);
      if(f)onFreq(f,now)}}
   G.raf=requestAnimationFrame(loop)}
@@ -614,6 +658,7 @@ function init(){
 }
 function previewInterval(samples,sampleRate){
  const step=stepNow();if(!step||step.phase!=='check')return null;
+ G.previewHold=true;
  G.beatRead=PT.analyzeIntervalAudio(samples,sampleRate,intervalQuery(step));
  G.showDone=true;render();return G.beatRead}
 Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,previewInterval,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});

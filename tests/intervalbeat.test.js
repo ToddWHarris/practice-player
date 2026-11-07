@@ -65,4 +65,18 @@ a.equal(P.analyzeIntervalAudio(synth(sr,1.2,[{f:440},{f:443}]),sr,{pairs:[{fa:44
 // A clean reading is not a license to pass. The result carries the rate only.
 {const r=run(synth(sr,1.2,[{f:880},{f:887}]),pair(880,880));
  a.equal(r.status,'ok');a.ok(!r.pass)}
+const thirds=P.buildSequence({raise:false}).find(s=>s.title==='Progressive thirds');
+const wait=P.listenCue(thirds,null);
+a.ok(wait.plain.indexOf('F3 and A3')>=0&&wait.plain.indexOf('Comparing overtones')>=0);
+a.ok(wait.detail.indexOf('overtone 5 of F3')>=0&&wait.detail.indexOf('overtone 4 of A3')>=0);
+a.ok(wait.plain.indexOf('unison')<0);
+const heard=P.listenCue(thirds,{status:'ok',label:'F3-A3'});
+a.ok(heard.plain.indexOf('Play F3 and A3 together.')===0);
+a.ok(heard.detail.indexOf('C#4')<0);
+const retry=P.listenCue(thirds,{status:'uncertain',reason:'three-notes'});
+a.ok(retry.plain.indexOf('Play only F3 and A3')>=0&&retry.state==='Not sure yet.');
+const pre=P.listenCue({phase:'prescan',midi:21},null);
+a.ok(pre.plain.indexOf('A 0')>=0&&pre.plain.indexOf('pitch')>=0&&pre.plain.indexOf('overtone')<0);
+const one=P.listenCue({phase:'a4',midi:69,stringIndex:1,stringCount:3},null);
+a.ok(one.plain.indexOf('Play A4 alone')>=0&&one.plain.indexOf('Mute the other strings')>=0&&one.detail==='');
 console.log('interval beats ok');

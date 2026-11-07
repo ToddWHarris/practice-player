@@ -38,9 +38,13 @@ with sync_playwright() as p:
   text=pg.inner_text('#gtBeats')
   assert 'Measured' in text and 'Confidence high' in text and 'Not a pass' in text
   assert 'F3-A3' in text
+  prompt=pg.inner_text('#gtPrompt')
+  assert 'Play F3 and A3 together' in prompt and 'Comparing overtones to measure their beats' in prompt
+  assert 'overtone 5 of F3' in pg.inner_text('#gtDetail') and 'overtone 4 of A3' in pg.inner_text('#gtDetail')
+  assert 'partial ring' not in prompt.lower() and 'partial ring' not in pg.inner_text('#gtDetail').lower()
   assert pg.locator('#gtKeys button.ok').count()==0
   fit=pg.evaluate("""()=>{
-    const ids=['gtNote','gtBeats','gtDone','gtKeys'];
+    const ids=['gtNote','gtPrompt','gtDetail','gtBeats','gtDone','gtKeys'];
     const box=el=>{const r=el.getBoundingClientRect();return {l:r.left,t:r.top,r:r.right,b:r.bottom};};
     const els=ids.map(id=>box(document.getElementById(id)));
     const hits=[];
@@ -57,9 +61,34 @@ with sync_playwright() as p:
   silent=pg.evaluate("""()=>PianoTune.previewInterval(new Float32Array(48000), 48000)""")
   assert silent['status']=='uncertain' and silent['reason']=='silence', silent
   unsure=pg.inner_text('#gtBeats')
+  retry=pg.inner_text('#gtPrompt')
   assert 'uncertain' in unsure and 'Not a pass' in unsure
+  assert 'F3 and A3' in retry and 'again' in retry and 'too quiet' in retry
   assert pg.locator('#gtKeys button.ok').count()==0
   pg.screenshot(path='/opt/cursor/artifacts/interval-beats-uncertain.png')
+  pg.set_viewport_size({'width':932,'height':430}); pg.wait_for_timeout(150)
+  fit2=pg.evaluate("""()=>{
+    const ids=['gtPrompt','gtDetail','gtBeats','gtDone','gtKeys'];
+    const box=el=>{if(!el||el.hidden)return null; const r=el.getBoundingClientRect(); if(r.width<2)return null; return {id:el.id,l:r.left,t:r.top,r:r.right,b:r.bottom};};
+    const els=ids.map(id=>box(document.getElementById(id))).filter(Boolean);
+    const hits=[];
+    for(let i=0;i<els.length;i++)for(let j=i+1;j<els.length;j++){
+      const a=els[i],b=els[j];
+      if(Math.min(a.r,b.r)-Math.max(a.l,b.l)>2 && Math.min(a.b,b.b)-Math.max(a.t,b.t)>2) hits.push(a.id+'/'+b.id);
+    }
+    const g=document.getElementById('gtune').getBoundingClientRect();
+    const clip=els.filter(e=>e.b>g.bottom+2||e.r>g.right+2||e.l<g.left-2).map(e=>e.id);
+    return {hits, clip};
+  }""")
+  assert not fit2['hits'] and not fit2['clip'], fit2
+  pg.set_viewport_size({'width':844,'height':390}); pg.wait_for_timeout(100)
+  a4=next(i for i,t in enumerate(labels) if 'Set A4 string 1 of 3' in t)
+  pg.evaluate('(i)=>PianoTune.jump(i)', a4); pg.wait_for_timeout(200)
+  alone=pg.inner_text('#gtPrompt')
+  assert 'Play A4 alone' in alone and 'Mute the other strings' in alone and 'pitch' in alone
+  assert 'overtone' not in alone.lower() and pg.is_hidden('#gtDetail')
+  pg.screenshot(path='/opt/cursor/artifacts/listen-a4-alone.png')
+  pg.evaluate('(i)=>PianoTune.jump(i)', idx); pg.wait_for_timeout(150)
   pg.click('#gtDone'); pg.wait_for_timeout(200)
   assert pg.evaluate("JSON.parse(localStorage.getItem('pp-pianotune')).step")==step0+1
   b.close()
