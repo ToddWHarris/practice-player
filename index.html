@@ -2,9 +2,10 @@
 <meta name="author" content="Todd W Harris">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Harris Studio">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="theme-color" content="#22c55e">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-180.png">
-<title>Practice Player</title><link rel="stylesheet" href="style.css"></head><body>
+<title>Harris Music Studio</title><link rel="stylesheet" href="style.css"></head><body>
 <nav id="tabs"><button data-t="lib" class="on">Library</button><button data-t="pls">Playlists</button><button data-t="met">Metronome</button><button data-t="tun">Tuner</button><button data-t="lvl">Level</button><button data-t="set">Settings</button><button data-t="help">Help</button></nav>
 <div id="card" class="empty"><div id="cArt" aria-hidden="true"><span>♪</span></div><div class="cInfo"><div id="now">Nothing playing</div><div id="cSub"></div><div id="cMeta"></div><div id="cPath"></div><div id="from"></div></div></div>
 <main>
@@ -119,7 +120,7 @@
 <div id="toc" role="navigation" aria-label="Help topics"></div>
 
 <h2 id="h-welcome">Welcome</h2>
-<p>Practice Player is a simple music player for practicing along with songs. You can loop a hard part and say "again" to hear it once more.</p>
+<p>Harris Music Studio is a simple music player for practicing along with songs. You can loop a hard part and say "again" to hear it once more.</p>
 <ul><li>Your songs, playlists and settings stay on this device. Nothing is uploaded and there is no account.</li><li>Each person who installs the app on their own phone has their own separate copy.</li><li>The app has seven tabs: <b>Library</b>, <b>Playlists</b>, <b>Metronome</b>, <b>Tuner</b>, <b>Level</b>, <b>Settings</b> and <b>Help</b>. On a narrow phone, swipe the tab bar sideways if a tab is off the screen.</li></ul>
 
 <h2 id="h-share">Share this app</h2>
@@ -271,7 +272,7 @@
 <ul><li>In <b>Playlists</b>, swipe a playlist left and tap <b>Share</b>. A window shows how many songs it has and how big it is. Tap <b>Prepare</b>, wait a moment, then tap <b>Share</b>.</li>
 <li>This makes one file named after the playlist, ending in .pplay. It holds the songs (clips too), their order, and each song's speed and pitch. It is sent with your phone's share sheet, so you can use AirDrop, Messages, Mail or Save to Files.</li>
 <li>If the playlist is over 20 MB, it is too big for most email and text messages. AirDrop or Save to Files works best.</li>
-<li><b>To open a shared playlist:</b> save the .pplay file to the Files app first. Tapping the file will not open this app on iPhone. Instead, open Practice Player and tap <b>Import playlist</b> (in Settings under Your music, or at the top of Playlists), then pick the file. Mail may show it as a plain attachment. Tap it, then the share button, then Save to Files.</li>
+<li><b>To open a shared playlist:</b> save the .pplay file to the Files app first. Tapping the file will not open this app on iPhone. Instead, open Harris Music Studio and tap <b>Import playlist</b> (in Settings under Your music, or at the top of Playlists), then pick the file. Mail may show it as a plain attachment. Tap it, then the share button, then Save to Files.</li>
 <li>The playlist is added with its songs in the same order. Songs you already have are reused, not copied twice. New songs go in the Library folder <b>Shared</b>, in a folder with the playlist's name. If you already have a playlist with that name, the new one is called, for example, Polkas (2). Speed and pitch are only added for songs that do not have their own.</li>
 <li>Please only share music you have the right to share.</li></ul>
 <h2 id="h-backup">Backup</h2>
@@ -297,7 +298,7 @@
 
 <h2 id="h-limits">iPhone limits</h2>
 <ul><li>Songs must be imported into the app. It cannot read Apple Music or the Music app.</li><li>The microphone works only while the app is open on screen, and only when the app is opened from its secure (https) link.</li><li>Voice commands depend on iPhone Dictation and work best online.</li><li>The A-B loop and voice cues work best with the screen on and the app in front.</li><li><b>Background playback:</b> music keeps playing when you switch apps, go to the Home Screen or lock the phone. Use the lock screen, Control Center or CarPlay to pause, skip or seek. If a call or another app pauses the music while this app is hidden, it stays paused until you come back to the app (then it picks up again) or press play on the lock screen.</li><li><b>CarPlay:</b> the song, artist and controls show on the car screen. Navigation prompts just lower the volume for a moment. A phone call, a voice chat (for example in another app) or another app that plays sound pauses the music, and it stays paused. It starts again when you come back to the app, or press play on the car screen, the steering wheel or the lock screen. The phone does not tell the app when a call ends, so on CarPlay you may need to press play after a call. Pausing from CarPlay or the lock screen always pauses.</li><li>The mic cannot listen in the background. If an A-B loop reaches B while the app is hidden (for example on CarPlay), it repeats from A by itself after the gap. If it was already waiting for your voice when you left, it keeps waiting until you come back and say go, or tap Again.</li><li>Pitch change works while the app is open on screen. With pitch set to anything other than 0, music may stop when the screen locks or you leave the app. Speed changes do not have this limit.</li><li>Lock screen controls work for play, pause, next and previous.</li><li>Songs are stored only on this phone. Nothing is shared between devices.</li></ul>
-<p class="hintline">Practice Player, Version <span id="helpVer"></span></p>
+<p class="hintline">Harris Music Studio, Version <span id="helpVer"></span></p>
 </div></section>
 
 </main>
@@ -376,7 +377,7 @@
 <div id="plsModal" class="modal" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="plsTitle">
  <div class="sheetHead"><button id="plsCancel" class="btn">Cancel</button><h2 id="plsTitle" class="acc">Share playlist</h2><span></span></div>
  <p id="plsInfo" class="plsInfo"></p><p id="plsWarn" class="plsWarn" hidden>Too big for most email and text messages. AirDrop or Save to Files works best.</p>
- <p class="hintline">Sends the songs and the playlist order to someone else with Practice Player. They open the app and tap Import playlist.</p>
+ <p class="hintline">Sends the songs and the playlist order to someone else with Harris Music Studio. They open the app and tap Import playlist.</p>
  <button id="plsGo" class="btn primary big">Prepare</button><p id="plsStatus" class="hintline" role="status"></p>
 </div></div>
 <div id="gtune" hidden>

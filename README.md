@@ -1,6 +1,6 @@
-# Practice Player
+# Harris Music Studio
 
-A free music practice player for iPhone and Android. Browse your MP3 folders, build playlists, shuffle, repeat, and A-B loop any section, with hands-free "go" or "again" voice cues. Your music stays on your device.
+A free music practice studio for iPhone and Android. Browse your MP3 folders, build playlists, shuffle, repeat, and A-B loop any section, with hands-free "go" or "again" voice cues. A tuner, a guided piano tool, and a level meter are included. Your music stays on your device. The web address stays https://toddwharris.github.io/practice-player/.
 
 ## Install on iPhone
 

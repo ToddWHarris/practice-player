@@ -26,7 +26,7 @@ const Zip=(()=>{
   for(let k=0;k<n;k++){if(cd.getUint32(p,true)!==0x02014b50)throw new Error('Bad zip directory');const meth=cd.getUint16(p+10,true),crc=cd.getUint32(p+16,true),sz=cd.getUint32(p+20,true),nl=cd.getUint16(p+28,true),xl=cd.getUint16(p+30,true),cl=cd.getUint16(p+32,true),lo=cd.getUint32(p+42,true);
    const name=dec.decode(new Uint8Array(cd.buffer,cd.byteOffset+p+46,nl));p+=46+nl+xl+cl;
    const lh=new DataView(await zb.slice(lo,lo+30).arrayBuffer());const st=lo+30+lh.getUint16(26,true)+lh.getUint16(28,true);
-   if(meth!==0)throw new Error('This zip is compressed. Use a Practice Player backup file.');out.push({name,crc,size:sz,blob:zb.slice(st,st+sz)})}
+   if(meth!==0)throw new Error('This zip is compressed. Use a Harris Music Studio backup file.');out.push({name,crc,size:sz,blob:zb.slice(st,st+sz)})}
   return out}
  return{crc32,blobCrc,build,read}})();
 if(typeof module!=='undefined')module.exports=Zip;

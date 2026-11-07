@@ -13,7 +13,7 @@ with sync_playwright() as p:
   assert 'never shared' in pg.inner_text('#set')
   pg.screenshot(path='/workspace/shots/v15-share.png')
   pg.click('#set .shareBtn');pg.wait_for_timeout(100);d=pg.evaluate('__sh[0]')
-  assert d['url']==URL and d['title']=='Practice Player' and 'A-B loop and voice cues' in d['text'] and 'Safari' in d['text'],d
+  assert d['url']==URL and d['title']=='Harris Music Studio' and 'A-B loop and voice cues' in d['text'] and 'Safari' in d['text'],d
   pg.click('nav button[data-t=help]');assert pg.locator('#h-share').count()==1 and pg.locator('#toc .tocb:has-text("Share this app")').count()==1
   pg.locator('#help .shareBtn').scroll_into_view_if_needed();pg.click('#help .shareBtn');pg.wait_for_timeout(100);assert pg.evaluate('__sh.length')==2 and pg.evaluate('__sh[1].url')==URL
   assert 'never shared' in pg.inner_text('#helpBody')
@@ -38,9 +38,9 @@ with sync_playwright() as p:
   pg.click('nav button[data-t=set]');card=pg.locator('#set .setCard.about')
   assert card.count()==1 and pg.locator('#set > *').last.get_attribute('id')=='aboutCard','About card at bottom'
   assert pg.locator('#aboutCard h3').inner_text()=='About' and pg.evaluate("getComputedStyle(document.querySelector('#aboutCard h3')).marginTop")=='0px'
-  t=pg.inner_text('#aboutCard p:not(.muted)').split('\n');assert t==['Practice Player','Created by Todd W Harris, Hamler, Ohio','Version '+V,'© 2026 Todd W Harris'],t
+  t=pg.inner_text('#aboutCard p:not(.muted)').split('\n');assert t==['Harris Music Studio','Created by Todd W Harris, Hamler, Ohio','Version '+V,'© 2026 Todd W Harris'],t
   assert pg.inner_text('#aboutCard .muted')=='Your songs and playlists stay on this device. They are not part of the app and are never uploaded.'
-  top=pg.locator('#set > *').first.inner_text();assert top=='Practice Player, Version '+V,top
+  top=pg.locator('#set > *').first.inner_text();assert top=='Harris Music Studio, Version '+V,top
   assert pg.inner_text('#set').count('Todd W Harris')==2,'credit only in About'
   pg.click('nav button[data-t=help]');assert 'Todd W Harris' not in pg.inner_text('#helpBody') and 'Developed by' not in pg.content()
   assert pg.evaluate("document.querySelector('meta[name=author]').content")=='Todd W Harris'

@@ -16,7 +16,7 @@ async function buildPplay(p){const ss=plSongs(p),ents=[],songs=[];let k=0;
   const base=(s.path||s.name).split('/').pop(),file='songs/'+String(k).padStart(3,'0')+' '+safeName(base);
   songs.push({file,name:s.name,size:b.size,type:s.type||'audio/mpeg',sha256:await sha256(b),clip:!!s.clip,
    tags:m?{title:m.title||'',artist:m.artist||'',album:m.album||'',year:m.year||'',track:m.track||''}:{},pr:S.pr[s.id]||null});ents.push({name:file,blob:b});m=null}
- const meta={app:'Practice Player',kind:'playlist',format:1,version:APP_VERSION,name:p.name,created:new Date().toISOString(),songs};
+ const meta={app:'Harris Music Studio',kind:'playlist',format:1,version:APP_VERSION,name:p.name,created:new Date().toISOString(),songs};
  const z=await Zip.build([{name:'playlist.json',blob:new Blob([JSON.stringify(meta)],{type:'application/json'})},...ents]);
  const nm=safeName(p.name)+'.pplay';let f=new File([z],nm,{type:'application/zip'});
  if(navigator.canShare&&!navigator.canShare({files:[f]})){const g=new File([z],nm,{type:'application/octet-stream'});if(navigator.canShare({files:[g]}))f=g}
@@ -30,8 +30,8 @@ $('plsGo').onclick=async()=>{const p=S.pls.find(x=>x.id===PLS.id);if(!p)return c
  if(navigator.share&&navigator.canShare&&navigator.canShare({files})){navigator.share({files,title:p.name}).then(()=>{PLS.file=null;closePlShare();toast('Playlist shared')}).catch(e=>{if(e&&e.name==='AbortError')return;plsDownload(f)});return}
  plsDownload(f)};
 function plsDownload(f){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;a.className='sendDl';document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},60000);closePlShare();toast('Sharing files is not supported here. Downloading '+f.name)}
-async function importPplay(file){const list=await Zip.read(file);const pj=list.find(x=>x.name==='playlist.json');if(!pj)throw new Error('This is not a Practice Player playlist file.');
- const meta=JSON.parse(await pj.blob.text());if(meta.kind!=='playlist'||!Array.isArray(meta.songs))throw new Error('This is not a Practice Player playlist file.');
+async function importPplay(file){const list=await Zip.read(file);const pj=list.find(x=>x.name==='playlist.json');if(!pj)throw new Error('This is not a Harris Music Studio playlist file.');
+ const meta=JSON.parse(await pj.blob.text());if(meta.kind!=='playlist'||!Array.isArray(meta.songs))throw new Error('This is not a Harris Music Studio playlist file.');
  const ents={};list.forEach(x=>ents[x.name]=x);let base=safeName(meta.name||'Shared playlist').trim(),name=base,n=2;while(S.pls.some(p=>p.name===name))name=base+' ('+(n++)+')';
  const folder='Shared/'+safeName(name);const ids=[];let reused=0,added=0,i=0;const hashCache={};
  for(const sj of meta.songs){i++;const x=ents[sj.file];if(!x)continue;
