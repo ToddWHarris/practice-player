@@ -210,29 +210,44 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .tuDisp{min-height:calc(100vh - 60px);padding:12px max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .tuSim{margin:0;text-align:center;font-size:15px;font-weight:800;color:#fde68a}
 .tuStage{display:flex;align-items:center;gap:10px;min-width:0}
-.tuNoteBig{flex:0 0 auto;text-align:center;font-size:64px;font-weight:800;line-height:.9;min-width:1.5em}
-.tuNoteBig small{display:inline;font-size:.62em;font-weight:800;opacity:1;margin:0}
+.tuTargetNote{display:none;flex:0 0 auto;flex-direction:column;align-items:center;justify-content:center;min-width:4.4em}
+.tuTuneKicker{font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#d6d3d1}
+.tuTuneName{font-size:64px;font-weight:800;line-height:.85;color:#f8fafc}
+.tuTuneName small{display:inline;font-size:.5em;font-weight:800;margin:0}
 .tuScaleCol{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
-.tuCents{text-align:center;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}.tuCents.ok{color:#4ade80}
+.tuCents{text-align:center;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}.tuCents.ok{color:#b6f5c6}
 .tuTarget{text-align:center;font-size:16px;opacity:.9;min-height:1.2em}
 .tuHz{text-align:center;font-size:18px;font-variant-numeric:tabular-nums;opacity:.9}
-.tuMeter{position:relative;height:auto;margin:0;overflow:visible;background:transparent;border:0;border-radius:0}
-.tuDir{display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9ca3af;letter-spacing:.04em;text-transform:uppercase;margin:0 8px}
-.tuTrack{position:relative;height:104px;margin:0 8px;border-radius:12px;background:#111827;border:2px solid #374151;overflow:hidden}
-.tuMeter.ok .tuTrack{border-color:#22c55e}
-.tuTicks,.tuMeterMid,.tuNeedle{position:absolute;top:0;bottom:0}
-.tuTick{position:absolute;top:0;bottom:18%;width:2px;margin-left:-1px;background:#9ca3af}
-.tuTick.zero{display:none}
-.tuMeterMid{left:50%;width:3px;margin-left:-1.5px;background:#f8fafc;z-index:3}
-.tuNeedle{height:54%;top:18%;bottom:auto;width:10%;margin-left:-5%;border-radius:8px;background:#22c55e;left:50%;z-index:1;transition:left .08s linear}
-.tuMeter.ok .tuNeedle{background:#4ade80;box-shadow:0 0 14px #22c55e}
-.tuLabs{position:relative;height:22px;margin:2px 8px 0}
-.tuLab{position:absolute;top:0;transform:translateX(-50%);font-size:12px;font-weight:700;color:#d1d5db;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:-0.03em}
-.tuLab.zero{color:#f8fafc;font-size:16px}
-@media (orientation:landscape) and (max-height:500px){
+.tuMeter{position:relative;height:auto;margin:0;overflow:visible;background:transparent;border:0}
+.tuFrame{border-radius:22px;padding:7px;background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 1px,transparent 1px 4px),linear-gradient(165deg,#fbe7b0,#c49645 30%,#f6e2a8 52%,#8d682c 78%,#e8c56a);box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 2px 5px rgba(0,0,0,.35)}
+.tuBezel{position:relative;border-radius:16px;overflow:hidden;background:#1c1f24}
+.tuUpper{background:#2b3036;padding:6px 8px 4px}
+.tuTrack{position:relative;height:42px;margin:0;border-radius:8px;background:#24282e;border:0;overflow:hidden}
+.tuTicks{position:absolute;inset:0}
+.tuTick{position:absolute;top:0;bottom:0;width:2px;margin-left:-1px;background:#f8fafc}
+.tuTick.zero{width:0;background:transparent}
+.tuNeedle{position:absolute;top:4px;height:34px;bottom:auto;width:12%;margin-left:-6%;border-radius:7px;background:#3dff6a;left:50%;z-index:1;box-shadow:0 0 12px #39ff68;transition:left .08s linear}
+.tuMeter.ok .tuNeedle{background:#7dffa8;box-shadow:0 0 16px #5dff8a}
+.tuLabs{position:relative;height:16px;margin:3px 0 0}
+.tuLab{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:700;color:#f8fafc;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tuLab.zero{font-size:13px}
+.tuNoteWin{position:relative;height:84px;background:linear-gradient(180deg,#fbf6ea,#e7dcc4);overflow:hidden}
+.tuNoteStrip{position:absolute;inset:0}
+.tuSlideNote{position:absolute;top:0;bottom:0;transform:translateX(-50%);display:flex;align-items:center;font:700 40px Georgia,"Palatino Linotype",Palatino,serif;color:#4a2c17;white-space:nowrap;transition:left .08s linear}
+.tuSlideNote::before,.tuSlideNote::after{content:"";position:absolute;left:50%;width:2px;height:9px;margin-left:-1px;background:#3a2918}
+.tuSlideNote::before{top:3px}.tuSlideNote::after{bottom:3px}
+.tuSlideNote.isHear{font-size:46px}
+.tuVignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(48,32,16,.62),rgba(48,32,16,0) 16%,rgba(48,32,16,0) 84%,rgba(48,32,16,.62))}
+.tuRedNeedle{position:absolute;top:0;bottom:0;left:50%;width:3px;margin-left:-1.5px;background:#e10600;z-index:5;box-shadow:0 0 0 1px rgba(80,0,0,.35)}
+@media (orientation:landscape){
+ .tuStage.forPiano .tuTargetNote{display:flex}
  .tuDisp{gap:6px;padding-top:4px}
- .tuTrack{height:78px}
- .tuNoteBig{font-size:60px}
+ .tuTrack{height:36px}
+ .tuNeedle{height:28px;top:4px}
+ .tuNoteWin{height:68px}
+ .tuSlideNote{font-size:34px}
+ .tuSlideNote.isHear{font-size:40px}
+ .tuTuneName{font-size:54px}
  .tuGo{font-size:22px;padding:10px}
  .tuCents{font-size:20px}
 }

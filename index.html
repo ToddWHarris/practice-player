@@ -25,18 +25,30 @@
 <div class="mRow"><button id="mMic" class="btn mMic" aria-pressed="false">Mic off</button><span id="mVoiceTxt" class="mVoiceTxt">Voice is off.</span></div>
 </div></section>
 <section id="tun" class="tab"><div id="tuDisp" class="tuDisp">
-<div class="tuStage">
-<div class="tuNoteBig" aria-live="polite"><span id="tuNote">-</span><small id="tuOct"></small></div>
+<div class="tuStage" id="tuStage">
+<div class="tuTargetNote" id="tuTargetNote">
+<span class="tuTuneKicker">Tune</span>
+<div class="tuTuneName" aria-live="polite"><span id="tuNote"></span><small id="tuOct"></small></div>
+</div>
 <div class="tuScaleCol">
 <div id="tuCents" class="tuCents">Mic off. Tap Start to tune.</div>
 <div id="tuMeter" class="tuMeter" aria-hidden="true">
-<div class="tuDir"><span>Flat</span><span>Sharp</span></div>
+<div class="tuFrame">
+<div class="tuBezel">
+<div class="tuUpper">
 <div class="tuTrack">
 <div id="tuTicks" class="tuTicks"></div>
-<div class="tuMeterMid"></div>
 <div id="tuNeedle" class="tuNeedle"></div>
 </div>
 <div id="tuLabs" class="tuLabs"></div>
+</div>
+<div class="tuNoteWin">
+<div id="tuNoteStrip" class="tuNoteStrip"></div>
+<div class="tuVignette" aria-hidden="true"></div>
+</div>
+<div class="tuRedNeedle" aria-hidden="true"></div>
+</div>
+</div>
 </div>
 <div id="tuTarget" class="tuTarget"></div>
 <div id="tuHz" class="tuHz"></div>
@@ -159,7 +171,7 @@
 
 <h2 id="h-tun">Tuner</h2>
 <ul><li>Open the <b>Tuner</b> tab. Tap <b>Start</b> to use the microphone. Tap <b>Stop</b>, or leave the tab, to turn the mic off.</li>
-<li>You see a big note name, the octave, how many cents sharp or flat you are, a tall scale, and the frequency in Hz. The scale stays still, with a mark every 10 cents and zero in the center. A green zone moves left when you are flat and right when you are sharp. It lines up with the center when you are within about 5 cents.</li>
+<li>You see cents, a framed meter, and the frequency in Hz. The cents marks stay still, every 10 cents, with zero in the center. A green zone moves left when you are flat and right when you are sharp. Note names slide on the lower band with the pitch. Flat moves toward the lower note. Sharp moves toward the higher note. On a piano, with the phone sideways, the note on the left is the one to tune. It stays put. Other instruments do not show that side note, and portrait does not either.</li>
 <li><b>A=</b> sets the reference from 430 to 450 Hz (default 440). Your choice is saved on this device.</li>
 <li><b>Instrument</b> picks how notes are shown. <b>Auto / Chromatic</b> and <b>Piano</b> show any note. <b>Guitar</b> and <b>Bass guitar</b> highlight open strings (and Bass can add a low B0 for 5-string). <b>Trumpet (B flat)</b> shows written pitch, a major second above concert. <b>Euphonium</b> defaults to concert pitch (bass clef); you can switch to treble clef B flat, written a major 9th above concert.</li>
 <li><b>Piano</b> has a <b>Target</b> menu: <b>Stretch (typical)</b> uses a typical Railsback curve (bass a little flat, treble a little sharp, A4 at 0), <b>Equal temperament</b> uses plain equal temperament, or pick a saved profile from this piano. The screen shows the target offset, for example Target +12 cents (stretch). Real piano tuners tailor the curve to each piano, so the typical stretch is a guide and not a replacement for a professional tuner.</li>
