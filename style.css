@@ -259,6 +259,24 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtCover{position:absolute;left:0;right:0;top:0;bottom:0;z-index:8;background:#0b0f17;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 16px;text-align:center}
 #gtCal{overflow:auto;justify-content:flex-start;-webkit-overflow-scrolling:touch}
 #gtCalHear.rejected{background:#7f1d1d;color:#fff;border-color:#7f1d1d}
+.gtCalLegend{font-size:14px;line-height:1.25;max-width:720px}
+.gtCalKeys{position:relative;width:min(100%,920px);height:74px;flex:0 0 74px;display:flex;align-items:stretch;background:#1f2937;border-radius:8px;overflow:visible}
+.gtCalKeys .wk,.gtCalKeys .bk{min-height:0;padding:0;border-radius:0 0 2px 2px}
+.gtCalKeys .wk{flex:1;height:100%;background:#e5e7eb;border:1px solid #94a3b8;position:relative}
+.gtCalKeys .bk{position:absolute;top:0;height:58%;width:1.5%;background:#0f172a;border:1px solid #000;z-index:2}
+.gtCalKeys .wk.wait{background:#facc15;border-color:#854d0e}
+.gtCalKeys .bk.wait{background:#ca8a04}
+.gtCalKeys .wk.meas{background:#15803d;border-color:#052e16}
+.gtCalKeys .bk.meas{background:#166534}
+.gtCalKeys .wk.fail{background:#b91c1c;border-color:#450a0a}
+.gtCalKeys .bk.fail{background:#7f1d1d}
+.gtCalKeys .plain{opacity:.55}
+.gtCalKeys .now{outline:3px solid #38bdf8;outline-offset:1px;z-index:5}
+.gtCalKeys .failTry{box-shadow:inset 0 -7px 0 #ef4444}
+@media (max-height:560px){
+ .gtCalKeys{height:46px}
+ .gtCalLegend{font-size:11px;line-height:1.15}
+}
 #gtSplits{bottom:98px;justify-content:flex-start;overflow:hidden;gap:4px;padding-top:4px}
 #gtSplits h2{font-size:28px}
 .gtSplitBtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}

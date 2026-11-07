@@ -189,4 +189,42 @@ a.equal(roughCurve.cents[108],null);
 a.notEqual(roughCurve.origin[108],'model-fallback');
 const roughModel=P.curveFromCalibration(Object.assign({},rough,{fallback:'model'}),'concert');
 a.equal(roughModel.origin[108],'model-fallback');
-console.log('calibration ok', 'A6', cal.targets[93].cents.toFixed(2), 'A2ish', cal.targets[33].cents.toFixed(2), 'unison', two.fundamentalBeat.toFixed(2), 'A0B', a0miss.B.toFixed(6));
+function padStrike(f1,B,opts){
+  opts=opts||{};
+  const sr=48000,lead=Math.floor(sr*(opts.lead==null?0.8:opts.lead)),body=Math.floor(sr*(opts.body==null?0.45:opts.body));
+  const tone=P.synthUnison(sr,body/sr,[{f1:f1,B:B,partials:opts.ns||[1,2,3,4,5,6],amp:opts.amp==null?1:opts.amp}],{tau:opts.tau==null?0.18:opts.tau,raw:true});
+  let peak=0;for(let i=0;i<tone.length;i++)peak=Math.max(peak,Math.abs(tone[i]));
+  const gain=(opts.peak==null?0.12:opts.peak)/(peak||1);
+  const x=new Float32Array(lead+tone.length);
+  for(let i=0;i<tone.length;i++)x[lead+i]=tone[i]*gain;
+  return x;
+}
+function rmsOf(x){let e=0;for(let i=0;i<x.length;i++)e+=x[i]*x[i];return Math.sqrt(e/Math.max(1,x.length))}
+const a5f=P.etFreq(81,440);
+const late=padStrike(a5f,0.00035,{lead:2.2,body:0.4,tau:0.1,peak:0.04});
+a.ok(rmsOf(late)<0.004,'diluted window is under the quiet gate');
+const lateWhole=P.analyzeCalibrationNote(late,48000,{midi:81,a4:440});
+a.equal(lateWhole.status,'measured',lateWhole.reason);
+a.ok(Math.abs(lateWhole.B/0.00035-1)<0.45,lateWhole.B);
+const seg=P.selectCalibrationSegment(late,48000);
+a.ok(seg.length<late.length&&rmsOf(seg)>0.004,rmsOf(seg));
+const noise=new Float32Array(48000*1.6);let ns=9;for(let i=0;i<noise.length;i++){ns=(ns*16807)%2147483647;noise[i]=((ns/2147483647)*2-1)*0.002}
+const noiseR=P.analyzeCalibrationNote(noise,48000,{midi:81,a4:440});
+a.notEqual(noiseR.status,'measured');
+a.equal(noiseR.reason,'silence');
+const muddy=padStrike(a5f,0.00035,{lead:0.2,body:1.1,tau:0.4,peak:0.2,ns:[1]});
+const muddyR=P.analyzeCalibrationNote(muddy,48000,{midi:81,a4:440});
+a.notEqual(muddyR.status,'measured');
+a.notEqual(muddyR.reason,'silence');
+const sevenIds=[21,33,45,52,57,69,74];
+function lawB2(midi){const f=440*Math.pow(2,(midi-69)/12);return 0.00025*Math.pow(440/f,0.6)*0.0008/0.00025}
+const seven=sevenIds.map(midi=>({status:'measured',midi,B:0.0004*Math.pow(2,(69-midi)/24),residualCents:0.3,confidence:'high',partials:[{n:1,hz:1},{n:2,hz:2},{n:3,hz:3}],heardCents:1}));
+const beforeA5=P.deriveCalibration(seven,440,'studio');
+a.equal(beforeA5.accepted,false);
+a.equal(beforeA5.status,'insufficient');
+a.ok(!beforeA5.notes.some(n=>n.midi>=81));
+const withA5=P.deriveCalibration(seven.concat([{status:'measured',midi:81,B:0.0005,residualCents:0.3,confidence:'high',partials:[{n:1,hz:1},{n:2,hz:2},{n:3,hz:3}],heardCents:1}]),440,'studio');
+a.equal(withA5.targets[81].source,'measured');
+a.notEqual(withA5.targets[22]&&withA5.targets[22].source,'measured');
+a.ok(withA5.targets[22].source!=='measured');
+console.log('calibration ok', 'A6', cal.targets[93].cents.toFixed(2), 'A2ish', cal.targets[33].cents.toFixed(2), 'unison', two.fundamentalBeat.toFixed(2), 'A0B', a0miss.B.toFixed(6), 'lateA5', lateWhole.reason);

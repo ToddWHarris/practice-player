@@ -22,14 +22,17 @@ STUB = r'''
   AC.prototype.createScriptProcessor = function(){
     const node = {connect(){}, disconnect(){}};
     Object.defineProperty(node, 'onaudioprocess', {set(fn){
-      const ev = {inputBuffer:{getChannelData:()=>new Float32Array(4096).fill(0.05)}};
-      fn(ev);
+      const id = setInterval(()=>fn({inputBuffer:{getChannelData:()=>new Float32Array(4096).fill(0.05)}}), 30);
+      const stop = () => clearInterval(id);
+      node.disconnect = stop;
     }});
     return node;
   };
   return 'ok';
 }
 '''
+def keyclass(pg, midi):
+  return pg.evaluate("""m=>{const el=[...document.querySelectorAll('#gtCalKeys button')].find(b=>+b.dataset.m===m);return el?el.className:''}""", midi)
 def snap(pg):
   return pg.evaluate('''() => {
     const b = document.getElementById('gtCalHear');
@@ -74,10 +77,14 @@ with sync_playwright() as p:
   assert pg.input_value('#gtA4')=='442'
   pg.evaluate(STUB)
   pg.click('#gtCalHear')
+  pg.wait_for_function("document.getElementById('gtCalHear').textContent==='Listening...'")
   early=snap(pg)
-  assert early['hear']=='Listening...' and early['disabled'] and early['busy']=='true', early
-  assert 'Listening to A0' in early['result'] and 'notes measured' not in early['result'], early
+  assert early['disabled'] and early['busy']=='true', early
+  assert 'Play A0 now' in early['result'] and 'notes measured' not in early['result'], early
   assert '0 notes measured' in early['coverage'] or '0 note' in early['coverage'], early
+  assert 'now' in keyclass(pg, 21) and 'wait' in keyclass(pg, 21)
+  assert 'plain' in keyclass(pg, 22) and 'meas' not in keyclass(pg, 22)
+  assert 'Blue outline' in pg.inner_text('#gtCalLegend') and 'not a tuned note' in pg.inner_text('#gtCalLegend').lower()
   pg.screenshot(path='/opt/cursor/artifacts/cal-listening-1024.png')
   pg.wait_for_timeout(1500)
   ok=snap(pg)
@@ -87,6 +94,9 @@ with sync_playwright() as p:
   assert '1 note measured' in ok['coverage'] and 'Not enough coverage' in ok['coverage'], ok
   assert 'A1' in ok['prompt'] and 'Mute' in ok['prompt'], ok['prompt']
   assert ok['last']['a4']==442 and ok['last']['midi']==21, ok['last']
+  assert 'meas' in keyclass(pg, 21) and 'now' not in keyclass(pg, 21)
+  assert 'now' in keyclass(pg, 33) and 'wait' in keyclass(pg, 33) and 'meas' not in keyclass(pg, 33)
+  assert 'A5 or above' in ok['coverage']
   pg.screenshot(path='/opt/cursor/artifacts/cal-accepted-1024.png')
   pg.evaluate("window.__mode='reject'")
   pg.click('#gtCalHear'); pg.wait_for_timeout(1500)
@@ -96,6 +106,8 @@ with sync_playwright() as p:
   assert 'notes measured' not in bad['result'], bad
   assert '1 note measured' in bad['coverage'], bad
   assert 'Play A1' in bad['prompt'], bad['prompt']
+  assert 'now' in keyclass(pg, 33) and 'fail' in keyclass(pg, 33) and 'meas' not in keyclass(pg, 33)
+  assert 'meas' in keyclass(pg, 21)
   pg.screenshot(path='/opt/cursor/artifacts/cal-rejected-1024.png')
   # retry during capture must drop the in-flight reading
   pg.evaluate("window.__mode='measured'; window.__heard=-11; window.__n=0")
@@ -103,7 +115,7 @@ with sync_playwright() as p:
   pg.evaluate("window.__heard=-22")
   pg.click('#gtCalRetry')
   mid=snap(pg)
-  assert mid['hear']=='Listening...' and mid['disabled'], mid
+  assert mid['disabled'] and mid['hear'] in ('Listening...','Opening microphone...'), mid
   pg.wait_for_timeout(1600)
   late=snap(pg)
   assert '-22.0' in late['result'] and '-11.0' not in late['result'], late
@@ -152,6 +164,12 @@ with sync_playwright() as p:
   assert 'Now play' not in last['result'], last
   assert last['hear']=='Measurement accepted', last
   assert '1 note measured' in last['coverage'], last
+  assert 'meas' in keyclass(pg, 108) and 'now' in keyclass(pg, 108)
+  pg.evaluate("window.__mode='reject'")
+  pg.click('#gtCalRetry'); pg.wait_for_timeout(1600)
+  kept=snap(pg)
+  assert 'still kept' in kept['result'] and '1 note measured' in kept['coverage'], kept
+  assert 'meas' in keyclass(pg, 108) and 'failTry' in keyclass(pg, 108) and 'now' in keyclass(pg, 108)
   pg.screenshot(path='/opt/cursor/artifacts/cal-last-note-1024.png')
   # saved reference survives reload and a named profile
   pg.evaluate("""()=>{localStorage.setItem('pp-pianotune', JSON.stringify({v:3,a4:442,type:null,step:0,prescan:{},ready:false,tuningOk:false}));
@@ -174,7 +192,7 @@ with sync_playwright() as p:
     pg.click('#gtCalOpen'); pg.wait_for_timeout(80)
     info=pg.evaluate('''()=>{
       const box=document.getElementById('gtCal');
-      const ids=['gtCalHear','gtCalRetry','gtCalSkip','gtCalUse','gtCalBack','gtA4','gtCalPrompt','gtCalStatus','gtCalCoverage'];
+      const ids=['gtCalHear','gtCalRetry','gtCalSkip','gtCalUse','gtCalBack','gtA4','gtCalPrompt','gtCalStatus','gtCalCoverage','gtCalLegend','gtCalKeys'];
       const view={w:innerWidth,h:innerHeight};
       const out={};
       ids.forEach(id=>{
