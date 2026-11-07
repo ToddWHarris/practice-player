@@ -154,7 +154,7 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 #gtune{position:fixed;inset:0;z-index:70;background:#0b0f17;color:#e5e7eb;overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #gtune[hidden]{display:none!important}
 #gtRotate{display:none;margin:18vh 16px;text-align:center;font-size:22px;line-height:1.4}
-@media (orientation:portrait){#gtune .gtBody,#gtune .gtCover{display:none!important}#gtune #gtRotate{display:block}}
+@media (orientation:portrait) and (max-width:699px){#gtune .gtBody,#gtune .gtCover{display:none!important}#gtune #gtRotate{display:block}}
 .gtBody{height:100%;display:flex;flex-direction:column;min-height:0}
 .gtTop{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;padding:4px 8px;overflow:auto;flex:0 0 auto}
 .gtTop label{display:flex;gap:4px;align-items:center;font-size:14px;white-space:nowrap}
@@ -247,15 +247,45 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtCover h2{font-size:32px;margin:0;color:#4ade80;line-height:1.1}
 .gtCover p{margin:0;font-size:16px;line-height:1.3;max-width:640px}
 .gtCover .btn{min-width:220px;font-size:18px;padding:8px 14px}
+.gtCover .btn:disabled,#gtSplits .btn:disabled{opacity:1;background:#1f2937;color:#9ca3af;border-color:#374151}
 #gtSplits .btn{min-height:40px}
+@media (max-height:560px){
+ #gtSplits{gap:2px;padding-top:0}
+ #gtSplits h2{font-size:22px}
+ #gtSplits p{font-size:13px;line-height:1.15}
+ #gtSplits .btn{min-height:32px;font-size:15px;padding:4px 10px}
+}
 .gtCover .btn.on{outline:3px solid #4ade80}
 .gtPiano .btn{min-width:76px;font-size:16px}
 .gtPianoName{font-size:22px;font-weight:800;color:#fff;margin-right:8px}
 .gtDone{font-size:26px;min-width:220px;min-height:52px}
+@media (max-height:560px){
+ #gtDetail{display:none}
+ #gtTargetSrc{font-size:13px;line-height:1.1}
+ .gtDone{min-height:40px;font-size:18px;padding:2px 12px}
+ .gtRead{gap:1px}
+ .gtNeedle{height:10px;margin-top:0;flex-shrink:0}
+ .gtPrompt,.gtBeats{line-height:1.15}
+}
 .gtName{font-size:16px;padding:8px;border-radius:8px;border:1px solid #374151;background:#111827;color:#fff;width:9em}
 .gtSaved{display:flex;flex-direction:column;gap:8px;max-height:40vh;overflow:auto;width:min(520px,100%)}
 .gtPiano{display:flex;gap:6px;justify-content:center}
 .gtNeedle{width:min(440px,72%)}
+@media (min-width:700px) and (min-height:700px){
+ .tuDisp{min-height:0}
+ .gtTop{flex-wrap:wrap;overflow:visible;gap:8px;padding:8px 12px}
+ .gtKeys{flex-basis:180px;height:180px}
+ #gtSplits,.gtCover{justify-content:center}
+ #gtSplits{bottom:196px;gap:12px;overflow:auto}
+ .gtCover h2,#gtSplits h2{font-size:40px}
+ .gtCover p{font-size:20px}
+ .gtCover .btn,#gtSplits .btn{min-height:52px;font-size:20px}
+ .gtNote{font-size:72px}
+ #gtNeedleWrap{width:min(32vh,260px);height:min(32vh,260px);border-radius:50%;margin:8px auto;background:radial-gradient(circle at 50% 42%,#f4f7fb,#c5ccd6 46%,#7d868f);border:8px solid #1f2937;overflow:hidden}
+ #gtNeedle{left:50%;top:50%;bottom:auto;width:46%;height:4px;margin:0;background:#111827;transform-origin:left center;transform:rotate(calc(-90deg + var(--cents, 0) * 0.4deg))}
+ .pdDialWrap{width:min(52vw,480px)}
+ .pdKeys{flex-basis:170px;height:170px;min-height:150px}
+}
 .gtBeats{color:#9ca3af}
 .gtKeys .wk,.gtKeys .bk{min-height:0;padding:0;border-radius:0 0 3px 3px}
 .gtKeys .wk{flex:1;background:#f8fafc;border:1px solid #cbd5e1}

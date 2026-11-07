@@ -13,7 +13,7 @@ with sync_playwright() as p:
   pg.locator('#gtOpen').scroll_into_view_if_needed()
   pg.click('#gtOpen');pg.wait_for_timeout(250)
   assert pg.is_visible('#gtPick') and pg.inner_text('#gtPick').find('Choose a piano')>=0
-  pg.click('#gtNew');pg.click('#gtStyle button[data-style=concert]');pg.click('#gtStyleNext');pg.click('#gtSplitsStart');pg.wait_for_timeout(400)
+  pg.click('#gtNew');pg.click('#gtStyle button[data-style=concert]');pg.click('#gtStyleNext');pg.click('#gtCalModel');pg.click('#gtSplitsStart');pg.wait_for_timeout(400)
   assert pg.is_visible('#gtune') and pg.is_hidden('#gtRotate') and pg.is_hidden('#gtPick')
   assert pg.locator('#gtKeys button').count()==88
   fit=ev("""()=>{const g=document.getElementById('gtune');const k=document.getElementById('gtKeys');const n=document.getElementById('gtNeedle');

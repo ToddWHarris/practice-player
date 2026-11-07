@@ -11,7 +11,7 @@ with sync_playwright() as p:
   pg.click('nav button[data-t=tun]')
   pg.wait_for_function("document.getElementById('tun').classList.contains('on')")
   pg.locator('#gtOpen').scroll_into_view_if_needed(); pg.click('#gtOpen'); pg.wait_for_timeout(250)
-  pg.click('#gtNew'); pg.click('#gtStyle button[data-style=concert]'); pg.click('#gtStyleNext'); pg.click('#gtSplitsStart'); pg.wait_for_timeout(300)
+  pg.click('#gtNew'); pg.click('#gtStyle button[data-style=concert]'); pg.click('#gtStyleNext'); pg.click('#gtCalModel'); pg.click('#gtSplitsStart'); pg.wait_for_timeout(300)
   assert pg.inner_text('#gtHelp') == 'Help'
   assert pg.inner_text('#gtTitle').startswith('Pre-scan A0')
   pg.screenshot(path='/opt/cursor/artifacts/v38-piano-help-button.png')
