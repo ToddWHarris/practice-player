@@ -65,7 +65,12 @@ const TunerCore=(()=>{
  function transpose(concertMidi,semitones){return concertMidi+(+semitones||0)}
  function writtenLabel(concertMidi,semitones){return noteFromMidi(Math.round(transpose(concertMidi,semitones))).label}
  function newId(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
- return{NAMES,STRETCH_PTS,PIANO_LO,PIANO_HI,stretchCents,interpolateCurve,clampA4,freqToMidi,midiToFreq,noteFromMidi,analyze,yin,tone,etCents,isStable,GUITAR,BASS4,BASS5,nearestString,transpose,writtenLabel,newId}})();
+ const METER_RANGE=50;
+ function meterPlace(cents){
+  const raw=+cents,finite=isFinite(raw);
+  const shown=finite?Math.max(-METER_RANGE,Math.min(METER_RANGE,raw)):0;
+  return{cents:finite?raw:0,shown,pct:(shown+METER_RANGE)/(METER_RANGE*2)*100,range:METER_RANGE}}
+ return{NAMES,STRETCH_PTS,PIANO_LO,PIANO_HI,METER_RANGE,meterPlace,stretchCents,interpolateCurve,clampA4,freqToMidi,midiToFreq,noteFromMidi,analyze,yin,tone,etCents,isStable,GUITAR,BASS4,BASS5,nearestString,transpose,writtenLabel,newId}})();
 if(typeof module!=='undefined')module.exports=TunerCore;
 
 if(typeof document!=='undefined'){
@@ -127,9 +132,18 @@ function hint(){if(T.inst==='trumpet')return 'Shows written pitch (a major secon
  if(T.inst==='guitar')return 'Tap a string or let Auto pick the nearest open string.';
  if(T.inst==='bass')return T.bass5?'5-string with low B0.':'4-string (E A D G).';
  return 'Chromatic: any note.'}
-function needle(cents){const c=Math.max(-50,Math.min(50,cents)),pct=(c+50)/100*100;$t('tuNeedle').style.left=pct+'%';
- const ok=Math.abs(cents)<=5;$t('tuMeter').classList.toggle('ok',ok);$t('tuCents').classList.toggle('ok',ok)}
-function showIdle(msg){$t('tuNote').textContent='-';$t('tuOct').textContent='';$t('tuCents').textContent=msg||'Waiting…';$t('tuCents').classList.remove('ok');
+function buildScale(){
+ const ticks=$t('tuTicks'),labs=$t('tuLabs');if(!ticks||!labs||ticks.childElementCount)return;
+ const range=TunerCore.METER_RANGE;
+ for(let c=-range;c<=range;c+=10){
+  const pct=TunerCore.meterPlace(c).pct;
+  const tick=document.createElement('i');tick.className='tuTick'+(c===0?' zero':'');tick.style.left=pct+'%';ticks.append(tick);
+  const lab=document.createElement('span');lab.className='tuLab'+(c===0?' zero':'');lab.style.left=pct+'%';lab.dataset.cents=String(c);
+  lab.textContent=c>0?'+'+c:String(c);labs.append(lab)}}
+function needle(cents){const p=TunerCore.meterPlace(cents);$t('tuNeedle').style.left=p.pct+'%';
+ const ok=isFinite(+cents)&&Math.abs(+cents)<=5;$t('tuMeter').classList.toggle('ok',ok);$t('tuCents').classList.toggle('ok',ok)}
+function clearSim(){const n=$t('tuSim');if(n)n.hidden=true}
+function showIdle(msg){clearSim();$t('tuNote').textContent='-';$t('tuOct').textContent='';$t('tuCents').textContent=msg||'Waiting…';$t('tuCents').classList.remove('ok');
  $t('tuHz').textContent='';$t('tuTarget').textContent='';$t('tuMeter').classList.remove('ok');$t('tuNeedle').style.left='50%'}
 function showPitch(info,disp,tgt){
  $t('tuNote').textContent=disp.name;$t('tuOct').textContent=String(disp.octave);
@@ -227,7 +241,15 @@ function parseNoteLabel(s){const m=String(s).trim().match(/^([A-Ga-g])([#b]?)(-?
  if(n==null&&m[2]==='b')n={D:1,E:3,G:6,A:8,B:10}[m[1].toUpperCase()];
  if(n==null&&!m[2])n={C:0,D:2,E:4,F:5,G:7,A:9,B:11}[m[1].toUpperCase()];
  if(n==null)return null;const midi=(+m[3]+1)*12+n;return(midi>=TunerCore.PIANO_LO&&midi<=TunerCore.PIANO_HI)?midi:null}
-function tInit(){tLoad();const sel=$t('tuInst');INSTS.forEach(x=>{const o=document.createElement('option');o.value=x.id;o.textContent=x.label;sel.append(o)});
+function previewPitch(cents,label){
+ const m=String(label||'A4').trim().match(/^([A-G][#b]?)(-?\d)$/i);
+ const name=m?m[1].toUpperCase():'A',oct=m?m[2]:'4',c=+cents;
+ let tag=$t('tuSim');
+ if(!tag){tag=document.createElement('p');tag.id='tuSim';tag.className='tuSim';$t('tuDisp').insertBefore(tag,$t('tuDisp').firstChild)}
+ tag.hidden=false;tag.textContent='Simulated preview. Not a live microphone.';
+ const freq=TunerCore.midiToFreq(69,440)*Math.pow(2,(isFinite(c)?c:0)/1200);
+ showPitch({cents:isFinite(c)?c:0,freq,targetCents:0,label:name+oct,midi:69},{name,octave:+oct,label:name+oct},{mode:'equal',label:''})}
+function tInit(){tLoad();buildScale();const sel=$t('tuInst');INSTS.forEach(x=>{const o=document.createElement('option');o.value=x.id;o.textContent=x.label;sel.append(o)});
  setA4(T.a4);tSyncUI();showIdle('Mic off. Tap Start to tune.');
  $t('tuGo').onclick=()=>T.on?tStop():tStart();
  $t('tuA4').oninput=e=>setA4(e.target.value);$t('tuA4').onchange=e=>setA4(e.target.value);
@@ -239,5 +261,5 @@ function tInit(){tLoad();const sel=$t('tuInst');INSTS.forEach(x=>{const o=docume
  $t('tuSampleSkip').onclick=skipSample;$t('tuSampleSave').onclick=saveSamplePrompt;$t('tuSampleCancel').onclick=()=>{if(confirm('Cancel sampling?'))endSample(false)};
  $t('tuProfRename').onclick=renameProfile;$t('tuProfDelete').onclick=deleteProfile;$t('tuProfResample').onclick=resampleOne;
  document.addEventListener('visibilitychange',()=>{if(document.hidden)tLeave()})}
-window.Tuner={T,init:tInit,start:tStart,stop:tStop,leave:tLeave,enter:tEnter,Core:TunerCore,profiles,setProfiles,findProfile,interpolateCurve:TunerCore.interpolateCurve};
+window.Tuner={T,init:tInit,start:tStart,stop:tStop,leave:tLeave,enter:tEnter,previewPitch,Core:TunerCore,profiles,setProfiles,findProfile,interpolateCurve:TunerCore.interpolateCurve};
 }

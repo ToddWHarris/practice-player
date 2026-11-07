@@ -29,6 +29,12 @@ a.ok(T.stretchCents(96)>10&&T.stretchCents(96)<20); // C7
  // needle against profile
  const tgt=curve[69];const f=T.midiToFreq(69,440)*Math.pow(2,(tgt+5)/1200);
  const info=T.analyze(f,440,{midi:69,targetCents:tgt,mode:'profile'});a.ok(Math.abs(info.cents-5)<0.2,'profile +5')}
+a.equal(T.METER_RANGE,50);
+a.equal(T.meterPlace(0).pct,50);
+a.ok(Math.abs(T.meterPlace(-30).pct-20)<1e-9);
+a.ok(Math.abs(T.meterPlace(20).pct-70)<1e-9);
+a.equal(T.meterPlace(80).shown,50);a.equal(T.meterPlace(80).pct,100);
+a.equal(T.meterPlace(-90).shown,-50);a.equal(T.meterPlace(-90).pct,0);
 a.ok(T.isStable([1,1.1,0.9,1.0,0.95,1.05],2.5));
 a.ok(!T.isStable([1,5,1,5,1,5],2.5));
 console.log('tuner ok');
