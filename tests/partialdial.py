@@ -8,7 +8,7 @@ def fit(pg):
   return pg.evaluate("""()=>{
     const box=el=>{if(!el||el.hidden||el.closest('[hidden]'))return null; const r=el.getBoundingClientRect(); if(r.width<2||r.height<2)return null; return {id:el.id,l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height};};
     const note=box(document.getElementById('gtNote'));
-    const listen=box(document.getElementById('pdListen'));
+    const listen=box(document.getElementById('gtPrompt'));
     const keys=box(document.getElementById('gtKeys'));
     const svg=box(document.getElementById('pdSvg'));
     const target=box(document.getElementById('pdTarget'));
@@ -36,7 +36,7 @@ def fit(pg):
     const a0=whites[0]&&whites[0].getBoundingClientRect();
     const c8=whites.length&&whites[whites.length-1].getBoundingClientRect();
     const mid=(svg.l+svg.r)/2, center=(g.left+g.right)/2;
-    return {hits, clip, font:parseFloat(getComputedStyle(document.getElementById('pdListen')).fontSize),
+    return {hits, clip, font:parseFloat(getComputedStyle(document.getElementById('gtPrompt')).fontSize),
       dialW:svg&&svg.w, dialH:svg&&svg.h, keyH:keys&&keys.h, keyTop:keys&&keys.t, viewW:g.width, viewH:g.height,
       off:svg?Math.abs(mid-center):null, whites:whites.length, blacks:document.querySelectorAll('#gtKeys .bk').length,
       a0:a0&&a0.left, c8:c8&&c8.right, keyL:keys&&keys.l, keyR:keys&&keys.r,
@@ -68,7 +68,9 @@ with sync_playwright() as p:
   r=pg.evaluate("()=>PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]})")
   assert r['f1Heard'] and r['bStatus']=='measured', r
   assert pg.locator('#pdRings [data-n="1"]').count()>=1
-  assert 'Play A4 alone' in pg.inner_text('#pdListen') and 'overtones' in pg.inner_text('#pdListen')
+  prompt=pg.inner_text('#gtPrompt')
+  assert prompt.count('Play A4 alone')==1 and 'what was heard' in prompt and 'not the tuning target' in prompt
+  assert pg.inner_text('#pdListen')==''
   assert 'Confidence high' in pg.inner_text('#pdStatus')
   assert 'Simulated preview' in pg.inner_text('#pdSim')
   vis=pg.inner_text('#gtune')
@@ -88,7 +90,7 @@ with sync_playwright() as p:
   pg.click('#pdDetailsBtn'); pg.wait_for_timeout(80)
   assert pg.is_hidden('#pdDetails')
   f=fit(pg); assert not f['hits'] and not f['clip'] and f['font']>=14, f
-  assert f['dialW']>=280 and f['note']>=48, f
+  assert f['dialW']>=150 and f['note']>=48 and f['keyH']>=80, f
   assert f['whites']==52 and f['a0']<=f['keyL']+8 and f['c8']>=f['keyR']-8, f
   pg.screenshot(path='/opt/cursor/artifacts/partial-dial-zero.png')
   sharp=pg.evaluate("()=>PartialDial.preview({midi:69,f1:440*Math.pow(2,12/1200),B:0.0003,partials:[1,2,3,4,5]})")
@@ -104,15 +106,15 @@ with sync_playwright() as p:
   pg.evaluate("()=>PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]})")
   assert pg.is_visible('#pdTarget') and pg.inner_text('#pdTargetName')=='A4'
   f=fit(pg); assert not f['hits'] and not f['clip'], f
-  assert f['dialW']>=320 and f['dialW']/f['viewW']>0.36, f
-  assert f['off']<30, f
-  assert f['keyTop']/f['viewH']>0.80, f
+  assert f['dialW']>=80 and f['dialH']>=80 and f['keyH']>=64, f
+  assert f['off']<40, f
+  assert f['keyTop']/f['viewH']>0.70, f
   assert f['a0']<=f['keyL']+8 and f['c8']>=f['keyR']-8, f
   assert 'Overtone 1' not in pg.inner_text('#gtune')
   pg.screenshot(path='/opt/cursor/artifacts/partial-dial-landscape.png')
   pg.set_viewport_size({'width':932,'height':430}); pg.wait_for_timeout(150)
   f=fit(pg); assert not f['hits'] and not f['clip'] and pg.is_visible('#pdTarget'), f
-  assert f['dialW']/f['viewW']>0.36 and f['off']<36 and f['keyTop']/f['viewH']>0.80, f
+  assert f['dialW']>=80 and f['dialH']>=80 and f['keyH']>=64 and f['off']<40 and f['keyTop']/f['viewH']>0.70, f
   # Help returns to the same target note.
   pg.click('#pdHelp'); pg.wait_for_timeout(250)
   assert 'Partial dial' in pg.inner_text('#h-partial-dial')

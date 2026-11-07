@@ -647,8 +647,10 @@ function render(){
   if(!G.showGot&&!G.showUnread){
    if(!G.listening)plain+=' Microphone is off.';
    else if(cue.state)plain+=' '+cue.state;
-   else plain+=' Listening now.'}
+   else plain+=' Listening now.'
+   if(plain.indexOf('Rings')<0)plain+=step.phase==='check'||unisonStep?' Rings stay off.':' Rings are what was heard, not the tuning target.'}
   $g('gtPrompt').textContent=plain;
+  if($g('pdListen')){$g('pdListen').textContent='';$g('pdListen').hidden=true}
   if($g('gtDetail')){$g('gtDetail').textContent=cue.detail||'';$g('gtDetail').hidden=!cue.detail}
   $g('gtCount').textContent=(shown+1)+' / '+G.seq.length;
   const beats=beatsText(step);
@@ -685,12 +687,12 @@ function render(){
    else $g('gtTargetSrc').textContent=''}
   if($g('gtIdentity')){
    const m=G.sess.pianoModel;
-   $g('gtIdentity').textContent=m?(m.maker+' '+m.model+'. '+(G.sess.serial?'Serial '+G.sess.serial+'.':'Serial not entered.')+' Reference only. Not a measured curve.'):'';
+   $g('gtIdentity').textContent=m?('Model: '+m.maker+' '+m.model+'. '+(G.sess.serial?'Serial '+G.sess.serial+'.':'Serial not entered.')+' Reference only. Not a measured curve.'):'';
    $g('gtIdentity').hidden=!m}
+  if($g('gtModelBadge')){const m=G.sess.pianoModel;$g('gtModelBadge').hidden=!m;$g('gtModelBadge').textContent=m?('Model: '+m.maker+' '+m.model):''}
   if($g('gtSerialLive')){const live=$g('gtSerialLive');live.hidden=!G.sess.pianoModel;if(document.activeElement!==live)live.value=G.sess.serial||''}
   if($g('pdTargetName'))$g('pdTargetName').textContent=PT.label(show);
   if($g('pdTarget'))$g('pdTarget').hidden=!window.matchMedia('(orientation: landscape) and (max-height: 560px)').matches;
-  if($g('pdListen')&&!(window.PartialDial&&PartialDial.simOn&&PartialDial.simOn()))$g('pdListen').textContent=step.phase==='check'?'Two notes together. Rings stay off.':'Rings show overtones that were heard. A missing overtone is not drawn.';
   if(step.phase==='check'&&window.PartialDial&&PartialDial.clearRings)PartialDial.clearRings();
   $g('gtType').value=G.sess.type&&$g('gtType').querySelector('option[value="'+G.sess.type+'"]')?G.sess.type:'concert';
   $g('gtA4').value=G.sess.a4}

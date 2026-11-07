@@ -384,6 +384,26 @@
 </div></div>
 <div id="gtune" hidden>
 <p id="gtRotate" hidden>The piano screen stays on this page.</p>
+<div class="gtTop">
+<div class="gtBar">
+<button type="button" id="gtClose" class="btn">Close</button>
+<button type="button" id="gtHelp" class="btn">Help</button>
+<button type="button" id="pdHelp" class="btn">Dial help</button>
+<button type="button" id="gtBack" class="btn">Back</button>
+<button type="button" id="gtSteps" class="btn">Steps</button>
+<button type="button" id="gtRetry" class="btn" hidden>Retry unread</button>
+<span id="gtTitle" class="gtTitle"></span><span id="gtCount" class="gtCount"></span>
+</div>
+<div class="gtBar">
+<span id="gtModelBadge" class="gtBadge" hidden>Model</span>
+<label>Size <select id="gtType" aria-label="Size model"></select></label>
+<label>Goal A4 <input id="gtA4" type="number" min="430" max="450" step="0.1" aria-label="Goal pitch"> Hz</label>
+<input id="gtPianoName" class="gtName" placeholder="Piano name" aria-label="Piano name">
+<input id="gtSerialLive" class="gtName" type="text" autocomplete="off" placeholder="Serial" aria-label="Piano serial number" hidden>
+<button type="button" id="gtSave" class="btn">Save piano</button>
+</div>
+</div>
+<div class="gtStage">
 <div id="gtPick" class="gtCover" hidden>
 <h2>Choose a piano</h2>
 <button type="button" id="gtNew" class="btn primary">New piano</button>
@@ -438,20 +458,6 @@
 <button type="button" id="gtTuneOk" class="btn primary">OK</button>
 </div>
 <div class="gtBody">
-<div class="gtTop">
-<button type="button" id="gtClose" class="btn">Close</button>
-<button type="button" id="gtHelp" class="btn">Help</button>
-<button type="button" id="pdHelp" class="btn">Dial help</button>
-<label>Piano <select id="gtType" aria-label="Piano type"></select></label>
-<label>Goal A4 <input id="gtA4" type="number" min="430" max="450" step="0.1" aria-label="Goal pitch"> Hz</label>
-<button type="button" id="gtBack" class="btn">Back</button>
-<button type="button" id="gtSteps" class="btn">Steps</button>
-<button type="button" id="gtRetry" class="btn" hidden>Retry unread</button>
-<input id="gtPianoName" class="gtName" placeholder="Piano name" aria-label="Piano name">
-<input id="gtSerialLive" class="gtName" type="text" autocomplete="off" placeholder="Serial" aria-label="Piano serial number" hidden>
-<button type="button" id="gtSave" class="btn">Save piano</button>
-<span id="gtTitle" class="gtTitle"></span><span id="gtCount" class="gtCount"></span>
-</div>
 <div class="pdLeft">
 <p id="pdSim" class="pdSim" hidden>Simulated preview. Not a live microphone.</p>
 <div id="pdTarget" class="pdTarget" hidden><span class="pdKicker">Tune</span><div id="pdTargetName"></div></div>
@@ -503,6 +509,7 @@
 </div>
 <div id="gtKeys" class="gtKeys"></div>
 <div id="gtList" class="gtList" hidden></div>
+</div>
 </div>
 </div>
 <audio id="audio" preload="metadata"></audio>

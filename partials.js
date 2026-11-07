@@ -224,7 +224,9 @@ function statusLine(r){
  return 'Not sure yet.'}
 function renderListen(){
  const cue=PartialCore.listenLine(S.target!=null?PartialCore.label(S.target):'',S.result);
- const el=$p('pdListen');if(el)el.textContent=cue.plain+' '+(S.listening||S.sim?cue.state:'Microphone is off.');
+ const el=$p('pdListen');if(el){el.textContent='';el.hidden=true}
+ const guided=$p('gtPrompt');
+ if(guided&&S.sim&&guided.textContent.indexOf('Rings are what was heard')<0)guided.textContent=guided.textContent+' Rings are what was heard, not the tuning target.';
  const d=$p('pdDetail');if(d)d.textContent=cue.detail||'';
  const st=$p('pdStatus');if(st)st.textContent=statusLine(S.result);
  const side=$p('pdTarget');

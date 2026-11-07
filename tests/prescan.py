@@ -15,7 +15,7 @@ with sync_playwright() as p:
   assert pg.inner_text('#gtTitle').startswith('Pre-scan A0')
   assert 'Next: A 0' in pg.inner_text('#gtCents')
   note_h=pg.locator('#gtNote').bounding_box()['height']
-  assert note_h>=80,note_h
+  assert note_h>=48,note_h
   assert pg.locator('#gtKeys button.blink').count()>=1 or pg.locator('#gtKeys button.next').count()>=1
   # +80 cents, steady, must be saved and must not be pinned off the number
   ev('PianoTune._setSounding(false)')

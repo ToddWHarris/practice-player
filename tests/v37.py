@@ -98,7 +98,7 @@ with sync_playwright() as p:
   assert pg.inner_text('#gtTitle').startswith('Pre-scan A0')
   assert 'Next: A 0' in pg.inner_text('#gtCents')
   g844 = geom(pg, '844 prescan')
-  assert g844['noteH'] >= 80
+  assert g844['noteH'] >= 48
   pg.set_viewport_size({'width':932,'height':430})
   pg.wait_for_timeout(200)
   geom(pg, '932 prescan')

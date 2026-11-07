@@ -151,17 +151,22 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .lvCal{border:1px solid #374151;border-radius:14px;padding:10px 12px}
 .lvRefL{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:17px;margin:8px 0}
 #lvRef{width:6em;font-size:22px;padding:8px;border-radius:10px;border:1px solid #374151;background:#111827;color:#fff}
-#gtune{position:fixed;inset:0;z-index:70;background:#0b0f17;color:#e5e7eb;overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#gtune{position:fixed;inset:0;z-index:70;background:#0b0f17;color:#e5e7eb;overflow:hidden;max-width:100%;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #gtune[hidden]{display:none!important}
 #gtRotate{display:none}
-.gtBody{height:100%;display:flex;flex-direction:column;min-height:0}
-.gtTop{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;padding:4px 8px;overflow:auto;flex:0 0 auto}
+.gtBody{height:100%;max-height:100%;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.gtTop{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:4px max(8px, env(safe-area-inset-right)) 4px max(8px, env(safe-area-inset-left));overflow:visible;flex:0 0 auto;width:100%;max-width:100%;background:#0b0f17;z-index:40}
+.gtBar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%}
+.gtBadge{display:inline-flex;align-items:center;min-height:32px;padding:2px 8px;border-radius:8px;background:#1f2937;border:1px solid #fde68a;color:#fde68a;font-weight:800;font-size:14px;white-space:nowrap}
+.gtBadge[hidden]{display:none!important}
+.gtStage{flex:1 1 auto;min-height:0;position:relative;overflow:hidden;width:100%}
+#gtune select,#gtune input{max-width:46vw}
 .gtTop label{display:flex;gap:4px;align-items:center;font-size:14px;white-space:nowrap}
 .gtTop select,.gtTop input{font-size:16px;background:#111827;color:#fff;border:1px solid #374151;border-radius:8px;padding:6px}
 #gtA4{width:4.5em}
 .gtTitle{font-weight:700;white-space:nowrap}.gtCount{color:#9ca3af;font-size:14px;white-space:nowrap}
 .gtBody{height:100%}
-.pdCenter #gtNote{font:800 28cqi Georgia,serif;color:#3f2a1d;line-height:.85;margin:0}
+.pdCenter #gtNote{font:800 clamp(48px,22cqi,84px) Georgia,serif;color:#3f2a1d;line-height:.85;margin:0}
 .pdCenter #gtCents{font-size:7cqi;color:#3f2a1d;font-weight:800}
 .pdCenter #pdCents{font-size:5cqi;color:#3f2a1d;font-weight:800;line-height:1.1}
 .gtNote{font-size:96px;font-weight:800;text-align:center;line-height:.86;margin:0}
@@ -198,7 +203,7 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .pdRight{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center}
 .pdRight .btn,.pdLeft .btn,.pdActs .btn{min-height:34px;padding:4px 8px;font-size:14px}
 .pdPanel{text-align:center;padding:2px 8px;flex:0 0 auto}
-.pdListen{margin:0;font-size:16px;font-weight:700;line-height:1.2}
+#pdListen{display:none!important}
 .pdStatus{margin:2px 0 0;font-size:16px;font-weight:800;line-height:1.15;color:#fde68a}
 .pdDetail,.pdTable,.pdStretch,.pdCap{margin:0;font-size:14px;line-height:1.25;color:#e5e7eb}
 .pdStretch{margin-top:2px}
@@ -220,31 +225,38 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .pdKeys .bk.measured{box-shadow:inset 0 4px 0 #4ade80}
 .pdFlag{position:absolute;bottom:2px;transform:translateX(-50%);background:#0369a1;color:#fff;font-size:13px;font-weight:800;line-height:1.1;padding:1px 4px;border-radius:4px;z-index:7;pointer-events:none;white-space:nowrap}
 @media (orientation:landscape) and (max-height:560px){
- #gtune .gtBody{display:block;padding:0}
- #gtune .gtTop{position:absolute;z-index:6;left:0;right:0;top:0;height:34px;background:#0b0f17}
- .pdLeft{position:absolute;z-index:5;left:max(6px,env(safe-area-inset-left));top:40px;width:22%;display:flex;flex-direction:column;align-items:center;gap:4px}
+ #gtune .gtBody{display:block;padding:0;height:100%}
+ .pdLeft{position:absolute;z-index:5;left:max(4px,env(safe-area-inset-left));top:0;width:22%;max-height:calc(100% - 180px);overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:4px}
  .pdSim{flex:0 0 auto;font-size:12px;text-align:center}
  #pdTarget:not([hidden]){display:flex}
  #pdTargetName{font-size:42px}
- .pdStage{position:absolute;z-index:1;left:29.3%;width:41.5%;top:36px;height:auto;aspect-ratio:1}
- .pdDialWrap{width:100%}
- #gtune .pdCenter{top:32%}
- #gtune .pdPanel{top:56%;height:32%;right:28%;justify-content:flex-start;gap:1px}
+ .pdStage{position:absolute;z-index:1;left:22%;width:56%;top:0;height:calc(100% - 192px);aspect-ratio:auto}
+ .pdDialWrap{height:100%;width:auto;aspect-ratio:1;max-width:100%;max-height:100%;margin:0 auto}
+ #pdSvg{width:100%;height:100%}
+ #gtune .pdCenter{top:46%}
+ #gtune .pdCenter #gtNote{font-size:48px;line-height:1}
+ #gtIdentity{display:none}
+ #gtune .pdPanel{top:auto;bottom:76px;height:112px;left:24%;right:26%;justify-content:flex-start;gap:0;overflow:hidden}
+ #gtune .gtBeats,#gtune #gtTargetSrc{overflow:hidden}
  #gtune .pdListen,#gtune .pdStatus,#gtune .gtBeats,#gtune #gtTargetSrc{font-size:12px;line-height:1.1;margin:0}
- #gtune #gtDone{position:absolute;right:max(8px,env(safe-area-inset-right));top:74%;width:22%;min-width:0;z-index:6;min-height:32px;font-size:16px}
- .pdRight{position:absolute;z-index:5;right:max(6px,env(safe-area-inset-right));top:40px;width:26%;max-height:52%;overflow:auto;display:flex;flex-direction:column;align-items:stretch;gap:3px}
- .pdActs{justify-content:flex-start}
+ #gtune #gtDone{position:absolute;right:max(8px,env(safe-area-inset-right));top:auto;bottom:78px;width:22%;min-width:0;z-index:6;height:32px;min-height:32px;font-size:16px}
+ .pdRight{position:absolute;z-index:5;right:0;top:0;width:24%;max-width:24%;box-sizing:border-box;max-height:54%;overflow:auto;display:flex;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:3px;padding-right:max(4px,env(safe-area-inset-right))}
+ .pdRight .btn,.pdRight .pdMeasure{width:100%;max-width:100%;min-width:0;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}
+ .pdRight .btn{min-height:28px;font-size:12px;padding:2px 4px}
+ .pdRight .pdMeasure{font-size:11px;line-height:1.15}
+ .pdActs{justify-content:flex-start;flex-direction:column;flex-wrap:nowrap;width:100%;min-width:0}
+ .pdRight{min-width:0}
  .pdMeasure,.pdKeep{text-align:left}
  .pdPanel{position:absolute;z-index:3;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:61.5%;height:26.3%;display:flex;flex-direction:column;justify-content:center;background:rgba(11,15,23,.94);border-radius:12px;padding:6px 12px;text-align:center;overflow:hidden}
  .pdListen,.pdStatus,.pdStretch{text-align:center}
- #gtune .gtKeys{position:absolute;z-index:4;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:87.9%;bottom:max(2px,env(safe-area-inset-bottom));height:auto;min-height:0;flex:none;border-radius:6px}
+ #gtune .gtKeys{position:absolute;z-index:4;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));top:auto;bottom:max(2px,env(safe-area-inset-bottom));height:72px;min-height:72px;flex:none;border-radius:6px}
  #gtune.checking #gtBeats{max-height:32px;overflow:hidden}
  #pdDetails{top:10%;max-height:50%;left:max(16%,env(safe-area-inset-left));right:max(16%,env(safe-area-inset-right))}
 }
 #gtune.checking .gtBeats{font-size:14px;line-height:1.2;max-width:920px}
 #gtune.checking .gtPrompt{font-size:15px}
 #gtune.checking .gtDone{min-height:36px;font-size:18px}
-.gtCover{position:absolute;left:0;right:0;top:56px;bottom:0;z-index:8;background:#0b0f17;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 16px;text-align:center}
+.gtCover{position:absolute;left:0;right:0;top:0;bottom:0;z-index:8;background:#0b0f17;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 16px;text-align:center}
 #gtSplits{bottom:98px;justify-content:flex-start;overflow:hidden;gap:4px;padding-top:4px}
 #gtSplits h2{font-size:28px}
 .gtSplitBtns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
@@ -267,9 +279,10 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtPianoName{font-size:22px;font-weight:800;color:#fff;margin-right:8px}
 .gtDone{font-size:26px;min-width:220px;min-height:52px}
 @media (orientation:portrait) and (max-width:699px){
- #gtune .pdPanel{flex:1;min-height:0;overflow:auto}
- #gtune .gtKeys{flex:0 0 120px;height:120px}
- #gtune .pdDialWrap{width:min(78vw,340px)}
+ #gtune .pdPanel{flex:0 0 auto;min-height:0;overflow:visible}
+ #gtune .pdStage{flex:0 0 auto;min-height:0;overflow:visible}
+ #gtune .pdDialWrap{width:min(44vw,170px)}
+ #gtune .gtKeys{flex:0 0 92px;height:92px}
 }
 @media (max-height:560px){
  #gtDetail{display:none}
@@ -285,15 +298,17 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtNeedle{width:min(440px,72%)}
 @media (min-width:700px) and (min-height:700px){
  .tuDisp{min-height:0}
- .gtTop{flex-wrap:wrap;overflow:visible;gap:8px;padding:8px 12px}
+ .gtTop{flex-wrap:wrap;overflow:visible;gap:8px;padding:8px max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left))}
  .gtKeys{flex-basis:180px;height:180px}
  #gtSplits,.gtCover{justify-content:center}
  #gtSplits{bottom:196px;gap:12px;overflow:auto}
  .gtCover h2,#gtSplits h2{font-size:40px}
  .gtCover p{font-size:20px}
  .gtCover .btn,#gtSplits .btn{min-height:52px;font-size:20px}
- .pdDialWrap{width:min(46vh,420px)}
- #gtune .gtKeys{flex-basis:170px;height:170px;min-height:150px}
+ #gtune .pdStage{flex:1 1 auto;min-height:0}
+ .pdDialWrap{width:min(34vh,320px)}
+ #gtune .pdRight{flex-direction:row;flex-wrap:wrap;justify-content:center}
+ #gtune .gtKeys{flex:0 0 130px;height:130px;min-height:0}
  #gtPrompt{font-size:20px}
 }
 .gtBeats{color:#9ca3af}

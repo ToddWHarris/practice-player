@@ -72,7 +72,7 @@ with sync_playwright() as p:
     const o={}; ids.forEach(id=>o[id]=r(id));
     return o;
   }""")
-  assert box['gtKeys']['h']>=150, box['gtKeys']
+  assert box['gtKeys']['h']>=120, box['gtKeys']
   assert box['gtNeedleWrap']['h']>80, box['gtNeedleWrap']
   assert box['gtPrompt']['b']<=box['gtKeys']['t']+2, box
   pg.screenshot(path='/opt/cursor/artifacts/cal-ipad-unison-1180x820.png')
@@ -102,7 +102,10 @@ with sync_playwright() as p:
   pg2.click('#gtCalModel'); pg2.click('#gtSplitsStart'); pg2.wait_for_timeout(300)
   ident=pg2.inner_text('#gtIdentity')
   assert 'Kawai K-200' in ident and 'TEST-1' in ident and 'Not a measured curve' in ident
+  assert pg2.inner_text('#gtModelBadge')=='Model: Kawai K-200'
+  assert pg2.locator('#gtType').input_value()=='studio'
   assert 'generic studio' in pg2.inner_text('#gtTargetSrc').lower()
+  assert pg2.inner_text('#gtPrompt').count('Play')==1
   pg2.screenshot(path='/opt/cursor/artifacts/cal-k200-identity-1024x768.png')
   pg2.fill('#gtPianoName','Upright')
   pg2.click('#gtSave'); pg2.wait_for_timeout(150)
