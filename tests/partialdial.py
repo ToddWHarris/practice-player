@@ -59,6 +59,10 @@ with sync_playwright() as p:
   vis=pg.inner_text('#pdial')
   assert 'Overtone 1' not in vis and 'unstiffened' not in vis and '3.99' not in vis
   assert pg.locator('#pdKeys .wk').count()==52 and pg.locator('#pdKeys .bk').count()==36
+  assert pg.locator('#pdSamples').count()==0 and pg.locator('.pdEx').count()==0
+  assert 'Example notes' not in pg.inner_text('#pdial')
+  assert 'Tap a key on the keyboard' in pg.inner_text('#helpBody')
+  assert 'example notes' not in pg.inner_text('#helpBody').lower()
   pg.click('#pdDetailsBtn'); pg.wait_for_timeout(100)
   assert 'Overtone 1' in pg.inner_text('#pdTable') and 'unstiffened' in pg.inner_text('#pdTable')
   pg.click('#pdDetailsBtn'); pg.wait_for_timeout(80)
@@ -110,6 +114,13 @@ with sync_playwright() as p:
   assert pg.evaluate("localStorage.getItem('pp-piano-profiles')")=='[]'
   assert 'Shop upright' in pg.evaluate("localStorage.getItem('pp-partial-profiles')")
   assert 'pp-partial-profiles' in pg.evaluate('BK.PREFS')
+  pg.click('#pdKeys button[data-m="57"]')
+  pg.wait_for_timeout(150)
+  assert 'Play A3 alone' in pg.inner_text('#pdListen')
+  assert pg.inner_text('#pdKeys .pdFlag')=='A3'
+  assert pg.inner_text('#pdTargetName')=='A3'
+  assert pg.locator('#gtKeys').count()==1
+  assert pg.locator('#pdial button', has_text='A0').count()==0
   b.close()
 assert not errs, errs
 print('PARTIAL DIAL OK')

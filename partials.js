@@ -5,7 +5,6 @@
 // Ring 1 is drawn only when partial 1 is actually found in the sound.
 const PartialCore=(function(){
  const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
- const EXAMPLE=[21,33,45,57,69,81,93];
  function etFreq(midi,a4){return (a4||440)*Math.pow(2,(midi-69)/12)}
  function label(m){m=m|0;return NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1)}
  function centsBetween(hz,ref){return 1200*Math.log2(hz/ref)}
@@ -156,7 +155,7 @@ const PartialCore=(function(){
   const detail='Each ring is one overtone that was actually heard. Zero stays at the top. Sharp is to the right. Flat is to the left.'+(heard?'':' Partial 1 was not heard, so ring 1 is not drawn.');
   if(result&&result.partials&&result.partials.length)return {plain:'Play '+targetLabel+' alone. Mute the other strings. Listening to its overtones.',detail,state:'Heard '+result.note+'.'};
   return {plain:'Play '+targetLabel+' alone. Mute the other strings. Listening to its overtones.',detail,state:'Listening now.'}}
- return {NAMES,EXAMPLE,etFreq,label,centsBetween,partialFromF0,partialFromF1,f0FromF1,f1FromF0,analyzeSingleNote,synthNote,experimentalStretch,listenLine,bAt}})();
+ return {NAMES,etFreq,label,centsBetween,partialFromF0,partialFromF1,f0FromF1,f1FromF0,analyzeSingleNote,synthNote,experimentalStretch,listenLine,bAt}})();
 if(typeof module!=='undefined')module.exports=PartialCore;
 
 if(typeof document!=='undefined'){
@@ -249,17 +248,7 @@ function renderStretch(){
  if(out.status!=='experimental'){box.textContent='Stretch unavailable. Not a tuning target.';if(more)more.textContent=out.reason;return}
  box.textContent='Experimental stretch. Not a tuning target.';
  if(more)more.textContent=long}
-function renderSamples(){
- const box=$p('pdSamples');if(!box)return;box.innerHTML='';
- const cap=document.createElement('p');cap.className='pdCap';cap.textContent='Example notes, not a requirement.';box.appendChild(cap);
- PartialCore.EXAMPLE.forEach(m=>{
-  const b=document.createElement('button');b.type='button';b.className='btn pdEx';b.textContent=PartialCore.label(m);
-  const saved=S.profile.notes[m];
-  if(saved&&saved.bStatus==='measured')b.classList.add('measured');
-  else if(saved)b.classList.add('held');
-  b.onclick=()=>{S.target=m;S.sim=false;S.result=null;clearWave();renderListen();drawDial(null);renderTable();renderStretch();markKeys()};
-  box.appendChild(b)})}
-function renderAll(){renderListen();drawDial(S.result);renderTable();renderStretch();renderSamples();markKeys();
+function renderAll(){renderListen();drawDial(S.result);renderTable();renderStretch();markKeys();
  const sim=$p('pdSim');if(sim)sim.hidden=!S.sim}
 function keys(){
  const box=$p('pdKeys');if(!box||box.querySelector('button'))return;
@@ -320,7 +309,7 @@ function preview(opts){
 function storeCurrent(){
  const r=S.result;if(!r||r.bStatus!=='measured'||S.target==null)return false;
  S.profile.notes[S.target]={midi:S.target,B:r.B,bStatus:'measured',f1Heard:r.f1Heard,partials:r.partials.map(p=>p.n),at:Date.now()};
- renderStretch();renderSamples();return true}
+ renderStretch();markKeys();return true}
 function saveNamed(){
  const name=($p('pdName')&&$p('pdName').value||'').trim();if(!name){$p('pdName')&&$p('pdName').focus();return}
  const id='pd'+Date.now();

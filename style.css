@@ -193,14 +193,12 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 #pdCents{font-size:6.4cqi;font-weight:800;line-height:1.1}
 #pdCents.long{font-size:5cqi}
 .pdRight{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center}
-.pdRight .btn,.pdLeft .btn,.pdActs .btn,.pdEx{min-height:34px;padding:4px 8px;font-size:14px}
+.pdRight .btn,.pdLeft .btn,.pdActs .btn{min-height:34px;padding:4px 8px;font-size:14px}
 .pdPanel{text-align:center;padding:2px 8px;flex:0 0 auto}
 .pdListen{margin:0;font-size:16px;font-weight:700;line-height:1.2}
 .pdStatus{margin:2px 0 0;font-size:16px;font-weight:800;line-height:1.15;color:#fde68a}
 .pdDetail,.pdTable,.pdStretch,.pdCap{margin:0;font-size:14px;line-height:1.25;color:#e5e7eb}
 .pdStretch{margin-top:2px}
-.pdSamples{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
-.pdEx.measured{outline:2px solid #4ade80}
 .pdActs{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
 .pdActs .gtName{width:7.2em;min-height:34px;padding:4px 6px}
 #pdDetails{position:absolute;z-index:8;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));top:52px;max-height:46%;overflow:auto;background:rgba(17,24,39,.97);border:1px solid #374151;border-radius:12px;padding:10px 12px}
@@ -223,7 +221,7 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
  .pdStage{position:absolute;z-index:1;left:29.3%;width:41.5%;top:2.1%;height:auto;aspect-ratio:1}
  .pdDialWrap{width:100%}
  .pdRight{position:absolute;z-index:5;right:max(6px,env(safe-area-inset-right));top:max(6px,env(safe-area-inset-top));width:22%;max-height:60%;overflow:auto;display:flex;flex-direction:column;align-items:stretch;gap:3px}
- .pdSamples,.pdActs{justify-content:flex-start}
+ .pdActs{justify-content:flex-start}
  .pdPanel{position:absolute;z-index:3;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:61.5%;height:26.3%;display:flex;flex-direction:column;justify-content:center;background:rgba(11,15,23,.94);border-radius:12px;padding:6px 12px;text-align:center;overflow:hidden}
  .pdListen,.pdStatus,.pdStretch{text-align:center}
  .pdKeys{position:absolute;z-index:4;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:87.9%;bottom:max(2px,env(safe-area-inset-bottom));height:auto;min-height:0;flex:none;border-radius:6px}
