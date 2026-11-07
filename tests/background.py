@@ -55,10 +55,19 @@ with sync_playwright() as p:
   ev('goAway()');ev('S.rec&&S.rec.onend&&S.rec.onend()');pg.wait_for_timeout(300);assert ev('S.ab&&S.waiting'),'still waiting while hidden';n=ev('__rs')
   ev('comeBack()');pg.wait_for_timeout(300);assert ev('S.ab&&S.waiting') and ev('__rs')>n,'listening restarted on return'
   ev("S.ab&&document.getElementById('abOn').click()")
-  # hidden A-B in voice mode: reaching B repeats from A after the gap instead of going silent
-  ev("document.getElementById('gap').value=1;audio.currentTime=3;S.A=3;S.B=4;renderMarks()");pg.click('#abOn');pg.wait_for_timeout(200);ev('goAway()')
-  pg.wait_for_function('S.waiting',timeout=8000);pg.wait_for_function('!S.waiting&&!audio.paused&&audio.currentTime<4',timeout=5000);assert ev('S.ab')
-  ev('comeBack()');ev("S.ab&&document.getElementById('abOn').click()")
+  # hidden A-B in voice mode: reaching B waits. It does not repeat on a timer.
+  ev("document.getElementById('autoRep').checked=false;document.getElementById('gap').value=1;audio.currentTime=3;S.A=3;S.B=4;renderMarks()");pg.click('#abOn');pg.wait_for_timeout(200);ev('goAway()')
+  pg.wait_for_function('S.waiting&&audio.paused',timeout=8000)
+  pg.wait_for_timeout(1500)
+  assert ev('S.waiting&&audio.paused&&S.ab'),'voice wait does not auto-repeat while hidden'
+  msg=ev("document.getElementById('listenTxt').textContent")
+  assert 'background' in msg and 'will not repeat' in msg,msg
+  ev('__ms.play()');pg.wait_for_timeout(400);assert ev('S.ab&&!S.waiting&&!audio.paused'),'manual play is the cue'
+  ev("S.ab&&document.getElementById('abOn').click()")
+  # Auto repeat still starts the next pass by itself, including while hidden
+  ev("document.getElementById('autoRep').checked=true;document.getElementById('gap').value=1;audio.currentTime=5;S.A=5;S.B=6;renderMarks()");pg.click('#abOn');pg.wait_for_timeout(200);ev('goAway()')
+  pg.wait_for_function('S.waiting',timeout=8000);pg.wait_for_function('!S.waiting&&!audio.paused&&audio.currentTime<6',timeout=5000);assert ev('S.ab')
+  ev('comeBack()');ev("S.ab&&document.getElementById('abOn').click()");ev("document.getElementById('autoRep').checked=false")
   # pitched song: AudioContext suspended/interrupted gets resumed
   ev('openPR()');ev("p=document.getElementById('pit');p.value=1;p.dispatchEvent(new Event('input'))");pg.wait_for_function('PR.ctx&&PR.node',timeout=5000);pg.click('#prDone')
   if ev('audio.paused'):pg.click('#play') if pg.is_visible('#play') else ev('audio.play()')

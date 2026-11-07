@@ -117,4 +117,76 @@ const extra=P.analyzeUnison(P.synthUnison(48000,1.4,[note(432,0.0002),note(436,0
 a.equal(extra.pass,false);
 a.equal(extra.status,'uncertain');
 a.equal(extra.reason,'ambiguous');
-console.log('calibration ok', 'A6', cal.targets[93].cents.toFixed(2), 'A2ish', cal.targets[33].cents.toFixed(2), 'unison', two.fundamentalBeat.toFixed(2));
+const a0f=440*Math.pow(2,(21-69)/12);
+function hearA0(f1,B,ns,opt,midi){
+ return P.analyzeCalibrationNote(P.synthUnison(48000,1.2,[{f1:f1,B:B,partials:ns||[1,2,3,4,5,6]}],opt||{}),48000,{midi:midi==null?21:midi,a4:440})}
+const a0full=hearA0(a0f,0.0004);
+a.equal(a0full.status,'measured');
+a.ok(Math.abs(a0full.B/0.0004-1)<0.25,a0full.B);
+a.ok(Math.abs(a0full.heardCents)<8,a0full.heardCents);
+const a0miss=hearA0(a0f,0.0004,[2,3,4,5,6]);
+a.equal(a0miss.status,'measured',a0miss.reason);
+a.equal(a0miss.fundamental,'inferred');
+a.ok(!a0miss.partials.some(p=>p.n===1));
+a.ok(a0miss.partials.some(p=>p.n%2===1));
+a.ok(Math.abs(a0miss.B/a0full.B-1)<0.35,'missing-fundamental B '+a0miss.B+' vs '+a0full.B);
+a.ok(Math.abs(a0miss.heardCents)<8,a0miss.heardCents);
+const a0gaps=hearA0(a0f,0.0004,[2,3,5,6]);
+a.equal(a0gaps.status,'measured',a0gaps.reason);
+a.ok(Math.abs(a0gaps.B/a0full.B-1)<0.4,a0gaps.B);
+const a0flat=a0f*Math.pow(2,-20/1200);
+const a0det=hearA0(a0flat,0.0004,[2,3,4,5,6]);
+a.equal(a0det.status,'measured',a0det.reason);
+a.ok(a0det.heardCents<-12&&a0det.heardCents>-40,a0det.heardCents);
+a.ok(Math.abs(a0det.B/a0full.B-1)<0.4,a0det.B);
+const a0far=hearA0(a0f*Math.pow(2,-100/1200),0.0004,[2,3,4,5,6]);
+a.equal(a0far.status,'rejected');
+a.equal(a0far.reason,'wrong-note');
+const a0farFull=hearA0(a0f*Math.pow(2,100/1200),0.0004);
+a.equal(a0farFull.reason,'wrong-note');
+const evens=hearA0(a0f,0.0004,[2,4,6]);
+a.equal(evens.status,'rejected');
+a.equal(evens.reason,'wrong-note');
+const thinBass=hearA0(a0f,0.0004,[2,3]);
+a.equal(thinBass.status,'rejected');
+a.notEqual(thinBass.reason,'wrong-note');
+a.ok(thinBass.reason==='unclear'||thinBass.reason==='few-partials'||thinBass.reason==='fit',thinBass.reason);
+const a1=440*Math.pow(2,(33-69)/12);
+const playedA1=hearA0(a1,0.00035,[1,2,3,4,5,6]);
+a.equal(playedA1.status,'rejected');
+a.equal(playedA1.reason,'wrong-note');
+const a0quiet=P.analyzeCalibrationNote(new Float32Array(48000),48000,{midi:21,a4:440});
+a.equal(a0quiet.reason,'silence');
+const a0short=P.analyzeCalibrationNote(P.synthUnison(48000,0.2,[{f1:a0f,B:0.0004,partials:[2,3,4,5,6]}]),48000,{midi:21,a4:440});
+a.equal(a0short.reason,'short');
+const a0noise=hearA0(a0f,0.0004,[2,3,4,5,6],{noise:20,seed:3});
+a.notEqual(a0noise.status,'measured');
+const a0pair=P.analyzeCalibrationNote(P.synthUnison(48000,1.2,[
+ {f1:a0f,B:0.0004,partials:[2,3,4,5,6]},
+ {f1:a0f*Math.pow(2,15/1200),B:0.0004,partials:[2,3,4,5,6]}
+]),48000,{midi:21,a4:440});
+a.notEqual(a0pair.status,'measured');
+a.ok(a0pair.reason==='multiple-strings'||a0pair.reason==='unclear',a0pair.reason);
+const a0mix=P.analyzeCalibrationNote(P.synthUnison(48000,1.2,[
+ {f1:a0f,B:0.0004,partials:[2,3,4,5,6]},
+ {f1:a0f*Math.pow(2,40/1200),B:0.0004,partials:[2,3,4,5,6]}
+]),48000,{midi:21,a4:440});
+a.notEqual(a0mix.status,'measured',a0mix.reason);
+const oneCue=P.calibrationCue(21,24,53);
+a.ok(oneCue.indexOf('A0')>=0&&oneCue.indexOf('one string')>=0&&oneCue.indexOf('Mute')<0&&oneCue.indexOf('not for whether it is in tune')>=0,oneCue);
+const manyCue=P.calibrationCue(69,24,53);
+a.ok(manyCue.indexOf('one string only')>=0&&manyCue.indexOf('Mute the other strings')>=0,manyCue);
+const jagged=[57,69,81,93].map((midi,i)=>({status:'measured',midi,B:[0.0002,0.004,0.00015,0.005][i],residualCents:0.4,confidence:'high',partials:[{n:1,hz:1},{n:2,hz:2},{n:3,hz:3}],heardCents:5}));
+const low=[33,45].map(midi=>({status:'measured',midi,B:0.0006,residualCents:0.4,confidence:'high',partials:[{n:1,hz:1},{n:2,hz:2},{n:3,hz:3}],heardCents:-10}));
+const rough=P.deriveCalibration(low.concat(jagged),442,'concert');
+a.equal(rough.targets[108].source,'unavailable');
+a.equal(rough.targets[108].cents,null);
+a.notEqual(rough.targets[108].source,'measured');
+a.notEqual(rough.targets[69].cents,5);
+const roughCurve=P.curveFromCalibration(rough,'concert');
+a.equal(roughCurve.origin[108],'unavailable');
+a.equal(roughCurve.cents[108],null);
+a.notEqual(roughCurve.origin[108],'model-fallback');
+const roughModel=P.curveFromCalibration(Object.assign({},rough,{fallback:'model'}),'concert');
+a.equal(roughModel.origin[108],'model-fallback');
+console.log('calibration ok', 'A6', cal.targets[93].cents.toFixed(2), 'A2ish', cal.targets[33].cents.toFixed(2), 'unison', two.fundamentalBeat.toFixed(2), 'A0B', a0miss.B.toFixed(6));

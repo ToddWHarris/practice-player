@@ -301,16 +301,16 @@ function beginVoice(){if(!SRC()){S.voiceErr='unsupported';return}
  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{st.getTracks().forEach(t=>t.stop());if(S.ab&&!S.rec)try{startRec()}catch(e){}}).catch(e=>{S.voiceErr=(e&&e.name==='NotAllowedError')?'not-allowed':'audio-capture';if(S.waiting)showErr(S.voiceErr)})}
 function startRec(){const SR=SRC();if(!SR)throw new Error('unsupported');stopRec();const r=new SR();S.rec=r;S.used={};S.recFails=0;r.lang=navigator.language||'en-US';r.continuous=true;r.interimResults=true;
  r.onresult=e=>{if(S.rec!==r)return;for(let i=e.resultIndex||0;i<e.results.length;i++){const tr=e.results[i][0].transcript||'',u=S.used[i];const fresh=(u&&tr.startsWith(u))?tr.slice(u.length):tr;const c=L.cue(fresh);if(!c)continue;S.used[i]=tr;if(!S.waiting)continue;c==='stop'?exitAB():again();return}};
- r.onstart=()=>{S.voiceErr=null;S.recFails=0;if(S.waiting)setListen('Listening... say "again" or "stop"')};
+ r.onstart=()=>{S.voiceErr=null;S.recFails=0;if(S.waiting){setListen('Listening... say "again" or "stop"');$('tapListen').hidden=true}};
  r.onerror=e=>{const code=e.error||'unknown';if(code==='no-speech'||code==='aborted')return;S.voiceErr=code;if(code==='not-allowed'||code==='service-not-allowed'||code==='audio-capture'){S.rec=null;if(S.waiting){showErr(code);$('tapListen').hidden=false}}else if(S.waiting)showErr(code)};
  r.onend=()=>{if(S.rec!==r||!S.ab)return;if(document.hidden){S.rec=null;return}// can't listen in background; keep waiting, restart on return
  S.used={};if(++S.recFails>5){S.rec=null;if(S.waiting){showErr(S.voiceErr||'aborted');$('tapListen').hidden=false}return}
   setTimeout(()=>{if(S.rec!==r||!S.ab)return;try{r.start()}catch(err){S.rec=null;S.voiceErr='not-allowed';if(S.waiting){showErr('not-allowed');$('tapListen').hidden=false}}},200)};
  r.start()}
+function pauseVoiceForBackground(){if(!S.ab||!S.waiting)return;if($('autoRep')&&$('autoRep').checked)return;clearTimeout(S.timer);S.timer=0;stopRec();$('abBox').open=true;$('listen').hidden=false;$('tapListen').hidden=false;setListen('Cannot hear speech while this app is in the background. The loop is waiting. Come back and say again, or tap Again. It will not repeat by itself.')}
 function waitCue(){S.waiting=true;$('abBox').open=true;$('listen').hidden=false;$('tapListen').hidden=true;
- if(document.hidden&&!$('autoRep').checked){// mic can't listen in the background (CarPlay, locked): keep the loop going instead of going silent
-  const g=Math.max(1,+$('gap').value||0);setListen('App in background, repeating in '+g+'s...');S.timer=setTimeout(again,g*1000);return}
  if($('autoRep').checked){const g=Math.max(0,+$('gap').value||0);setListen('Repeating in '+g+'s...');S.timer=setTimeout(again,g*1000);return}
+ if(document.hidden){pauseVoiceForBackground();return}
  if(!SRC()){showErr('unsupported');return}
  if(S.rec&&!S.voiceErr){setListen('Listening... say "again" or "stop"');return}
  if(S.voiceErr&&S.voiceErr!=='no-speech'){showErr(S.voiceErr);$('tapListen').hidden=false;return}
@@ -424,7 +424,7 @@ au.addEventListener('pause',()=>{if(document.hidden&&!au.ended&&Date.now()-(S.in
 function msPos(){try{if(navigator.mediaSession&&navigator.mediaSession.setPositionState&&isFinite(au.duration)&&au.duration>0)navigator.mediaSession.setPositionState({duration:au.duration,playbackRate:au.playbackRate||1,position:Math.min(au.currentTime,au.duration)})}catch(e){}}
 ['loadedmetadata','ratechange','seeked','play','pause'].forEach(t=>au.addEventListener(t,msPos));
 au.addEventListener('play',()=>{S.bgWant=false;});
-function onReturn(){if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});if(document.hidden)return;
+function onReturn(){if(document.hidden){pauseVoiceForBackground();return}if(PR.ctx&&PR.ctx.state!=='running')PR.ctx.resume().catch(()=>{});
  if(S.bgWant&&au.paused&&au.src){S.bgWant=false;au.play().catch(()=>{})}
  if(S.ab&&S.waiting&&!S.rec&&!$('autoRep').checked&&typeof startRec==='function'){S.recFails=0;try{startRec()}catch(e){}}}
 document.addEventListener('visibilitychange',onReturn);window.addEventListener('pageshow',onReturn);window.addEventListener('focus',onReturn);

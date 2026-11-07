@@ -17,7 +17,7 @@ with sync_playwright() as p:
   pg.screenshot(path='/opt/cursor/artifacts/cal-ipad-choice-1024x768.png')
   pg.click('#gtCalOpen')
   prompt=pg.inner_text('#gtCalPrompt')
-  assert 'A0' in prompt and 'Mute' in prompt and 'not for whether it is in tune' in prompt
+  assert 'A0' in prompt and 'one string' in prompt and 'Mute' not in prompt and 'not for whether it is in tune' in prompt
   assert pg.is_disabled('#gtCalUse')
   pg.click('#gtCalSkip'); pg.click('#gtCalSkip')
   assert pg.is_disabled('#gtCalUse')

@@ -454,6 +454,70 @@ const PianoTune=(function(){
   const med=res[res.length>>1];
   if(med>8)return {status:'withheld',reason:'fit',B:Bb,f0,f1:f0*Math.sqrt(1+Bb),residualCents:med};
   return {status:'measured',reason:'ok',B:Bb,f0,f1:f0*Math.sqrt(1+Bb),residualCents:med}}
+ function centsBetween(freq,ref){return 1200*Math.log2(freq/ref)}
+ function partialSeries(peaks,f1,B0){
+  const used={};const found=[];
+  for(let n=2;n<=8;n++){
+   const pred=partialFreq(f1,n,B0);let best=-1,bestDc=36;
+   for(let i=0;i<peaks.length;i++){if(used[i])continue;const dc=Math.abs(centsBetween(peaks[i].freq,pred));if(dc<bestDc){bestDc=dc;best=i}}
+   if(best>=0){used[best]=1;found.push({n:n,hz:peaks[best].freq,snr:peaks[best].snr,mag:peaks[best].mag})}}
+  return found}
+ function seriesScore(found,fit){return found.length*20-fit.residualCents*2}
+ function acceptedSeries(found,fit,et){
+  if(!found||found.length<3||!found.some(p=>p.n%2===1))return null;
+  if(!fit||fit.status!=='measured'||!(fit.f1>0))return null;
+  const heard=centsBetween(fit.f1,et);
+  if(!(Math.abs(heard)<=90))return null;
+  return heard}
+ function inferMissingFundamental(spec,sr,et){
+  const Bs=[0,0.0002,0.0005,0.0012,0.003,0.008];
+  const lo=partialFreq(et*Math.pow(2,-90/1200),2,0)*0.97;
+  const hi=partialFreq(et*Math.pow(2,90/1200),8,0.012);
+  const peaks=localPeaks(spec,sr,(lo+hi)/2,(hi-lo)/2+8).filter(p=>p.snr>=6&&p.freq>=lo*0.98&&p.freq<=hi*1.02);
+  const passing=[];
+  for(let c=-90;c<=90;c+=3){
+   const f1=et*Math.pow(2,c/1200);
+   for(let bi=0;bi<Bs.length;bi++){
+    const found=partialSeries(peaks,f1,Bs[bi]);
+    const fit=fitPartialB(found);
+    const heard=acceptedSeries(found,fit,et);
+    if(heard==null)continue;
+    passing.push({found:found,fit:fit,heard:heard,score:seriesScore(found,fit)})}}
+  passing.sort((a,b)=>b.score-a.score);
+  if(passing.length){
+   const best=passing[0];
+   if(passing.some(p=>p!==best&&Math.abs(p.heard-best.heard)>30&&p.score>best.score-8))return {status:'rejected',reason:'unclear'};
+   const split=best.found.some(pk=>{
+    const nearPk=localPeaks(spec,sr,pk.hz,Math.max(pk.hz*0.04,6)).filter(p=>p.snr>=6&&Math.abs(centsBetween(p.freq,pk.hz))>8&&Math.abs(centsBetween(p.freq,pk.hz))<40);
+    return nearPk.length&&nearPk[0].mag>pk.mag*0.45});
+   if(split)return {status:'rejected',reason:'multiple-strings',heardCents:best.heard,partials:best.found};
+   return {status:'measured',heardCents:best.heard,partials:best.found,fit:best.fit}}
+  const wideLo=Math.max(20,et*Math.pow(2,-1400/1200));
+  const wideHi=partialFreq(et*Math.pow(2,1400/1200),8,0.012);
+  const wide=localPeaks(spec,sr,(wideLo+wideHi)/2,(wideHi-wideLo)/2+8).filter(p=>p.snr>=6&&p.freq>=wideLo&&p.freq<=wideHi);
+  let evenHits=0,oddHit=false;
+  [2,4,6,8].forEach(n=>{if(wide.some(p=>Math.abs(centsBetween(p.freq,n*et))<45))evenHits++});
+  [3,5,7].forEach(n=>{if(wide.some(p=>Math.abs(centsBetween(p.freq,partialFreq(et,n,0.001)))<55))oddHit=true});
+  if(evenHits>=3&&!oddHit)return {status:'rejected',reason:'wrong-note'};
+  let far=null;
+  for(let c=-1400;c<=1400;c+=12){
+   if(Math.abs(c)<=90)continue;
+   const f1=et*Math.pow(2,c/1200);
+   for(let bi=0;bi<Bs.length;bi++){
+    const found=partialSeries(wide,f1,Bs[bi]);
+    if(found.length<3||!found.some(p=>p.n%2===1))continue;
+    const fit=fitPartialB(found);
+    if(!fit||fit.status!=='measured'||!(fit.f1>0))continue;
+    const heard=centsBetween(fit.f1,et);
+    if(Math.abs(heard)<=90)continue;
+    const score=seriesScore(found,fit);
+    if(!far||score>far.score)far={heard:heard,score:score}}}
+  if(far)return {status:'rejected',reason:'wrong-note',heardCents:far.heard};
+  return {status:'rejected',reason:'unclear'}}
+ function calibrationCue(midi,split2,split3){
+  const name=label(midi),n=stringCount(midi,split2,split3);
+  const how=n<=1?'This note has one string.':'Play one string only. Mute the other strings of this note.';
+  return 'Play '+name+'. '+how+' Listening for its overtones, not for whether it is in tune.'}
  function analyzeCalibrationNote(samples,sampleRate,opts){
   opts=opts||{};const sr=+sampleRate,n0=samples?samples.length|0:0,midi=opts.midi|0,a4=opts.a4||440;
   const blank=(status,reason)=>({status,reason,midi,B:null,residualCents:null,partials:[],heardCents:null,confidence:'withheld'});
@@ -464,10 +528,14 @@ const PianoTune=(function(){
   const spec=fftMag(samples);if(!spec)return blank('rejected','short');
   const et=etFreq(midi,a4);
   const near=localPeaks(spec,sr,et,et*0.08).filter(p=>p.snr>=6);
-  if(!near.length)return blank('rejected','wrong-note');
-  const p1=near[0];
-  const heardCents=1200*Math.log2(p1.freq/et);
-  if(Math.abs(heardCents)>90)return Object.assign(blank('rejected','wrong-note'),{heardCents});
+  const direct=near.length&&Math.abs(centsBetween(near[0].freq,et))<=90?near[0]:null;
+  if(!direct){
+   const inf=inferMissingFundamental(spec,sr,et);
+   if(inf.status!=='measured')return Object.assign(blank('rejected',inf.reason),{heardCents:inf.heardCents==null?null:inf.heardCents,partials:inf.partials||[]});
+   const fit=inf.fit,partials=inf.partials.slice().sort((a,b)=>a.n-b.n);
+   return {status:'measured',reason:'ok',midi,B:fit.B,residualCents:fit.residualCents,partials,heardCents:inf.heardCents,confidence:partials.length>=4&&fit.residualCents<3?'high':'low',fundamental:'inferred'}}
+  const p1=direct;
+  const heardCents=centsBetween(p1.freq,et);
   const split=localPeaks(spec,sr,p1.freq,p1.freq*0.04).filter(p=>p.snr>=6&&Math.abs(1200*Math.log2(p.freq/p1.freq))>8&&Math.abs(1200*Math.log2(p.freq/p1.freq))<40);
   if(split.length&&split[0].mag>p1.mag*0.45)return Object.assign(blank('rejected','multiple-strings'),{heardCents});
   const found={1:{n:1,hz:p1.freq,snr:p1.snr}};
@@ -529,7 +597,7 @@ const PianoTune=(function(){
    else if(cal&&cal.fallback==='model'){cents[m]=model.cents[m];origin[m]='model-fallback';bmap[m]=model.b?model.b(m):null}
    else {cents[m]=null;origin[m]='unavailable';bmap[m]=null}}
   return {cents,origin,b:midi=>bmap[midi]||0,calibration:true,algorithm:cal&&cal.algorithm}}
- return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,MODELS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,CAL_VERSION,CAL_ALGORITHM,CAL_NOTES,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,curveFromCalibration,deriveCalibration,fitPartialB,analyzeCalibrationNote,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,analyzeIntervalAudio,analyzeUnison,synthUnison,listenCue,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
+ return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,MODELS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,CAL_VERSION,CAL_ALGORITHM,CAL_NOTES,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,curveFromCalibration,deriveCalibration,fitPartialB,analyzeCalibrationNote,calibrationCue,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,analyzeIntervalAudio,analyzeUnison,synthUnison,listenCue,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
 if(typeof module!=='undefined')module.exports=PianoTune;
 
 if(typeof document!=='undefined'){
@@ -695,7 +763,7 @@ function render(){
   if($g('pdTarget'))$g('pdTarget').hidden=!window.matchMedia('(orientation: landscape) and (max-height: 560px)').matches;
   if(step.phase==='check'&&window.PartialDial&&PartialDial.clearRings)PartialDial.clearRings();
   $g('gtType').value=G.sess.type&&$g('gtType').querySelector('option[value="'+G.sess.type+'"]')?G.sess.type:'concert';
-  $g('gtA4').value=G.sess.a4}
+  syncA4Field()}
 function fillTypes(){
   const s=$g('gtType');const curV=G.sess.type;s.innerHTML='';
   [['concert','Concert grand (9 ft)'],['baby','Baby grand'],['studio','Studio upright'],['spinet','Spinet'],['typical','Typical']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;s.append(o)});
@@ -838,25 +906,26 @@ async function listen(){
     const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();
     const src=ctx.createMediaStreamSource(stream);const an=ctx.createAnalyser();an.fftSize=8192;an.smoothingTimeConstant=0;src.connect(an);
     G.stream=stream;G.ctx=ctx;G.an=an;G.buf=new Float32Array(an.fftSize);G.listening=true;G.raf=requestAnimationFrame(loop)}catch(e){$g('gtPrompt').textContent=(stepNow()&&stepNow().prompt?stepNow().prompt+' ':'')+(e&&e.name==='NotAllowedError'?'Microphone not allowed.':'No microphone available.')}}
-function showOnly(id){['gtPick','gtStyle','gtSplits','gtTuneCard','gtCal'].forEach(k=>{const n=$g(k);if(n)n.hidden=k!==id});if(id)$g('gtune').classList.add('setup');if(id==='gtSplits'&&$g('gtSplitsStart'))$g('gtSplitsStart').disabled=!G.sess.targetChoice}
-function calPrompt(){const m=PT.CAL_NOTES[G.calI];if(!$g('gtCalPrompt'))return;if(m==null){$g('gtCalPrompt').textContent='That is the last sample note. Use these measurements only if the screen says the coverage is enough. Nothing here marks a note as tuned.';return}$g('gtCalPrompt').textContent='Play '+PT.label(m)+' alone. Mute the other strings. Listening for its overtones, not for whether it is in tune.'}
-function refreshCalUse(){const cal=PT.deriveCalibration(G.calNotes,G.sess.a4,G.sess.type);if($g('gtCalUse'))$g('gtCalUse').disabled=!cal.accepted;if($g('gtCalStatus')&&G.calNotes.length)$g('gtCalStatus').textContent=(cal.accepted?'Coverage is enough to build targets. ':'Not enough coverage yet. ')+G.calNotes.filter(n=>n.status==='measured').length+' notes measured. A measurement is not a tuned note.'}
-function stopCal(){G.calOn=false;if(G.calStream){G.calStream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});G.calStream=null}}
-async function captureCal(){const midi=PT.CAL_NOTES[G.calI];if(midi==null)return;if($g('gtCalStatus'))$g('gtCalStatus').textContent='Listening to one string...';
- try{const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
-  G.calStream=stream;const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();
-  const src=ctx.createMediaStreamSource(stream);const chunks=[];
-  const proc=ctx.createScriptProcessor(4096,1,1);const mute=ctx.createGain();mute.gain.value=0;
-  src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);
-  proc.onaudioprocess=e=>{chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)))};
-  await new Promise(res=>setTimeout(res,1200));
-  try{proc.disconnect();src.disconnect();mute.disconnect()}catch(e){}
-  stopCal();let n=0;chunks.forEach(c=>n+=c.length);const x=new Float32Array(n);let o=0;chunks.forEach(c=>{x.set(c,o);o+=c.length});
-  const r=PT.analyzeCalibrationNote(x,ctx.sampleRate,{midi,a4:G.sess.a4});
-  G.calNotes=G.calNotes.filter(item=>item.midi!==midi);
-  if(r.status==='measured')G.calNotes.push(r);
-  if($g('gtCalStatus'))$g('gtCalStatus').textContent=r.status==='measured'?('Stiffness accepted for '+PT.label(midi)+'. It was '+(r.heardCents>=0?'+':'')+r.heardCents.toFixed(1)+' cents from equal temperament when you played it. That offset is not the target.'):(r.reason==='multiple-strings'?'More than one string is sounding. Mute the others and retry.':r.reason==='wrong-note'?'That did not sound like '+PT.label(midi)+'. Retry.':'Not accepted ('+r.reason+'). Retry.');
-  refreshCalUse()}catch(e){stopCal();if($g('gtCalStatus'))$g('gtCalStatus').textContent='No microphone available.'}}
+function showOnly(id){['gtPick','gtStyle','gtSplits','gtTuneCard','gtCal'].forEach(k=>{const n=$g(k);if(n)n.hidden=k!==id});if(id)$g('gtune').classList.add('setup');if(id==='gtSplits'&&$g('gtSplitsStart'))$g('gtSplitsStart').disabled=!G.sess.targetChoice;syncA4Field()}
+function activeA4(){let v=G.sess&&+G.sess.a4;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));if(G.sess)G.sess.a4=v;return v}
+function syncA4Field(){const el=$g('gtA4');if(!el||!G.sess||document.activeElement===el)return;el.value=String(activeA4())}
+function commitA4(raw){const cur=activeA4();const text=String(raw==null?'':raw).trim();let v=cur;if(text!==''&&isFinite(+text))v=Math.max(430,Math.min(450,Math.round(+text*10)/10));G.sess.a4=v;if(G.sess.calibration)G.sess.calibration.refA4=v;const el=$g('gtA4');if(el)el.value=String(v);saveSess();if(G.seq&&G.seq.length)render();else syncA4Field();if(stepNow()&&stepNow().phase!=='prescan')playStep()}
+function calPrompt(){const m=PT.CAL_NOTES[G.calI];if(!$g('gtCalPrompt'))return;if(m==null){$g('gtCalPrompt').textContent='That is the last sample note. Use these measurements only if the screen says the coverage is enough. Nothing here marks a note as tuned.';return}$g('gtCalPrompt').textContent=PT.calibrationCue(m,G.sess.split2,G.sess.split3)}
+function setCalResult(text){if($g('gtCalStatus'))$g('gtCalStatus').textContent=text}
+function refreshCalUse(){const notes=G.calNotes||[];const cal=PT.deriveCalibration(notes,activeA4(),G.sess.type);const n=notes.filter(item=>item&&item.status==='measured').length;const use=$g('gtCalUse');if(use)use.disabled=!!G.calBusy||!cal.accepted;const cov=$g('gtCalCoverage');if(cov)cov.textContent=(cal.accepted?'Coverage is enough to build targets. ':'Not enough coverage yet. ')+n+(n===1?' note measured. ':' notes measured. ')+'A measurement is not a tuned note.'}
+function setHear(mode){const b=$g('gtCalHear');if(!b)return;const has=PT.CAL_NOTES[G.calI]!=null;b.classList.remove('primary','rejected');b.setAttribute('aria-busy',mode==='listening'?'true':'false');if(mode==='listening'){b.textContent='Listening...';b.disabled=true;b.classList.add('primary')}else if(mode==='accepted'){b.textContent='Measurement accepted';b.disabled=!has;b.classList.add('primary')}else if(mode==='rejected'){b.textContent='Not accepted. Try again.';b.disabled=!has;b.classList.add('rejected')}else{b.textContent='Listen to this note';b.disabled=!has;b.classList.add('primary')}}
+function syncCalNav(){const retry=$g('gtCalRetry'),skip=$g('gtCalSkip'),has=PT.CAL_NOTES[G.calI]!=null;if(retry)retry.disabled=!has;if(skip)skip.disabled=!has;if(G.calBusy){if(retry)retry.disabled=!has;if(skip)skip.disabled=!has}}
+function stopOwnedStream(stream){if(!stream)return;try{stream.getTracks().forEach(t=>t.stop())}catch(e){}if(G.calStream===stream)G.calStream=null}
+function dropCalCapture(){G.calGen=(G.calGen||0)+1;G.calBusy=false;const cancel=G.calCancel;G.calCancel=null;if(cancel)cancel();const nodes=G.calNodes;G.calNodes=null;if(nodes){try{nodes.proc.disconnect()}catch(e){}try{nodes.src.disconnect()}catch(e){}try{nodes.mute.disconnect()}catch(e){}}stopOwnedStream(G.calStream);G.calOn=false}
+function stopCal(){dropCalCapture()}
+function rejectText(label,reason){if(reason==='multiple-strings')return 'More than one string is sounding. Mute the others and retry.';if(reason==='wrong-note')return 'That did not sound like '+label+'. Retry.';if(reason==='unclear'||reason==='few-partials')return 'Not enough reliable partials were heard to measure '+label+'. Retry.';if(reason==='fit')return 'The partials did not agree, so '+label+' was not measured. Retry.';if(reason==='short')return 'The take was too short. Retry.';if(reason==='silence')return 'The sound was too quiet. Retry.';return 'Not accepted ('+(reason||'rejected')+'). Retry.'}
+function heardWords(cents){if(!isFinite(+cents))return 'an unknown offset';return (cents>=0?'+':'')+(+cents).toFixed(1)+' cents'}
+function applyCalResult(midi,r){G.calNotes=(G.calNotes||[]).filter(item=>item.midi!==midi);const label=PT.label(midi);if(r.status==='measured'){G.calNotes.push(r);const heard=heardWords(r.heardCents);const still=PT.CAL_NOTES[G.calI]===midi;const next=still?PT.CAL_NOTES[G.calI+1]:null;if(still&&next!=null){G.calI++;calPrompt();setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target. Now play '+PT.label(next)+'.')}else if(still){if($g('gtCalPrompt'))$g('gtCalPrompt').textContent=label+' accepted. That is the last sample note. Use these measurements only if the screen says the coverage is enough. Nothing here marks a note as tuned.';setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target.')}else setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target.');setHear('accepted')}else{setCalResult(rejectText(label,r.reason));setHear('rejected')}refreshCalUse()}
+async function captureCal(){const midi=PT.CAL_NOTES[G.calI];if(midi==null||G.calBusy)return;const gen=G.calGen=(G.calGen||0)+1;G.calBusy=true;setHear('listening');syncCalNav();if($g('gtCalUse'))$g('gtCalUse').disabled=true;setCalResult('Listening to '+PT.label(midi)+'.');let stream=null;try{if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))throw new Error('no-mic');stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});if(gen!==G.calGen){stopOwnedStream(stream);return}G.calStream=stream;const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();if(gen!==G.calGen){stopOwnedStream(stream);return}const src=ctx.createMediaStreamSource(stream);const chunks=[];const proc=ctx.createScriptProcessor(4096,1,1);const mute=ctx.createGain();mute.gain.value=0;src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);const nodes={proc,src,mute};G.calNodes=nodes;proc.onaudioprocess=e=>{chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)))};await new Promise(resolve=>{const timer=setTimeout(resolve,1200);G.calCancel=()=>{clearTimeout(timer);resolve()}});if(gen!==G.calGen)return;try{proc.disconnect();src.disconnect();mute.disconnect()}catch(e){}if(G.calNodes===nodes)G.calNodes=null;stopOwnedStream(stream);stream=null;if(gen!==G.calGen)return;let n=0;chunks.forEach(c=>n+=c.length);const x=new Float32Array(n);let o=0;chunks.forEach(c=>{x.set(c,o);o+=c.length});const r=PT.analyzeCalibrationNote(x,ctx.sampleRate,{midi,a4:activeA4()});if(gen!==G.calGen)return;applyCalResult(midi,r)}catch(e){if(gen!==G.calGen)return;stopOwnedStream(stream);const denied=e&&(e.name==='NotAllowedError'||e.name==='SecurityError');setCalResult(denied?'Microphone not allowed.':'No microphone available.');setHear('rejected')}finally{if(gen===G.calGen){G.calBusy=false;G.calCancel=null;refreshCalUse();syncCalNav()}}}
+function skipCal(){const m=PT.CAL_NOTES[G.calI];if(m==null)return;const label=PT.label(m);dropCalCapture();G.calI++;calPrompt();const next=PT.CAL_NOTES[G.calI];setCalResult(next!=null?label+' skipped. Now play '+PT.label(next)+'.':label+' skipped. That is the last sample note.');setHear('idle');refreshCalUse();syncCalNav()}
+function retryCal(){const m=PT.CAL_NOTES[G.calI];if(m==null)return;dropCalCapture();G.calNotes=(G.calNotes||[]).filter(n=>n.midi!==m);refreshCalUse();captureCal()}
+function openCal(){dropCalCapture();G.calI=0;G.calNotes=[];showOnly('gtCal');calPrompt();setCalResult('Nothing accepted yet. A measurement is not a tuned note.');setHear('idle');refreshCalUse();syncCalNav()}
+function backCal(){dropCalCapture();setHear('idle');showOnly('gtSplits');syncA4Field()}
 function hideSetup(){showOnly(null);$g('gtune').classList.remove('setup')}
 function renderPianos(){const box=$g('gtSaved');if(!box)return;box.innerHTML='';loadPianos().forEach(p=>{const row=document.createElement('div');row.className='gtPiano';const nm=document.createElement('span');nm.className='gtPianoName';nm.textContent=p.name;const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Load';b.onclick=()=>loadPiano(p.id);const rn=document.createElement('button');rn.type='button';rn.className='btn';rn.textContent='Rename';rn.onclick=()=>{const n=(prompt('New name',p.name)||'').trim();if(!n)return;savePianos(PT.renameProfile(loadPianos(),p.id,n));renderPianos()};const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='Delete';del.onclick=()=>{if(!confirm('Delete '+p.name+'?'))return;savePianos(PT.deleteProfile(loadPianos(),p.id));renderPianos()};row.append(nm,b,rn,del);box.append(row)})}
 function loadPiano(id){const p=loadPianos().find(x=>x.id===id);if(!p)return;const model=p.pianoModel&&p.pianoModel.id?p.pianoModel:null;G.sess=Object.assign(blankSess(),{ready:true,type:p.style,a4:p.a4||440,split2:p.split2,split3:p.split3,prescan:p.prescan||{},step:p.step|0,tuningOk:!!p.tuningOk,profileId:p.id,calibration:p.calibration||null,targetChoice:p.targetChoice||(p.calibration&&p.calibration.accepted?'measured':'model'),pianoModel:model,serial:p.serial||(model&&model.serial)||''});if(G.sess.pianoModel)G.sess.pianoModel.serial=G.sess.serial;G.tuningOk=!!p.tuningOk;hideSetup();startWork()}
@@ -870,7 +939,7 @@ function openTune(){
   try{if(typeof au!=='undefined'&&au&&!au.paused)au.pause()}catch(e){}
   G.sess=loadSess();G.tuningOk=!!G.sess.tuningOk;G.on=true;$g('gtune').hidden=false;document.body.classList.add('gtOpen');
   fillTypes();
-  renderPianos();showOnly('gtPick')}
+  renderPianos();showOnly('gtPick');syncA4Field()}
 function acceptTuning(){if(!G.showTuningCard)return;G.showTuningCard=false;G.tuningOk=true;G.sess.tuningOk=true;advanceStep('prescan',G.pendingFreq||0,false)}
 function tapDone(){if(!G.showDone)return;G.showDone=false;G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);G.hold=coreJump(G.hold||PT.emptyState(),G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);G.lastCents=null;G.colors={};saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
 function helpChrome(on){
@@ -891,9 +960,9 @@ function returnFromHelp(){
   const on=document.querySelector('nav button.on');
   if(!on||on.dataset.t!=='tun'){if(window.tab)tab('tun')}
   try{if(window.Tuner)Tuner.leave()}catch(e){}
-  $g('gtune').hidden=false;document.body.classList.add('gtOpen');
+  $g('gtune').hidden=false;document.body.classList.add('gtOpen');syncA4Field();
   if(G.wasListening)listen()}
-function closeTune(){G.holdHelp=false;G.wasListening=false;helpChrome(false);G.on=false;stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
+function closeTune(){G.holdHelp=false;G.wasListening=false;helpChrome(false);G.on=false;dropCalCapture();stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
 function init(){
   const b=$g('gtOpen');if(!b||G.ready)return;G.ready=true;
   b.onclick=openTune;
@@ -905,7 +974,7 @@ function init(){
   $g('gtBack').onclick=()=>jumpTo((G.sess.step||0)-1);
   $g('gtSteps').onclick=()=>{renderList();$g('gtList').hidden=!$g('gtList').hidden};
   $g('gtType').onchange=e=>{G.sess.type=e.target.value;rebuild(true);render();playStep()};
-  $g('gtA4').onchange=e=>{let v=+e.target.value;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));G.sess.a4=v;if(G.sess.calibration)G.sess.calibration.refA4=v;saveSess();render();if(stepNow()&&stepNow().phase!=='prescan')playStep()};
+  $g('gtA4').onchange=e=>commitA4(e.target.value);
   if($g('gtSerialLive'))$g('gtSerialLive').onchange=e=>{const serial=(e.target.value||'').trim();G.sess.serial=G.sess.pianoModel?serial:'';if(G.sess.pianoModel)G.sess.pianoModel.serial=G.sess.serial;saveSess();render()};
   if($g('gtRetry'))$g('gtRetry').onclick=retryUnread;
   if($g('gtNew'))$g('gtNew').onclick=()=>{G.pickStyle=null;$g('gtStyleNext').disabled=true;document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.classList.remove('on'));showOnly('gtStyle')};
@@ -914,12 +983,12 @@ function init(){
   document.querySelectorAll('#gtSplits .pick').forEach(b=>b.onclick=()=>{G.pickSplit=+b.dataset.which;renderSplits()});
   if($g('gtSplitsStart'))$g('gtSplitsStart').onclick=()=>{if(!(G.sess.split2<G.sess.split3)||!G.sess.targetChoice)return;G.sess.ready=true;G.sess.step=0;G.sess.prescan={};G.tuningOk=false;G.sess.tuningOk=false;G.pickSplit=0;hideSetup();startWork()};
   if($g('gtCalModel'))$g('gtCalModel').onclick=()=>{G.sess.targetChoice='model';G.sess.calibration={accepted:false,fallback:'model',status:'model',version:PT.CAL_VERSION,algorithm:'size-model',targets:null};saveSess();if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=false;render()};
-  if($g('gtCalOpen'))$g('gtCalOpen').onclick=()=>{G.calI=0;G.calNotes=[];showOnly('gtCal');calPrompt();};
-  if($g('gtCalBack'))$g('gtCalBack').onclick=()=>{stopCal();showOnly('gtSplits')};
-  if($g('gtCalSkip'))$g('gtCalSkip').onclick=()=>{G.calI++;calPrompt();refreshCalUse()};
-  if($g('gtCalRetry'))$g('gtCalRetry').onclick=()=>{const m=PT.CAL_NOTES[G.calI];G.calNotes=G.calNotes.filter(n=>n.midi!==m);if($g('gtCalStatus'))$g('gtCalStatus').textContent='Cleared. Play one string again. A measurement is not a tuned note.';refreshCalUse()};
+  if($g('gtCalOpen'))$g('gtCalOpen').onclick=openCal;
+  if($g('gtCalBack'))$g('gtCalBack').onclick=backCal;
+  if($g('gtCalSkip'))$g('gtCalSkip').onclick=skipCal;
+  if($g('gtCalRetry'))$g('gtCalRetry').onclick=retryCal;
   if($g('gtCalHear'))$g('gtCalHear').onclick=()=>{captureCal()};
-  if($g('gtCalUse'))$g('gtCalUse').onclick=()=>{const cal=PT.deriveCalibration(G.calNotes,G.sess.a4,G.sess.type);if(!cal.accepted){if($g('gtCalStatus'))$g('gtCalStatus').textContent='Not enough of the keyboard was measured. Nothing was turned into targets.';return}G.sess.calibration=cal;G.sess.targetChoice='measured';saveSess();if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=false;showOnly('gtSplits');render()};
+  if($g('gtCalUse'))$g('gtCalUse').onclick=()=>{const cal=PT.deriveCalibration(G.calNotes,activeA4(),G.sess.type);if(!cal.accepted){const n=(G.calNotes||[]).filter(item=>item&&item.status==='measured').length;if($g('gtCalCoverage'))$g('gtCalCoverage').textContent='Not enough of the keyboard was measured. Nothing was turned into targets. '+n+(n===1?' note measured.':' notes measured.');return}G.sess.calibration=cal;G.sess.targetChoice='measured';saveSess();if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=false;showOnly('gtSplits');render()};
   if($g('gtTuneOk'))$g('gtTuneOk').onclick=acceptTuning;
   if($g('gtDone'))$g('gtDone').onclick=tapDone;
   if($g('gtSave'))$g('gtSave').onclick=savePiano;
