@@ -207,11 +207,13 @@ function drawDial(result){
   const m=document.createElementNS('http://www.w3.org/2000/svg','circle');
   m.setAttribute('cx',pt.x.toFixed(1));m.setAttribute('cy',pt.y.toFixed(1));m.setAttribute('r','8');
   m.setAttribute('fill','#1f6b45');m.dataset.n=String(p.n);g.appendChild(m)});
- const note=$p('pdNote'),cents=$p('pdCents');
- if(note)note.textContent=result&&result.note?result.note:'--';
+ const cents=$p('pdCents');
  if(cents){
-  const p1=result&&result.f1Heard&&result.partials.find(p=>p.n===1);
-  cents.textContent=p1?(p1.cents>=0?'+':'')+p1.cents.toFixed(1)+' cents':'Partial 1 not heard';
+  if(!result||!result.partials||!result.partials.length){
+   cents.textContent=result&&result.reason==='chord'?'More than one note. No rings.':result&&result.reason==='unison'?'Strings are beating. No single-note rings.':'No overtone rings yet.';
+   cents.classList.add('long');return}
+  const p1=result.f1Heard&&result.partials.find(p=>p.n===1);
+  cents.textContent=p1?'':'Partial 1 not heard';
   cents.classList.toggle('long',!p1)}}
 function statusLine(r){
  if(!r)return '';
@@ -302,8 +304,11 @@ function openDial(){
  keys();renderAll();if(!S.sim)startMic()}
 function setDetails(open){const d=$p('pdDetails'),b=$p('pdDetailsBtn');if(d)d.hidden=!open;if(b){b.setAttribute('aria-expanded',open?'true':'false');b.textContent=open?'Hide details':'Details'}}
 function closeDial(){S.on=false;S.hold=false;S.sim=false;stopMic();clearWave();setDetails(false);const el=$p('pdial');if(el)el.hidden=true;document.body.classList.remove('pdOpen');const b=$p('pdHelpBack');if(b)b.hidden=true}
-function openHelp(){if(!S.on)return;S.hold=true;stopMic();$p('pdial').hidden=true;document.body.classList.remove('pdOpen');const b=$p('pdHelpBack');if(b)b.hidden=false;if(window.tab)tab('help');const h=$p('h-partial-dial');if(h)h.scrollIntoView({block:'start'})}
-function returnHelp(){if(!S.hold)return;S.hold=false;const b=$p('pdHelpBack');if(b)b.hidden=true;const on=document.querySelector('nav button.on');if(!on||on.dataset.t!=='tun'){if(window.tab)tab('tun')}try{if(window.Tuner&&Tuner.leave)Tuner.leave()}catch(e){}$p('pdial').hidden=false;document.body.classList.add('pdOpen');renderAll();if(!S.sim)startMic()}
+function noteHeard(midi,result){if(S.sim)return;S.target=midi;S.result=result;drawDial(result);const st=$p('pdStatus');if(st)st.textContent=statusLine(result);renderTable();renderKeep()}
+function clearRings(){if(S.sim)return;drawDial({reason:'chord',partials:[],f1Heard:false,bStatus:'withheld'})}
+function clearSim(){S.sim=false}
+function openHelp(){if(window.PianoTune&&PianoTune.openHelpTopic){PianoTune.openHelpTopic('h-partial-dial');return}}
+function returnHelp(){if(window.PianoTune&&PianoTune.returnFromHelp)PianoTune.returnFromHelp()}
 function preview(opts){
  opts=opts||{};S.sim=true;stopMic();S.target=opts.midi!=null?opts.midi:69;S.a4=opts.a4||440;
  const ns=opts.partials||[1,2,3,4,5,6];
@@ -324,17 +329,15 @@ function saveNamed(){
  const rec={id,name,a4:S.a4,at:new Date().toISOString(),notes:S.profile.notes};
  const list=loadProfiles().filter(p=>p.name!==name);list.push(rec);list.sort((a,b)=>a.name.localeCompare(b.name));saveProfiles(list)}
 function init(){
- const b=$p('pdOpen');if(!b||S.ready)return;S.ready=true;
- b.onclick=openDial;
- if($p('pdClose'))$p('pdClose').onclick=closeDial;
- if($p('pdHelp'))$p('pdHelp').onclick=openHelp;
- if($p('pdHelpBack'))$p('pdHelpBack').onclick=returnHelp;
+ if(S.ready)return;S.ready=true;
+ if($p('pdHelp')&&!(window.PianoTune&&PianoTune.openHelpTopic))$p('pdHelp').onclick=openHelp;
+ if($p('pdHelpBack')&&!(window.PianoTune&&PianoTune.returnFromHelp))$p('pdHelpBack').onclick=returnHelp;
  if($p('pdSaveNote'))$p('pdSaveNote').onclick=storeCurrent;
- if($p('pdRetry'))$p('pdRetry').onclick=()=>{if(S.target!=null)delete S.profile.notes[S.target];S.refused=false;S.result=null;S.sim=false;clearWave();renderAll();if(!S.listening)startMic()};
+ if($p('pdRetry'))$p('pdRetry').onclick=()=>{if(S.target!=null)delete S.profile.notes[S.target];S.refused=false;S.result=null;S.sim=false;clearWave();renderAll()};
  if($p('pdSave'))$p('pdSave').onclick=saveNamed;
  if($p('pdDetailsBtn'))$p('pdDetailsBtn').onclick=()=>{const d=$p('pdDetails');setDetails(!!(d&&d.hidden))};
  window.addEventListener('resize',()=>{renderListen();markKeys()})}
-window.PartialDial={Core:PartialCore,open:openDial,close:closeDial,holdingHelp:()=>!!S.hold,returnFromHelp:returnHelp,preview,init,storeCurrent,_profile:()=>S.profile};
+window.PartialDial={Core:PartialCore,open:openDial,close:closeDial,holdingHelp:()=>!!S.hold,returnFromHelp:returnHelp,preview,init,storeCurrent,noteHeard,clearRings,clearSim,simOn:()=>!!S.sim,_profile:()=>S.profile};
 document.addEventListener('DOMContentLoaded',init);
 if(document.readyState!=='loading')init();
 }

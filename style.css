@@ -153,15 +153,17 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 #lvRef{width:6em;font-size:22px;padding:8px;border-radius:10px;border:1px solid #374151;background:#111827;color:#fff}
 #gtune{position:fixed;inset:0;z-index:70;background:#0b0f17;color:#e5e7eb;overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #gtune[hidden]{display:none!important}
-#gtRotate{display:none;margin:18vh 16px;text-align:center;font-size:22px;line-height:1.4}
-@media (orientation:portrait) and (max-width:699px){#gtune .gtBody,#gtune .gtCover{display:none!important}#gtune #gtRotate{display:block}}
+#gtRotate{display:none}
 .gtBody{height:100%;display:flex;flex-direction:column;min-height:0}
 .gtTop{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;padding:4px 8px;overflow:auto;flex:0 0 auto}
 .gtTop label{display:flex;gap:4px;align-items:center;font-size:14px;white-space:nowrap}
 .gtTop select,.gtTop input{font-size:16px;background:#111827;color:#fff;border:1px solid #374151;border-radius:8px;padding:6px}
 #gtA4{width:4.5em}
 .gtTitle{font-weight:700;white-space:nowrap}.gtCount{color:#9ca3af;font-size:14px;white-space:nowrap}
-.gtRead{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 12px;gap:4px}
+.gtBody{height:100%}
+.pdCenter #gtNote{font:800 28cqi Georgia,serif;color:#3f2a1d;line-height:.85;margin:0}
+.pdCenter #gtCents{font-size:7cqi;color:#3f2a1d;font-weight:800}
+.pdCenter #pdCents{font-size:5cqi;color:#3f2a1d;font-weight:800;line-height:1.1}
 .gtNote{font-size:96px;font-weight:800;text-align:center;line-height:.86;margin:0}
 #gtune.hasDone .gtNote{font-size:64px}
 .gtNote.got{color:#4ade80}
@@ -173,8 +175,9 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtNeedle.ok{border-color:#4ade80}
 .gtPrompt,.gtBeats{margin:0;font-size:18px;line-height:1.25;text-align:center;max-width:720px}
 .gtDetail{margin:0;font-size:14px;line-height:1.25;text-align:center;max-width:720px;color:#cbd5e1}
-#pdial{position:fixed;inset:0;z-index:72;background:#0b0f17;color:#e5e7eb;overflow:hidden;padding:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:4px}
-#pdial[hidden]{display:none!important}
+#gtune .gtBody{display:flex;flex-direction:column;gap:4px}
+#gtune .gtKeys{order:8}
+#gtune #gtDone{order:7}
 .pdLeft{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:0 0 auto;order:1}
 .pdStage{order:2}
 .pdPanel{order:3}
@@ -217,26 +220,30 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .pdKeys .bk.measured{box-shadow:inset 0 4px 0 #4ade80}
 .pdFlag{position:absolute;bottom:2px;transform:translateX(-50%);background:#0369a1;color:#fff;font-size:13px;font-weight:800;line-height:1.1;padding:1px 4px;border-radius:4px;z-index:7;pointer-events:none;white-space:nowrap}
 @media (orientation:landscape) and (max-height:560px){
- #pdial{display:block;padding:0}
- .pdLeft{position:absolute;z-index:5;left:max(6px,env(safe-area-inset-left));top:max(6px,env(safe-area-inset-top));width:22%;display:flex;flex-direction:column;align-items:center;gap:4px}
+ #gtune .gtBody{display:block;padding:0}
+ #gtune .gtTop{position:absolute;z-index:6;left:0;right:0;top:0;height:34px;background:#0b0f17}
+ .pdLeft{position:absolute;z-index:5;left:max(6px,env(safe-area-inset-left));top:40px;width:22%;display:flex;flex-direction:column;align-items:center;gap:4px}
  .pdSim{flex:0 0 auto;font-size:12px;text-align:center}
  #pdTarget:not([hidden]){display:flex}
  #pdTargetName{font-size:42px}
- .pdStage{position:absolute;z-index:1;left:29.3%;width:41.5%;top:2.1%;height:auto;aspect-ratio:1}
+ .pdStage{position:absolute;z-index:1;left:29.3%;width:41.5%;top:36px;height:auto;aspect-ratio:1}
  .pdDialWrap{width:100%}
- .pdRight{position:absolute;z-index:5;right:max(6px,env(safe-area-inset-right));top:max(6px,env(safe-area-inset-top));width:26%;max-height:60%;overflow:auto;display:flex;flex-direction:column;align-items:stretch;gap:3px}
+ #gtune .pdCenter{top:32%}
+ #gtune .pdPanel{top:56%;height:32%;right:28%;justify-content:flex-start;gap:1px}
+ #gtune .pdListen,#gtune .pdStatus,#gtune .gtBeats,#gtune #gtTargetSrc{font-size:12px;line-height:1.1;margin:0}
+ #gtune #gtDone{position:absolute;right:max(8px,env(safe-area-inset-right));top:74%;width:22%;min-width:0;z-index:6;min-height:32px;font-size:16px}
+ .pdRight{position:absolute;z-index:5;right:max(6px,env(safe-area-inset-right));top:40px;width:26%;max-height:52%;overflow:auto;display:flex;flex-direction:column;align-items:stretch;gap:3px}
  .pdActs{justify-content:flex-start}
  .pdMeasure,.pdKeep{text-align:left}
  .pdPanel{position:absolute;z-index:3;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:61.5%;height:26.3%;display:flex;flex-direction:column;justify-content:center;background:rgba(11,15,23,.94);border-radius:12px;padding:6px 12px;text-align:center;overflow:hidden}
  .pdListen,.pdStatus,.pdStretch{text-align:center}
- .pdKeys{position:absolute;z-index:4;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:87.9%;bottom:max(2px,env(safe-area-inset-bottom));height:auto;min-height:0;flex:none;border-radius:6px}
+ #gtune .gtKeys{position:absolute;z-index:4;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:87.9%;bottom:max(2px,env(safe-area-inset-bottom));height:auto;min-height:0;flex:none;border-radius:6px}
+ #gtune.checking #gtBeats{max-height:32px;overflow:hidden}
  #pdDetails{top:10%;max-height:50%;left:max(16%,env(safe-area-inset-left));right:max(16%,env(safe-area-inset-right))}
 }
 #gtune.checking .gtBeats{font-size:14px;line-height:1.2;max-width:920px}
 #gtune.checking .gtPrompt{font-size:15px}
-#gtune.checking .gtNote{font-size:40px}
-#gtune.checking #gtCents,#gtune.checking #gtNeedleWrap{display:none}
-#gtune.checking .gtDone{min-height:44px;font-size:22px}
+#gtune.checking .gtDone{min-height:36px;font-size:18px}
 .gtCover{position:absolute;left:0;right:0;top:56px;bottom:0;z-index:8;background:#0b0f17;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 16px;text-align:center}
 #gtSplits{bottom:98px;justify-content:flex-start;overflow:hidden;gap:4px;padding-top:4px}
 #gtSplits h2{font-size:28px}
@@ -250,15 +257,20 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtCover .btn:disabled,#gtSplits .btn:disabled{opacity:1;background:#1f2937;color:#9ca3af;border-color:#374151}
 #gtSplits .btn{min-height:40px}
 @media (max-height:560px){
- #gtSplits{gap:2px;padding-top:0}
- #gtSplits h2{font-size:22px}
- #gtSplits p{font-size:13px;line-height:1.15}
- #gtSplits .btn{min-height:32px;font-size:15px;padding:4px 10px}
+ #gtSplits,#gtStyle{gap:2px;padding-top:0;justify-content:flex-start}
+ #gtSplits h2,#gtStyle h2{font-size:20px}
+ #gtSplits p,#gtStyle p,#gtStyle .hintline{font-size:12px;line-height:1.1}
+ #gtSplits .btn,#gtStyle .btn{min-height:28px;font-size:14px;padding:2px 8px}
 }
 .gtCover .btn.on{outline:3px solid #4ade80}
 .gtPiano .btn{min-width:76px;font-size:16px}
 .gtPianoName{font-size:22px;font-weight:800;color:#fff;margin-right:8px}
 .gtDone{font-size:26px;min-width:220px;min-height:52px}
+@media (orientation:portrait) and (max-width:699px){
+ #gtune .pdPanel{flex:1;min-height:0;overflow:auto}
+ #gtune .gtKeys{flex:0 0 120px;height:120px}
+ #gtune .pdDialWrap{width:min(78vw,340px)}
+}
 @media (max-height:560px){
  #gtDetail{display:none}
  #gtTargetSrc{font-size:13px;line-height:1.1}
@@ -280,11 +292,9 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
  .gtCover h2,#gtSplits h2{font-size:40px}
  .gtCover p{font-size:20px}
  .gtCover .btn,#gtSplits .btn{min-height:52px;font-size:20px}
- .gtNote{font-size:72px}
- #gtNeedleWrap{width:min(32vh,260px);height:min(32vh,260px);border-radius:50%;margin:8px auto;background:radial-gradient(circle at 50% 42%,#f4f7fb,#c5ccd6 46%,#7d868f);border:8px solid #1f2937;overflow:hidden}
- #gtNeedle{left:50%;top:50%;bottom:auto;width:46%;height:4px;margin:0;background:#111827;transform-origin:left center;transform:rotate(calc(-90deg + var(--cents, 0) * 0.4deg))}
- .pdDialWrap{width:min(52vw,480px)}
- .pdKeys{flex-basis:170px;height:170px;min-height:150px}
+ .pdDialWrap{width:min(46vh,420px)}
+ #gtune .gtKeys{flex-basis:170px;height:170px;min-height:150px}
+ #gtPrompt{font-size:20px}
 }
 .gtBeats{color:#9ca3af}
 .gtKeys .wk,.gtKeys .bk{min-height:0;padding:0;border-radius:0 0 3px 3px}

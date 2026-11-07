@@ -50,6 +50,7 @@ const PianoTune=(function(){
  function curveFor(typeId,profile){
   if(typeId==='typical')return typicalCurve();
   if(SIZES[typeId])return SIZE_CURVE[typeId];
+  if(MODELS[typeId])return null;
   if(String(typeId).indexOf('profile:')===0&&profile&&profile.curve){
    const cents={},origin={};
    for(let m=LO;m<=HI;m++){
@@ -190,12 +191,11 @@ const PianoTune=(function(){
    let peaks=localPeaks(spec,sr,center,half).filter(pk=>pk.snr>=4);
    const kept=[];
    peaks.forEach(pk=>{
-    if(kept.length>=strings)return;
     if(kept.some(k=>Math.abs(k.freq-pk.freq)<resolutionHz*2.2))return;
     if(kept.length&&pk.mag<kept[0].mag*0.18)return;
     kept.push(pk)});
-   kept.sort((a,b)=>a.freq-b.freq);
-   const strong=kept.filter(pk=>pk.snr>=6);
+   const strongAll=kept.filter(pk=>pk.snr>=6);
+   const strong=(strongAll.length>strings?strongAll:strongAll.slice()).sort((a,b)=>a.freq-b.freq);
    const pairs=[];
    for(let i=0;i<strong.length;i++)for(let j=i+1;j<strong.length;j++){
     const beat=Math.abs(strong[i].freq-strong[j].freq);
@@ -222,11 +222,11 @@ const PianoTune=(function(){
    if(seen&&agree>=Math.ceil(seen*0.5))pattern='offset'}
   const higher=partials.filter(p=>p.n>=3&&p.state==='measured'&&p.pairs.some(x=>x.resolved&&x.beatHz>2));
   if(!pattern&&(!fundamentalBeat||fundamentalBeat<resolutionHz*3)&&higher.length>=2)pattern='higher-partials';
+  if(partials.some(p=>p.state==='ambiguous')&&usable.length<2)return Object.assign(blank('ambiguous'),{resolutionHz,windowSec,rms,partials,summary:'More tones stood out than the strings of this note. Mute anything you are not matching.'});
   if(!usable.length){
    const reason=partials.some(p=>p.state==='too-close')?'resolution':(partials.some(p=>p.state==='one-peak')?'one-string':(rms>0.02?'noise':'weak-partial'));
    const summary=reason==='resolution'?'The strings are too close, or the window is too short, to separate a beat.':reason==='one-string'?'Only one tone stood out. The other string may be muted, or the beats are too slow to split.':'The overtones were not clear enough.';
    return Object.assign(blank(reason),{resolutionHz,windowSec,rms,partials,summary})}
-  if(partials.some(p=>p.state==='ambiguous')&&usable.length<2)return Object.assign(blank('ambiguous'),{resolutionHz,windowSec,rms,partials,summary:'More tones stood out than the strings of this note. Mute anything you are not matching.'});
   let summary;
   const rate=fundamentalBeat!=null?fundamentalBeat.toFixed(1):null;
   if(pattern==='offset'&&rate)summary='Partial 1 beats about '+rate+' times a second. Higher overtones beat about that many times their number, which fits one string shifted in pitch. Stretch did not ask for that gap.';
@@ -353,6 +353,7 @@ const PianoTune=(function(){
   if(wanted.every(m=>s.green[m])){chime=true;advance=true}
   return{state:s,chime,advance,lean,color,midi}}
  const SPLITS={concert:{split2:24,split3:53},baby:{split2:26,split3:55},studio:{split2:28,split3:57},spinet:{split2:29,split3:60}};
+ const MODELS={'kawai-k200':{id:'kawai-k200',maker:'Kawai',model:'K-200',heightCm:114,widthCm:149,depthCm:57,weightKg:208,speakingNo1Mm:1157,duplex:false,agraffes:false,sources:['https://kawaius.com/products/kawai-k-200-upright-piano','https://www.kawai.co.uk/products/uprightpianos/kseries/k200/'],layoutStart:'studio',layoutNote:'generic-studio-start'}};
  function stringCount(midi,split2,split3){midi=midi|0;if(!(split2<split3))return 1;if(midi<split2)return 1;if(midi<split3)return 2;return 3}
  function pairInfo(iv){
   const spec=INTERVALS[iv&&iv.kind];if(!spec||!(iv.a>=0))return null;
@@ -421,8 +422,21 @@ const PianoTune=(function(){
  function jump(state,index,count){
   const i=Math.max(0,Math.min(count-1,index|0));
   return Object.assign({},state,{step:i,holdStart:null,holdMidi:null,green:{},hist:[],lean:0,outSince:null})}
- const CAL_VERSION=1,CAL_ALGORITHM='cal-4:2-v1';
- const CAL_NOTES=[21,33,45,52,57,69,74,81,93];
+ const CAL_VERSION=2,CAL_ALGORITHM='cal-4:2-v2';
+ const CAL_NOTES=[21,33,45,52,57,69,74,81,93,96,105,108];
+ function stiffnessTrend(meas,side){
+  const rows=(meas||[]).filter(s=>s&&s.B>0&&(side==='up'?s.midi>=57:s.midi<=69));
+  const fail=(reason,extra)=>({ok:false,reason,side,n:rows.length,k:null,rms:null,a:null,...(extra||{})});
+  if(rows.length<3)return fail('few-notes');
+  let n=0,sx=0,sy=0,sxx=0,sxy=0;
+  rows.forEach(s=>{const x=s.midi-69,y=Math.log(s.B);n++;sx+=x;sy+=y;sxx+=x*x;sxy+=x*y});
+  const den=n*sxx-sx*sx;
+  if(!(Math.abs(den)>1e-9))return fail('fit');
+  const k=(n*sxy-sx*sy)/den,a=(sy-k*sx)/n;
+  let err=0;rows.forEach(s=>{const d=Math.log(s.B)-(a+k*(s.midi-69));err+=d*d});
+  const rms=Math.sqrt(err/n);
+  if(!(k>-0.01&&k<0.12&&rms<0.22))return fail('unstable',{k,rms});
+  return {ok:true,reason:'ok',side,n,a,k,rms}}
  function fitPartialB(partials){
   const pts=(partials||[]).filter(p=>p&&p.n>=1&&p.hz>0);
   if(pts.length<3)return {status:'withheld',reason:'few-partials',B:null,f0:null,f1:null,residualCents:null};
@@ -473,30 +487,39 @@ const PianoTune=(function(){
   return {status:'measured',reason:'ok',midi,B:fit.B,residualCents:fit.residualCents,partials,heardCents,confidence:partials.length>=4&&fit.residualCents<3?'high':'low'}}
  function deriveCalibration(notes,refA4,styleId){
   const meas=(notes||[]).filter(n=>n&&n.status==='measured'&&n.B>0).slice().sort((a,b)=>a.midi-b.midi);
-  const base={version:CAL_VERSION,algorithm:CAL_ALGORITHM,refA4:refA4||440,styleId:styleId||null,accepted:false,fallback:null,status:'insufficient',notes:meas,targets:{}};
+  const base={version:CAL_VERSION,algorithm:CAL_ALGORITHM,refA4:refA4||440,styleId:styleId||null,accepted:false,fallback:null,status:'insufficient',notes:meas,targets:{},extrapolation:null};
   if(meas.length<4)return base;
   const lo=meas[0].midi,hi=meas[meas.length-1].midi;
   if(!(lo<=69&&hi>=69&&meas.some(n=>n.midi<=45)&&meas.some(n=>n.midi>=81)))return base;
+  const up=hi>=81?stiffnessTrend(meas,'up'):{ok:false,reason:'no-treble-anchor',side:'up'};
+  const down=lo<=45?stiffnessTrend(meas,'down'):{ok:false,reason:'no-bass-anchor',side:'down'};
+  function fromTrend(midi,trend,span){
+   if(!trend||!trend.ok)return null;
+   if(Math.abs(midi-span)> (trend.side==='up'?18:12))return null;
+   const B=Math.exp(trend.a+trend.k*(midi-69));
+   if(!(B>1e-5&&B<0.02))return null;
+   return B}
   function bAt(midi){
    const hit=meas.find(s=>s.midi===midi);
    if(hit)return {B:hit.B,bSource:'measured'};
    let a=null,b=null;
    meas.forEach(s=>{if(s.midi<midi)a=s;if(s.midi>midi&&!b)b=s});
-   if(!a||!b)return {B:null,bSource:'unavailable'};
-   const t=(midi-a.midi)/(b.midi-a.midi);
-   return {B:Math.exp(Math.log(a.B)*(1-t)+Math.log(b.B)*t),bSource:'inferred'}}
+   if(a&&b){const t=(midi-a.midi)/(b.midi-a.midi);return {B:Math.exp(Math.log(a.B)*(1-t)+Math.log(b.B)*t),bSource:'inferred'}}
+   const ext=midi>hi?fromTrend(midi,up,hi):midi<lo?fromTrend(midi,down,lo):null;
+   if(ext)return {B:ext,bSource:'extrapolated'};
+   return {B:null,bSource:'unavailable'}}
   const cents={69:0};
-  for(let m=69;m<hi;m++){const bl=bAt(m),bu=bAt(m+1);if(!bl.B||!bu.B)break;cents[m+1]=cents[m]+octave42(bl.B,bu.B)/12}
-  for(let m=69;m>lo;m--){const bl=bAt(m-1),bu=bAt(m);if(!bl.B||!bu.B||cents[m]==null)break;cents[m-1]=cents[m]-octave42(bl.B,bu.B)/12}
+  for(let m=69;m<HI;m++){const bl=bAt(m),bu=bAt(m+1);if(!bl.B||!bu.B)break;cents[m+1]=cents[m]+octave42(bl.B,bu.B)/12}
+  for(let m=69;m>LO;m--){const bl=bAt(m-1),bu=bAt(m);if(!bl.B||!bu.B||cents[m]==null)break;cents[m-1]=cents[m]-octave42(bl.B,bu.B)/12}
   const model=SIZES[styleId]?SIZE_CURVE[styleId]:null;
   const targets={};
   for(let m=LO;m<=HI;m++){
-   const b=bAt(m),outside=m<lo||m>hi;
+   const b=bAt(m);
    if(m===69)targets[m]={cents:0,source:'anchor',B:b.B,bSource:b.bSource};
-   else if(!outside&&cents[m]!=null&&b.B)targets[m]={cents:cents[m],source:b.bSource==='measured'?'measured':'inferred',B:b.B,bSource:b.bSource};
+   else if(cents[m]!=null&&b.B)targets[m]={cents:cents[m],source:b.bSource,B:b.B,bSource:b.bSource};
    else if(model)targets[m]={cents:null,source:'unavailable',B:null,bSource:'unavailable',modelCents:model.cents[m]};
    else targets[m]={cents:null,source:'unavailable',B:null,bSource:'unavailable'}}
-  return {version:CAL_VERSION,algorithm:CAL_ALGORITHM,refA4:refA4||440,styleId:styleId||null,accepted:true,fallback:null,status:'accepted',notes:meas.map(n=>({midi:n.midi,B:n.B,residualCents:n.residualCents,confidence:n.confidence,partials:n.partials,heardCents:n.heardCents})),targets}}
+  return {version:CAL_VERSION,algorithm:CAL_ALGORITHM,refA4:refA4||440,styleId:styleId||null,accepted:true,fallback:null,status:'accepted',extrapolation:{up,down},notes:meas.map(n=>({midi:n.midi,B:n.B,residualCents:n.residualCents,confidence:n.confidence,partials:n.partials,heardCents:n.heardCents})),targets}}
  function curveFromCalibration(cal,styleId){
   const model=SIZES[styleId]?SIZE_CURVE[styleId]:typicalCurve();
   const cents={},origin={},bmap={};
@@ -506,7 +529,7 @@ const PianoTune=(function(){
    else if(cal&&cal.fallback==='model'){cents[m]=model.cents[m];origin[m]='model-fallback';bmap[m]=model.b?model.b(m):null}
    else {cents[m]=null;origin[m]='unavailable';bmap[m]=null}}
   return {cents,origin,b:midi=>bmap[midi]||0,calibration:true,algorithm:cal&&cal.algorithm}}
- return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,CAL_VERSION,CAL_ALGORITHM,CAL_NOTES,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,curveFromCalibration,deriveCalibration,fitPartialB,analyzeCalibrationNote,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,analyzeIntervalAudio,analyzeUnison,synthUnison,listenCue,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
+ return{LO,HI,NAMES,TYPICAL,SIZES,SPLITS,MODELS,HOLD_MS,TOL,RAISE_IF_FLAT,OVERPULL,PRESCAN,PRESCAN_WAIT,GOT_MS,DIFFERENT,METER,INTERVALS,CAL_VERSION,CAL_ALGORITHM,CAL_NOTES,label,plainName,isWhite,smoothTypical,bOf,sizeCurve,typicalCurve,curveFor,curveFromCalibration,deriveCalibration,fitPartialB,analyzeCalibrationNote,etFreq,targetFreq,partialFreq,expectedBeat,measureBeats,analyzeIntervalAudio,analyzeUnison,synthUnison,listenCue,needsPitchRaise,overpullTarget,nearestMeasured,interpretFreq,allowPrescan,isRing,confidenceFor,meterView,stringCount,stringPrompt,expandTuning,upsertProfile,renameProfile,deleteProfile,buildSequence,emptyState,applySample,jump}})();
 if(typeof module!=='undefined')module.exports=PianoTune;
 
 if(typeof document!=='undefined'){
@@ -514,9 +537,9 @@ const PT=PianoTune,coreJump=PianoTune.jump,GK='pp-pianotune';
 const G={on:false,listening:false,sounding:false,stream:null,ctx:null,play:null,an:null,raf:0,buf:null,sess:null,seq:[],curve:null,built:false,env:[],showGot:false,showNext:false,showUnread:false,blinking:false,gotMidi:null,prevFreq:0,attack:false,sawQuiet:false,peak:0,gotUntil:0,settleUntil:0,armAt:0};
 const $g=id=>document.getElementById(id);
 const PKEY='pp-piano-profiles';
-function blankSess(){return{v:3,type:null,a4:440,step:0,prescan:{},split2:null,split3:null,tuningOk:false,profileId:null,ready:false,updated:0,calibration:null,targetChoice:null}}
+function blankSess(){return{v:3,type:null,a4:440,step:0,prescan:{},split2:null,split3:null,tuningOk:false,profileId:null,ready:false,updated:0,calibration:null,targetChoice:null,pianoModel:null,serial:''}}
 function loadSess(){try{const o=JSON.parse(localStorage.getItem(GK)||'null');if(o&&o.v===3)return Object.assign(blankSess(),o);if(o&&o.v===2&&o.type&&PT.SPLITS[o.type])return Object.assign(blankSess(),o,{v:3,ready:true,split2:PT.SPLITS[o.type].split2,split3:PT.SPLITS[o.type].split3})}catch(e){}return blankSess()}
-function saveSess(){try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:3,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,split2:G.sess.split2,split3:G.sess.split3,tuningOk:!!G.sess.tuningOk,profileId:G.sess.profileId,ready:!!G.sess.ready,updated:G.sess.updated,calibration:G.sess.calibration||null,targetChoice:G.sess.targetChoice||null}))}catch(e){}}
+function saveSess(){try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:3,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,split2:G.sess.split2,split3:G.sess.split3,tuningOk:!!G.sess.tuningOk,profileId:G.sess.profileId,ready:!!G.sess.ready,updated:G.sess.updated,calibration:G.sess.calibration||null,targetChoice:G.sess.targetChoice||null,pianoModel:G.sess.pianoModel||null,serial:G.sess.serial||''}))}catch(e){}}
 function loadPianos(){try{const a=JSON.parse(localStorage.getItem(PKEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function savePianos(a){try{localStorage.setItem(PKEY,JSON.stringify(a))}catch(e){}}
 function profiles(){try{const a=JSON.parse(localStorage.getItem('pp-tuner-profiles')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
@@ -526,6 +549,7 @@ function activeCurve(){
   if(cal&&cal.accepted)return PT.curveFromCalibration(cal,G.sess.type);
   const t=G.sess.type||'concert';
   if(String(t).indexOf('profile:')===0)return PT.curveFor(t,findProfile(t.slice(8)));
+  if(PT.MODELS[t])return PT.curveFor(PT.MODELS[t].layoutStart);
   return PT.curveFor(t)}
 function bFn(){
   const cal=G.sess&&G.sess.calibration;
@@ -643,10 +667,10 @@ function render(){
   else if(G.showUnread){$g('gtCents').textContent='No clear reading';$g('gtCents').classList.remove('got')}
   else if(G.showNext&&step.phase==='prescan'&&!(typeof cents==='number')){$g('gtCents').textContent='Next: '+PT.plainName(step.midi);$g('gtCents').classList.remove('got')}
   else{$g('gtCents').textContent=view.text;$g('gtCents').classList.remove('got')}
-  $g('gtNeedle').style.left=view.pct+'%';
-  $g('gtNeedleWrap').style.setProperty('--cents',(typeof cents==='number'&&isFinite(cents)?Math.max(-200,Math.min(200,cents)):0).toFixed(2));
+  if($g('gtNeedle'))$g('gtNeedle').style.left=view.pct+'%';
+  if($g('gtNeedleWrap')){$g('gtNeedleWrap').style.setProperty('--cents',(typeof cents==='number'&&isFinite(cents)?Math.max(-200,Math.min(200,cents)):0).toFixed(2));
   $g('gtNeedleWrap').classList.toggle('ok',typeof cents==='number'&&isFinite(cents)&&Math.abs(cents)<=PT.TOL);
-  $g('gtNeedleWrap').classList.toggle('past',!!view.past);
+  $g('gtNeedleWrap').classList.toggle('past',!!view.past)}
   if($g('gtRetry'))$g('gtRetry').hidden=unreadIndex()<0;
   if($g('gtDone'))$g('gtDone').hidden=!G.showDone;
   if($g('gtTuneCard'))$g('gtTuneCard').hidden=!G.showTuningCard;
@@ -656,9 +680,18 @@ function render(){
    const cal=G.sess&&G.sess.calibration;
    const midi=step.midi;
    if(cal&&cal.accepted){const t=cal.targets&&(cal.targets[midi]||cal.targets[String(midi)]);
-    $g('gtTargetSrc').textContent=!t||t.source==='unavailable'?'Target unavailable for this note. The size model is not being substituted.':t.source==='measured'?'Target measured from this piano\'s stiffness. The pitch you played was not copied.':t.source==='inferred'?'Target inferred between measured notes. Not a direct measurement of this note.':t.source==='anchor'?'Target anchored at the A you set, not at the pitch the microphone heard.':t.source==='model-fallback'?'Target from the size model for this note. Not a measurement.':'Target '+t.source+'.'}
-   else if(G.sess&&G.sess.targetChoice==='model')$g('gtTargetSrc').textContent='Target from the size model. Not a measurement of this piano.';
+    $g('gtTargetSrc').textContent=!t||t.source==='unavailable'?'Target unavailable for this note. The size model is not being substituted.':t.source==='measured'?'Target measured from this piano\'s stiffness. The pitch you played was not copied.':t.source==='inferred'?'Target inferred between measured notes. Not a direct measurement of this note.':t.source==='extrapolated'?'Target extrapolated from the measured stiffness trend. Not a measurement of this note.':t.source==='anchor'?'Target anchored at the A you set, not at the pitch the microphone heard.':t.source==='model-fallback'?'Target from the size model for this note. Not a measurement.':'Target '+t.source+'.'}
+   else if(G.sess&&G.sess.targetChoice==='model')$g('gtTargetSrc').textContent=G.sess.pianoModel?'Target from the generic '+G.sess.type+' size model. Not a measurement of this '+G.sess.pianoModel.maker+' '+G.sess.pianoModel.model+'.':'Target from the size model. Not a measurement of this piano.';
    else $g('gtTargetSrc').textContent=''}
+  if($g('gtIdentity')){
+   const m=G.sess.pianoModel;
+   $g('gtIdentity').textContent=m?(m.maker+' '+m.model+'. '+(G.sess.serial?'Serial '+G.sess.serial+'.':'Serial not entered.')+' Reference only. Not a measured curve.'):'';
+   $g('gtIdentity').hidden=!m}
+  if($g('gtSerialLive')){const live=$g('gtSerialLive');live.hidden=!G.sess.pianoModel;if(document.activeElement!==live)live.value=G.sess.serial||''}
+  if($g('pdTargetName'))$g('pdTargetName').textContent=PT.label(show);
+  if($g('pdTarget'))$g('pdTarget').hidden=!window.matchMedia('(orientation: landscape) and (max-height: 560px)').matches;
+  if($g('pdListen')&&!(window.PartialDial&&PartialDial.simOn&&PartialDial.simOn()))$g('pdListen').textContent=step.phase==='check'?'Two notes together. Rings stay off.':'Rings show overtones that were heard. A missing overtone is not drawn.';
+  if(step.phase==='check'&&window.PartialDial&&PartialDial.clearRings)PartialDial.clearRings();
   $g('gtType').value=G.sess.type&&$g('gtType').querySelector('option[value="'+G.sess.type+'"]')?G.sess.type:'concert';
   $g('gtA4').value=G.sess.a4}
 function fillTypes(){
@@ -670,10 +703,12 @@ function renderList(){
   const ul=$g('gtList');ul.innerHTML='';
   G.seq.forEach((s,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+'. '+s.title;if(i===G.sess.step)b.className='on';b.onclick=()=>{jumpTo(i);$g('gtList').hidden=true};ul.append(b)});
 }
-function jumpTo(i){G.previewHold=false;G.unisonRead=null;G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];clearWave();saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
+function jumpTo(i){G.previewHold=false;G.unisonRead=null;if(window.PartialDial&&PartialDial.clearSim)PartialDial.clearSim();G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];clearWave();saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
 function onKey(m){if(G.pickSplit){if(G.pickSplit===3)G.sess.split3=m;else G.sess.split2=m;if(G.sess.split2!=null&&G.sess.split3!=null&&G.sess.split2>=G.sess.split3)G.sess.split2=G.sess.split3-1;renderSplits();return}jumpToMidi(m)}
 function jumpToMidi(m){const i=G.seq.findIndex((s,idx)=>idx>=G.sess.step&&s.midis&&s.midis.indexOf(m)>=0);if(i>=0)jumpTo(i)}
-function renderSplits(){renderKeys();if($g('gtSplit3Lab'))$g('gtSplit3Lab').textContent='Lowest 3-string key: '+(G.sess.split3!=null?PT.label(G.sess.split3):'');if($g('gtSplit2Lab'))$g('gtSplit2Lab').textContent='Lowest 2-string key: '+(G.sess.split2!=null?PT.label(G.sess.split2):'');document.querySelectorAll('#gtSplits .pick').forEach(b=>b.classList.toggle('on',+b.dataset.which===G.pickSplit));document.querySelectorAll('#gtKeys button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');el.classList.add(m===G.sess.split2||m===G.sess.split3?'next':'dim')})}
+function renderSplits(){renderKeys();if($g('gtSplit3Lab'))$g('gtSplit3Lab').textContent='Lowest 3-string key: '+(G.sess.split3!=null?PT.label(G.sess.split3):'');if($g('gtSplit2Lab'))$g('gtSplit2Lab').textContent='Lowest 2-string key: '+(G.sess.split2!=null?PT.label(G.sess.split2):'');
+ if($g('gtModelLine')){const m=G.sess.pianoModel;const spec=m&&PT.MODELS[m.id];$g('gtModelLine').hidden=!m;$g('gtModelLine').textContent=spec?(spec.maker+' '+spec.model+' is the piano on record. Height '+spec.heightCm+' cm, width '+spec.widthCm+' cm, depth '+spec.depthCm+' cm, weight '+spec.weightKg+' kg. No. 1 speaking length '+spec.speakingNo1Mm+' mm. Duplex scale: no. Agraffes: no. The string breaks below are a generic studio starting point, not a '+spec.model+' specification.'):''}
+ document.querySelectorAll('#gtSplits .pick').forEach(b=>b.classList.toggle('on',+b.dataset.which===G.pickSplit));document.querySelectorAll('#gtKeys button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');el.classList.add(m===G.sess.split2||m===G.sess.split3?'next':'dim')})}
 function stopListen(){G.listening=false;if(G.raf){cancelAnimationFrame(G.raf);G.raf=0}
   if(G.stream){G.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});G.stream=null}}
 function loop(){
@@ -688,7 +723,13 @@ function loop(){
     const step=stepNow();
     if(step&&step.phase==='prescan'&&!G.showGot&&!G.showUnread&&G.armAt&&now-G.armAt>PT.PRESCAN_WAIT&&!G.sess.prescan[step.midi])markUnread();
     const unisonNow=step&&step.phase!=='prescan'&&step.phase!=='check'&&(step.stringCount||1)>1&&(step.stringIndex||1)>1;
-    if(unisonNow)appendWave(G.buf,G.ctx.sampleRate);
+    const singleNow=step&&step.phase!=='check'&&step.midi;
+    if(unisonNow||singleNow)appendWave(G.buf,G.ctx.sampleRate);
+    if(singleNow&&!(window.PartialDial&&PartialDial.simOn&&PartialDial.simOn())&&(!G.partialAt||now-G.partialAt>500)){
+     G.partialAt=now;const need=Math.floor((G.waveSr||1)*1);
+     if(G.wave&&G.waveN>=need&&window.PartialCore){
+      const heard=PartialCore.analyzeSingleNote(waveSlice(need),G.waveSr,{hintHz:PT.etFreq(step.midi,G.sess.a4),midi:step.midi,a4:G.sess.a4});
+      if(window.PartialDial&&PartialDial.noteHeard)PartialDial.noteHeard(step.midi,heard)}}
     if(step&&step.phase==='check'&&!G.previewHold){
      appendWave(G.buf,G.ctx.sampleRate);
      if(!G.beatAt||now-G.beatAt>450){G.beatAt=now;readInterval(step,now);render()}
@@ -816,8 +857,9 @@ async function captureCal(){const midi=PT.CAL_NOTES[G.calI];if(midi==null)return
   refreshCalUse()}catch(e){stopCal();if($g('gtCalStatus'))$g('gtCalStatus').textContent='No microphone available.'}}
 function hideSetup(){showOnly(null);$g('gtune').classList.remove('setup')}
 function renderPianos(){const box=$g('gtSaved');if(!box)return;box.innerHTML='';loadPianos().forEach(p=>{const row=document.createElement('div');row.className='gtPiano';const nm=document.createElement('span');nm.className='gtPianoName';nm.textContent=p.name;const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Load';b.onclick=()=>loadPiano(p.id);const rn=document.createElement('button');rn.type='button';rn.className='btn';rn.textContent='Rename';rn.onclick=()=>{const n=(prompt('New name',p.name)||'').trim();if(!n)return;savePianos(PT.renameProfile(loadPianos(),p.id,n));renderPianos()};const del=document.createElement('button');del.type='button';del.className='btn';del.textContent='Delete';del.onclick=()=>{if(!confirm('Delete '+p.name+'?'))return;savePianos(PT.deleteProfile(loadPianos(),p.id));renderPianos()};row.append(nm,b,rn,del);box.append(row)})}
-function loadPiano(id){const p=loadPianos().find(x=>x.id===id);if(!p)return;G.sess=Object.assign(blankSess(),{ready:true,type:p.style,a4:p.a4||440,split2:p.split2,split3:p.split3,prescan:p.prescan||{},step:p.step|0,tuningOk:!!p.tuningOk,profileId:p.id,calibration:p.calibration||null,targetChoice:p.targetChoice||(p.calibration&&p.calibration.accepted?'measured':'model')});G.tuningOk=!!p.tuningOk;hideSetup();startWork()}
-function savePiano(){const name=($g('gtPianoName').value||'').trim();if(!name){$g('gtPianoName').focus();return}const id=G.sess.profileId||('k'+Date.now());const rec={id,name,style:G.sess.type,a4:G.sess.a4,split2:G.sess.split2,split3:G.sess.split3,prescan:G.sess.prescan,step:G.sess.step,tuningOk:!!G.tuningOk,updated:Date.now(),calibration:G.sess.calibration||null,targetChoice:G.sess.targetChoice||null};savePianos(PT.upsertProfile(loadPianos(),rec));G.sess.profileId=id;saveSess()}
+function loadPiano(id){const p=loadPianos().find(x=>x.id===id);if(!p)return;const model=p.pianoModel&&p.pianoModel.id?p.pianoModel:null;G.sess=Object.assign(blankSess(),{ready:true,type:p.style,a4:p.a4||440,split2:p.split2,split3:p.split3,prescan:p.prescan||{},step:p.step|0,tuningOk:!!p.tuningOk,profileId:p.id,calibration:p.calibration||null,targetChoice:p.targetChoice||(p.calibration&&p.calibration.accepted?'measured':'model'),pianoModel:model,serial:p.serial||(model&&model.serial)||''});if(G.sess.pianoModel)G.sess.pianoModel.serial=G.sess.serial;G.tuningOk=!!p.tuningOk;hideSetup();startWork()}
+function readSerial(){const live=$g('gtSerialLive'),box=$g('gtSerial');const raw=live&&!live.closest('[hidden]')?live.value:box?box.value:'';return (raw||'').trim()}
+function savePiano(){const name=($g('gtPianoName').value||'').trim();if(!name){$g('gtPianoName').focus();return}const serial=readSerial();if(G.sess.pianoModel){G.sess.pianoModel.serial=serial;G.sess.serial=serial}else G.sess.serial='';const id=G.sess.profileId||('k'+Date.now());const rec={id,name,style:G.sess.type,a4:G.sess.a4,split2:G.sess.split2,split3:G.sess.split3,prescan:G.sess.prescan,step:G.sess.step,tuningOk:!!G.tuningOk,updated:Date.now(),calibration:G.sess.calibration||null,targetChoice:G.sess.targetChoice||null,pianoModel:G.sess.pianoModel||null,serial:G.sess.serial||''};savePianos(PT.upsertProfile(loadPianos(),rec));G.sess.profileId=id;saveSess()}
 function startWork(){G.tuningOk=!!G.sess.tuningOk;rebuild(true);renderKeys();render();renderList();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep();listen()}
 function openTune(){
   try{if(window.Tuner)Tuner.leave()}catch(e){}
@@ -832,13 +874,15 @@ function tapDone(){if(!G.showDone)return;G.showDone=false;G.sess.step=Math.min(G
 function helpChrome(on){
   document.body.classList.toggle('tuneHelp',!!on);
   const back=document.getElementById('gtHelpBack');if(back)back.hidden=!on;
+  const dial=document.getElementById('pdHelpBack');if(dial&&!on)dial.hidden=true;
   const tb=document.getElementById('gtToolsBack');if(tb)tb.textContent=on?'Back to piano':'Back to topics'}
-function openToolsHelp(){
+function openToolsHelp(anchor){
   if(!G.on)return;
   G.holdHelp=true;G.wasListening=!!G.listening;stopListen();saveSess();
   $g('gtune').hidden=true;document.body.classList.remove('gtOpen');helpChrome(true);
   if(window.tab)tab('help');
-  const h=document.getElementById('h-piano-tools');if(h)h.scrollIntoView({block:'start'})}
+  const h=document.getElementById(anchor||'h-piano-tools');if(h)h.scrollIntoView({block:'start'});
+  const dial=document.getElementById('pdHelpBack');if(dial)dial.hidden=anchor!=='h-partial-dial'}
 function returnFromHelp(){
   if(!G.holdHelp)return;
   G.holdHelp=false;helpChrome(false);
@@ -852,16 +896,19 @@ function init(){
   const b=$g('gtOpen');if(!b||G.ready)return;G.ready=true;
   b.onclick=openTune;
   $g('gtClose').onclick=closeTune;
-  if($g('gtHelp'))$g('gtHelp').onclick=openToolsHelp;
+  if($g('gtHelp'))$g('gtHelp').onclick=()=>openToolsHelp('h-piano-tools');
+  if($g('pdHelp'))$g('pdHelp').onclick=()=>openToolsHelp('h-partial-dial');
+  if($g('pdHelpBack'))$g('pdHelpBack').onclick=returnFromHelp;
   if($g('gtHelpBack'))$g('gtHelpBack').onclick=returnFromHelp;
   $g('gtBack').onclick=()=>jumpTo((G.sess.step||0)-1);
   $g('gtSteps').onclick=()=>{renderList();$g('gtList').hidden=!$g('gtList').hidden};
   $g('gtType').onchange=e=>{G.sess.type=e.target.value;rebuild(true);render();playStep()};
   $g('gtA4').onchange=e=>{let v=+e.target.value;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));G.sess.a4=v;if(G.sess.calibration)G.sess.calibration.refA4=v;saveSess();render();if(stepNow()&&stepNow().phase!=='prescan')playStep()};
+  if($g('gtSerialLive'))$g('gtSerialLive').onchange=e=>{const serial=(e.target.value||'').trim();G.sess.serial=G.sess.pianoModel?serial:'';if(G.sess.pianoModel)G.sess.pianoModel.serial=G.sess.serial;saveSess();render()};
   if($g('gtRetry'))$g('gtRetry').onclick=retryUnread;
   if($g('gtNew'))$g('gtNew').onclick=()=>{G.pickStyle=null;$g('gtStyleNext').disabled=true;document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.classList.remove('on'));showOnly('gtStyle')};
-  document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.onclick=()=>{G.pickStyle=b.dataset.style;document.querySelectorAll('#gtStyle button[data-style]').forEach(x=>x.classList.toggle('on',x===b));$g('gtStyleNext').disabled=false});
-  if($g('gtStyleNext'))$g('gtStyleNext').onclick=()=>{if(!G.pickStyle)return;const sp=PT.SPLITS[G.pickStyle];G.sess.type=G.pickStyle;G.sess.split2=sp.split2;G.sess.split3=sp.split3;G.pickSplit=3;renderSplits();fillTypes();showOnly('gtSplits')};
+  document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.onclick=()=>{G.pickStyle=b.dataset.style;document.querySelectorAll('#gtStyle button[data-style]').forEach(x=>x.classList.toggle('on',x===b));$g('gtStyleNext').disabled=false;const spec=PT.MODELS[G.pickStyle];if($g('gtK200'))$g('gtK200').hidden=!spec;if($g('gtK200Spec')&&spec)$g('gtK200Spec').textContent=spec.maker+' '+spec.model+': '+spec.heightCm+' cm high, '+spec.widthCm+' cm wide, '+spec.depthCm+' cm deep, '+spec.weightKg+' kg. No. 1 speaking length '+spec.speakingNo1Mm+' mm. No duplex scale. No agraffes. This is a reference, not a tuning curve.';if(!spec&&$g('gtSerial'))$g('gtSerial').value=''});
+  if($g('gtStyleNext'))$g('gtStyleNext').onclick=()=>{if(!G.pickStyle)return;const spec=PT.MODELS[G.pickStyle];const style=spec?spec.layoutStart:G.pickStyle;const sp=PT.SPLITS[style];if(!sp)return;const serial=($g('gtSerial')&&spec?$g('gtSerial').value:'').trim();G.sess.type=style;G.sess.pianoModel=spec?{id:spec.id,maker:spec.maker,model:spec.model,serial}:null;G.sess.serial=spec?serial:'';G.sess.split2=sp.split2;G.sess.split3=sp.split3;G.pickSplit=3;if($g('gtSerialLive'))$g('gtSerialLive').value=G.sess.serial;renderSplits();fillTypes();showOnly('gtSplits')};
   document.querySelectorAll('#gtSplits .pick').forEach(b=>b.onclick=()=>{G.pickSplit=+b.dataset.which;renderSplits()});
   if($g('gtSplitsStart'))$g('gtSplitsStart').onclick=()=>{if(!(G.sess.split2<G.sess.split3)||!G.sess.targetChoice)return;G.sess.ready=true;G.sess.step=0;G.sess.prescan={};G.tuningOk=false;G.sess.tuningOk=false;G.pickSplit=0;hideSetup();startWork()};
   if($g('gtCalModel'))$g('gtCalModel').onclick=()=>{G.sess.targetChoice='model';G.sess.calibration={accepted:false,fallback:'model',status:'model',version:PT.CAL_VERSION,algorithm:'size-model',targets:null};saveSess();if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=false;render()};
@@ -881,7 +928,7 @@ function previewInterval(samples,sampleRate){
  G.previewHold=true;
  G.beatRead=PT.analyzeIntervalAudio(samples,sampleRate,intervalQuery(step));
  G.showDone=true;render();return G.beatRead}
-Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,previewInterval,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
+Object.assign(PianoTune,{init,open:openTune,close:closeTune,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,openHelpTopic:openToolsHelp,previewInterval,feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
 window.PianoTune=PianoTune;
 document.addEventListener('DOMContentLoaded',init);
 if(document.readyState!=='loading')init();

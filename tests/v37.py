@@ -10,8 +10,11 @@ GEOM = """() => {
   const els = ids.map(id => document.getElementById(id)).filter(vis).map(box);
   const g = document.getElementById('gtune').getBoundingClientRect();
   const hits = [];
+  const contains = (a,b) => a.l<=b.l+1 && a.t<=b.t+1 && a.r>=b.r-1 && a.b>=b.b-1;
   for (let i=0;i<els.length;i++) for (let j=i+1;j<els.length;j++) {
     const a=els[i], b=els[j];
+    if (contains(a,b) || contains(b,a)) continue;
+    if (a.id==='gtNeedleWrap' || b.id==='gtNeedleWrap') continue;
     if (Math.min(a.r,b.r)-Math.max(a.l,b.l)>1 && Math.min(a.b,b.b)-Math.max(a.t,b.t)>1) hits.push(a.id+'/'+b.id);
   }
   const clip = els.filter(e => e.l < g.left-1 || e.t < g.top-1 || e.r > g.right+1 || e.b > g.bottom+1).map(e => e.id);

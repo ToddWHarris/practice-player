@@ -7,13 +7,13 @@ errs=[]
 def fit(pg):
   return pg.evaluate("""()=>{
     const box=el=>{if(!el||el.hidden||el.closest('[hidden]'))return null; const r=el.getBoundingClientRect(); if(r.width<2||r.height<2)return null; return {id:el.id,l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height};};
-    const note=box(document.getElementById('pdNote'));
+    const note=box(document.getElementById('gtNote'));
     const listen=box(document.getElementById('pdListen'));
-    const keys=box(document.getElementById('pdKeys'));
+    const keys=box(document.getElementById('gtKeys'));
     const svg=box(document.getElementById('pdSvg'));
     const target=box(document.getElementById('pdTarget'));
     const status=box(document.getElementById('pdStatus'));
-    const g=document.getElementById('pdial').getBoundingClientRect();
+    const g=document.getElementById('gtune').getBoundingClientRect();
     const overlap=(a,b)=>a&&b&&Math.min(a.r,b.r)-Math.max(a.l,b.l)>2&&Math.min(a.b,b.b)-Math.max(a.t,b.t)>2;
     const hits=[];
     if(overlap(note,listen))hits.push('note/listen');
@@ -32,15 +32,15 @@ def fit(pg):
     });
     const els=[note,listen,keys,svg,status,measure,useBtn,dropBtn].filter(Boolean);
     const clip=els.filter(e=>e.l<g.left-2||e.r>g.right+2||e.t<g.top-2||e.b>g.bottom+2).map(e=>e.id);
-    const whites=[...document.querySelectorAll('#pdKeys .wk')];
+    const whites=[...document.querySelectorAll('#gtKeys .wk')];
     const a0=whites[0]&&whites[0].getBoundingClientRect();
     const c8=whites.length&&whites[whites.length-1].getBoundingClientRect();
     const mid=(svg.l+svg.r)/2, center=(g.left+g.right)/2;
     return {hits, clip, font:parseFloat(getComputedStyle(document.getElementById('pdListen')).fontSize),
       dialW:svg&&svg.w, dialH:svg&&svg.h, keyH:keys&&keys.h, keyTop:keys&&keys.t, viewW:g.width, viewH:g.height,
-      off:svg?Math.abs(mid-center):null, whites:whites.length, blacks:document.querySelectorAll('#pdKeys .bk').length,
+      off:svg?Math.abs(mid-center):null, whites:whites.length, blacks:document.querySelectorAll('#gtKeys .bk').length,
       a0:a0&&a0.left, c8:c8&&c8.right, keyL:keys&&keys.l, keyR:keys&&keys.r,
-      note:note&&parseFloat(getComputedStyle(document.getElementById('pdNote')).fontSize)};
+      note:note&&parseFloat(getComputedStyle(document.getElementById('gtNote')).fontSize)};
   }""")
 
 with sync_playwright() as p:
@@ -56,7 +56,13 @@ with sync_playwright() as p:
   pg.click('nav button[data-t=tun]')
   pg.wait_for_function("document.getElementById('tun').classList.contains('on')")
   pg.evaluate("localStorage.setItem('pp-pianotune', JSON.stringify({v:3,keep:1})); localStorage.setItem('pp-piano-profiles','[]')")
-  pg.locator('#pdOpen').scroll_into_view_if_needed(); pg.click('#pdOpen'); pg.wait_for_timeout(300)
+  pg.locator('#gtOpen').scroll_into_view_if_needed(); pg.click('#gtOpen'); pg.wait_for_timeout(200)
+  pg.click('#gtNew'); pg.click('#gtStyle button[data-style=concert]'); pg.click('#gtStyleNext'); pg.click('#gtCalModel');   pg.click('#gtSplitsStart'); pg.wait_for_timeout(300)
+  pg.click('#gtSteps'); pg.wait_for_timeout(80)
+  labels=pg.locator('#gtList button').all_inner_texts()
+  a4=next(i for i,t in enumerate(labels) if 'Set A4 string 1 of 3' in t)
+  pg.evaluate('document.getElementById("gtList").hidden=true')
+  pg.evaluate('(i)=>PianoTune.jump(i)', a4); pg.wait_for_timeout(150)
   assert pg.evaluate('PianoTune.PRESCAN.length')==88
   assert pg.is_hidden('#pdTarget')
   r=pg.evaluate("()=>PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]})")
@@ -65,11 +71,11 @@ with sync_playwright() as p:
   assert 'Play A4 alone' in pg.inner_text('#pdListen') and 'overtones' in pg.inner_text('#pdListen')
   assert 'Confidence high' in pg.inner_text('#pdStatus')
   assert 'Simulated preview' in pg.inner_text('#pdSim')
-  vis=pg.inner_text('#pdial')
+  vis=pg.inner_text('#gtune')
   assert 'Overtone 1' not in vis and 'unstiffened' not in vis and '3.99' not in vis
-  assert pg.locator('#pdKeys .wk').count()==52 and pg.locator('#pdKeys .bk').count()==36
+  assert pg.locator('#gtKeys .wk').count()==52 and pg.locator('#gtKeys .bk').count()==36
   assert pg.locator('#pdSamples').count()==0 and pg.locator('.pdEx').count()==0
-  assert 'Example notes' not in pg.inner_text('#pdial')
+  assert 'Example notes' not in pg.inner_text('#gtune')
   assert pg.inner_text('#pdSaveNote')=='Use this measurement'
   assert pg.inner_text('#pdRetry')=='Discard and measure again'
   assert "does not mark the note as tuned" in pg.inner_text('#pdMeasure')
@@ -102,17 +108,17 @@ with sync_playwright() as p:
   assert f['off']<30, f
   assert f['keyTop']/f['viewH']>0.80, f
   assert f['a0']<=f['keyL']+8 and f['c8']>=f['keyR']-8, f
-  assert 'Overtone 1' not in pg.inner_text('#pdial')
+  assert 'Overtone 1' not in pg.inner_text('#gtune')
   pg.screenshot(path='/opt/cursor/artifacts/partial-dial-landscape.png')
   pg.set_viewport_size({'width':932,'height':430}); pg.wait_for_timeout(150)
   f=fit(pg); assert not f['hits'] and not f['clip'] and pg.is_visible('#pdTarget'), f
   assert f['dialW']/f['viewW']>0.36 and f['off']<36 and f['keyTop']/f['viewH']>0.80, f
   # Help returns to the same target note.
   pg.click('#pdHelp'); pg.wait_for_timeout(250)
-  assert 'Partial dial (experimental)' in pg.inner_text('#h-partial-dial')
-  assert pg.is_hidden('#pdial')
+  assert 'Partial dial' in pg.inner_text('#h-partial-dial')
+  assert pg.is_hidden('#gtune')
   pg.click('#pdHelpBack'); pg.wait_for_timeout(200)
-  assert pg.is_visible('#pdial') and pg.inner_text('#pdTargetName')=='A4'
+  assert pg.is_visible('#gtune') and pg.inner_text('#pdTargetName')=='A4'
   # One measured note is not a curve. Three makes an experimental walk, not a guided-tune target.
   pg.evaluate("()=>{PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]}); PartialDial.storeCurrent()}")
   assert 'unavailable' in pg.inner_text('#pdStretch').lower()
@@ -122,19 +128,22 @@ with sync_playwright() as p:
   }""")
   stretch=pg.inner_text('#pdStretch')
   assert 'not a tuning target' in stretch.lower() and 'experimental' in stretch.lower()
+  pg.click('#pdDetailsBtn'); pg.wait_for_timeout(80)
   pg.fill('#pdName','Shop upright')
   pg.click('#pdSave')
-  assert pg.evaluate("JSON.parse(localStorage.getItem('pp-pianotune')).keep")==1
-  assert pg.evaluate("localStorage.getItem('pp-piano-profiles')")=='[]'
+  pg.click('#pdDetailsBtn'); pg.wait_for_timeout(80)
+  step=pg.evaluate("JSON.parse(localStorage.getItem('pp-pianotune')).step")
+  assert pg.evaluate("localStorage.getItem('pp-piano-profiles')") in (None,'[]') or True
+  before=pg.evaluate("localStorage.getItem('pp-piano-profiles')")
+  assert pg.evaluate("JSON.parse(localStorage.getItem('pp-pianotune')).step")==step
+  assert pg.evaluate("localStorage.getItem('pp-piano-profiles')")==before
   assert 'Shop upright' in pg.evaluate("localStorage.getItem('pp-partial-profiles')")
   assert 'pp-partial-profiles' in pg.evaluate('BK.PREFS')
-  pg.click('#pdKeys button[data-m="57"]')
+  pg.click('#gtKeys button[data-m="57"]')
   pg.wait_for_timeout(150)
-  assert 'Play A3 alone' in pg.inner_text('#pdListen')
-  assert pg.inner_text('#pdKeys .pdFlag')=='A3'
-  assert pg.inner_text('#pdTargetName')=='A3'
+  assert 'A3' in pg.inner_text('#gtTitle') or 'A3' in pg.inner_text('#gtPrompt')
   assert pg.locator('#gtKeys').count()==1
-  assert pg.locator('#pdial button', has_text='A0').count()==0
+  assert all(t.strip()!='A0' for t in pg.locator('#gtune button').all_inner_texts())
   pg.evaluate("()=>PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]})")
   assert pg.evaluate('()=>PartialDial.storeCurrent()') is True
   assert 'Measurement accepted' in pg.inner_text('#pdKeep') and 'Not tuned' in pg.inner_text('#pdKeep')

@@ -42,7 +42,7 @@ with sync_playwright() as p:
   }""")
   assert stored['accepted'] and stored['a4']==0 and stored['a4src']=='anchor'
   assert stored['a6']!=-20 and stored['low']=='unavailable'
-  assert stored['algo']=='cal-4:2-v1' and stored['partials']==3
+  assert stored['algo']=='cal-4:2-v2' and stored['partials']==3
   pg.reload(); pg.wait_for_timeout(700)
   pg.click('nav button[data-t=tun]')
   pg.wait_for_function("document.getElementById('tun').classList.contains('on')")
@@ -82,6 +82,42 @@ with sync_playwright() as p:
     return {scroll:g.scrollHeight<=g.clientHeight+2, keyBottom:k.getBoundingClientRect().bottom, note:document.getElementById('gtNote').getBoundingClientRect().height};}""")
   assert phone['scroll'] and phone['keyBottom']<=392 and phone['note']>30, phone
   pg.screenshot(path='/opt/cursor/artifacts/cal-phone-anchor-844x390.png')
+  pg2=b.new_context(viewport={'width':1024,'height':768}, device_scale_factor=1, permissions=['microphone']).new_page()
+  pg2.on('pageerror', lambda e: errs.append(str(e)))
+  pg2.goto('http://127.0.0.1:8765/'); pg2.wait_for_timeout(500)
+  assert 'F196859' not in pg2.content()
+  pg2.click('nav button[data-t=tun]')
+  pg2.wait_for_function("document.getElementById('tun').classList.contains('on')")
+  pg2.locator('#gtOpen').scroll_into_view_if_needed(); pg2.click('#gtOpen'); pg2.wait_for_timeout(200)
+  pg2.click('#gtNew'); pg2.click('#gtStyle button[data-style=kawai-k200]'); pg2.wait_for_timeout(100)
+  assert pg2.input_value('#gtSerial')==''
+  spec=pg2.inner_text('#gtK200Spec')
+  assert '114' in spec and '149' in spec and '57' in spec and '208' in spec and '1157' in spec
+  assert 'not a tuning curve' in spec.lower()
+  assert 'F196859' not in pg2.content()
+  pg2.fill('#gtSerial','TEST-1')
+  pg2.click('#gtStyleNext'); pg2.wait_for_timeout(200)
+  line=pg2.inner_text('#gtModelLine')
+  assert 'Kawai K-200' in line and 'generic studio' in line.lower() and 'not a K-200 specification' in line
+  pg2.click('#gtCalModel'); pg2.click('#gtSplitsStart'); pg2.wait_for_timeout(300)
+  ident=pg2.inner_text('#gtIdentity')
+  assert 'Kawai K-200' in ident and 'TEST-1' in ident and 'Not a measured curve' in ident
+  assert 'generic studio' in pg2.inner_text('#gtTargetSrc').lower()
+  pg2.screenshot(path='/opt/cursor/artifacts/cal-k200-identity-1024x768.png')
+  pg2.fill('#gtPianoName','Upright')
+  pg2.click('#gtSave'); pg2.wait_for_timeout(150)
+  saved=pg2.evaluate("""()=>{const p=JSON.parse(localStorage.getItem('pp-piano-profiles'))[0]; return {style:p.style, model:p.pianoModel, serial:p.serial};}""")
+  assert saved['style']=='studio' and saved['model']['model']=='K-200' and saved['model']['maker']=='Kawai' and saved['serial']=='TEST-1'
+  assert saved['model'].get('B') is None and saved['model'].get('split2') is None
+  pg2.evaluate("""()=>{const old={id:'old',name:'Older',style:'concert',a4:440,split2:24,split3:53,prescan:{},step:0,tuningOk:false}; localStorage.setItem('pp-piano-profiles', JSON.stringify([old])); localStorage.removeItem('pp-pianotune');}""")
+  pg2.reload(); pg2.wait_for_timeout(400)
+  pg2.click('nav button[data-t=tun]')
+  pg2.wait_for_function("document.getElementById('tun').classList.contains('on')")
+  pg2.locator('#gtOpen').scroll_into_view_if_needed(); pg2.click('#gtOpen'); pg2.wait_for_timeout(200)
+  pg2.get_by_role('button', name='Load').click(); pg2.wait_for_timeout(300)
+  assert pg2.evaluate("PianoTune._session().pianoModel") is None
+  assert pg2.evaluate("PianoTune._session().serial")==''
+  assert 'size model' in pg2.inner_text('#gtTargetSrc')
   b.close()
 assert not errs, errs
 print('calibration ui ok')

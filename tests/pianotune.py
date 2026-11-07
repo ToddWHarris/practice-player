@@ -16,7 +16,7 @@ with sync_playwright() as p:
   pg.click('#gtNew');pg.click('#gtStyle button[data-style=concert]');pg.click('#gtStyleNext');pg.click('#gtCalModel');pg.click('#gtSplitsStart');pg.wait_for_timeout(400)
   assert pg.is_visible('#gtune') and pg.is_hidden('#gtRotate') and pg.is_hidden('#gtPick')
   assert pg.locator('#gtKeys button').count()==88
-  fit=ev("""()=>{const g=document.getElementById('gtune');const k=document.getElementById('gtKeys');const n=document.getElementById('gtNeedle');
+  fit=ev("""()=>{const g=document.getElementById('gtune');const k=document.getElementById('gtKeys');const n=document.getElementById('pdSvg');
     const kb=k.getBoundingClientRect(),nb=n.getBoundingClientRect();
     return {scroll:g.scrollHeight<=g.clientHeight+2,doc:document.documentElement.scrollHeight<=window.innerHeight+2,
       keyBottom:kb.bottom,keyTop:kb.top,needle:nb.top,note:document.getElementById('gtNote').getBoundingClientRect().height}}""")
