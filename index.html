@@ -401,6 +401,7 @@
 <input id="gtPianoName" class="gtName" placeholder="Piano name" aria-label="Piano name">
 <input id="gtSerialLive" class="gtName" type="text" autocomplete="off" placeholder="Serial" aria-label="Piano serial number" hidden>
 <button type="button" id="gtSave" class="btn">Save piano</button>
+<button type="button" id="gtLog" class="btn">Session log</button>
 </div>
 </div>
 <div class="gtStage">
@@ -454,6 +455,8 @@
 <button type="button" id="gtCalSkip" class="btn">Skip this note</button>
 <button type="button" id="gtCalUse" class="btn primary" disabled>Use these measurements</button>
 <button type="button" id="gtCalBack" class="btn">Back</button>
+<button type="button" id="gtCalLog" class="btn">Download session log</button>
+<p class="hintline">The session log records every measurement try, the pre-scan, and the checks, on this device only. Download it and send it yourself if you want it looked at. Nothing is sent automatically.</p>
 </div>
 <div id="gtTuneCard" class="gtCover" hidden>
 <h2>Tuning mode</h2>
@@ -516,4 +519,4 @@
 </div>
 </div>
 <audio id="audio" preload="metadata"></audio>
-<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="pianotune.js"></script><script src="partials.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>
+<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="sessionlog.js"></script><script src="pianotune.js"></script><script src="partials.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>
