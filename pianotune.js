@@ -298,9 +298,10 @@ const PianoTune=(function(){
  function step(partial){partial.midis=partial.midis||[partial.midi];return partial}
  function buildSequence(opts){
   opts=opts||{};const raise=!!opts.raise;const steps=[];
+  const order=opts.temperament==='f3f4'?'f3f4':'a2a4';
   PRESCAN.forEach(m=>steps.push(step({phase:'prescan',midi:m,title:'Pre-scan '+label(m),prompt:'Play '+plainName(m)+' and hold it. A steady reading is saved however sharp or flat it is. If it cannot be read, the scan moves on.'})));
   if(raise)for(let m=LO;m<=HI;m++)steps.push(step({phase:'raise',midi:m,title:'Pitch raise '+label(m),prompt:promptFor('raise',m)}));
-  const skeleton=[69,57,53,61,65];
+  const skeleton=order==='f3f4'?[69,57,53,61,65]:[69,57,45,49,53,61,65];
   skeleton.forEach(m=>steps.push(step({phase:m===69?'a4':'temper',midi:m,title:(m===69?'Set ':'Tune ')+label(m),prompt:promptFor(m===69?'a4':'temper',m)})));
   steps.push(step({phase:'check',title:'Progressive thirds',prompt:'Play two notes of one pair and hold them. F3 with A3, then A3 with C sharp 4, then C sharp 4 with F4. The app reads partials for that pair. It does not pass the step. Tap Done after you have read the numbers.',midis:[53,57,61,65],intervals:[{a:53,kind:'M3'},{a:57,kind:'M3'},{a:61,kind:'M3'}]}));
   [62,55,60,64,59,54,56,58,63].forEach(m=>steps.push(step({phase:'temper',midi:m,title:'Tune '+label(m),prompt:promptFor('temper',m)})));
@@ -340,6 +341,18 @@ const PianoTune=(function(){
    s.lean=0;return{state:s,chime:false,advance,lean:0,color,midi}}
   const wanted=step.midis||[step.midi];
   if(wanted.indexOf(midi)<0){s.holdStart=null;s.lean=0;return{state:s,chime,advance,lean:0,color:'idle'}}
+  if(midi>=84){
+   s.strikes=s.strikes||{};
+   const arr=(s.strikes[midi]||[]).concat([cents]).slice(-3);
+   s.strikes[midi]=arr;
+   const sorted=arr.slice().sort((p,q)=>p-q);
+   const med=sorted[sorted.length>>1];
+   const spread=sorted[sorted.length-1]-sorted[0];
+   if(arr.length>=3&&Math.abs(med)<=TOL&&spread<=3){s.green[midi]=true;color='green';lean=0}
+   else {color=Math.abs(cents)<=TOL?'green':'red';lean=cents>0?1:-1}
+   s.lean=lean;
+   if(wanted.every(m=>s.green[m])){chime=true;advance=true}
+   return {state:s,chime,advance,lean,color,midi,strikes:arr.slice()}}
   if(Math.abs(cents)<=TOL){
    if(s.holdMidi!==midi||s.holdStart==null){s.holdMidi=midi;s.holdStart=now}
    s.outSince=null;color='green';lean=0;
@@ -402,14 +415,18 @@ const PianoTune=(function(){
   if(n===2)return 'Tune the other string to match.';
   if(i===n)return 'Tune the last string to match.';
   return 'Tune the next string to match.'}
- function expandTuning(steps,split2,split3){
-  const out=[];
+ function expandTuning(steps,split2,split3,opts){
+  opts=opts||{};const defer=opts.unison==='sanderson';const later=[];const out=[];
   (steps||[]).forEach(s=>{
    if(s.phase==='prescan'){out.push(Object.assign({},s,{stringIndex:1,stringCount:1,lastString:false,waitDone:false}));return}
    if(s.phase==='check'||!s.midi){out.push(Object.assign({},s,{stringIndex:1,stringCount:1,lastString:true,waitDone:true}));return}
    const n=stringCount(s.midi,split2,split3);
-   for(let i=1;i<=n;i++)out.push(Object.assign({},s,{stringIndex:i,stringCount:n,lastString:i===n,waitDone:i===n,title:s.title+' string '+i+' of '+n,prompt:stringPrompt(i,n)}));
+   const hold=defer&&(s.phase==='temper'||s.phase==='down');
+   const limit=hold?1:n;
+   for(let i=1;i<=limit;i++)out.push(Object.assign({},s,{stringIndex:i,stringCount:n,lastString:!hold&&i===n,waitDone:!hold&&i===n,title:s.title+' string '+i+' of '+n,prompt:hold&&i===1?'Leave the strip in. Set this one string. Its unison comes at the end.':stringPrompt(i,n)}));
+   if(hold&&n>1)for(let i=2;i<=n;i++)later.push(Object.assign({},s,{phase:'unison',stringIndex:i,stringCount:n,lastString:i===n,waitDone:i===n,title:s.title+' string '+i+' of '+n,prompt:stringPrompt(i,n)}));
   });
+  later.forEach(s=>out.push(s));
   out.forEach((s,i)=>{s.index=i});
   return out}
  function upsertProfile(list,rec){
@@ -423,7 +440,7 @@ const PianoTune=(function(){
   const i=Math.max(0,Math.min(count-1,index|0));
   return Object.assign({},state,{step:i,holdStart:null,holdMidi:null,green:{},hist:[],lean:0,outSince:null})}
  const CAL_VERSION=2,CAL_ALGORITHM='cal-4:2-v2';
- const CAL_NOTES=[21,33,45,52,57,69,74,81,93,96,105,108];
+ const CAL_NOTES=[21,33,45,52,53,57,69,74,81,84,93,96,105,108];
  function stiffnessTrend(meas,side){
   const rows=(meas||[]).filter(s=>s&&s.B>0&&(side==='up'?s.midi>=57:s.midi<=69));
   const fail=(reason,extra)=>({ok:false,reason,side,n:rows.length,k:null,rms:null,a:null,...(extra||{})});
@@ -516,7 +533,7 @@ const PianoTune=(function(){
   return {status:'rejected',reason:'unclear'}}
  function calibrationCue(midi,split2,split3){
   const name=label(midi),n=stringCount(midi,split2,split3);
-  const how=n<=1?'This note has one string.':'Play one string only. Mute the other strings of this note.';
+  const how=n<=1?'This note has one string.':'This note has '+n+' strings. Mute '+(n-1)+'. Play one string only.';
   return 'Play '+name+'. '+how+' Listening for its overtones, not for whether it is in tune.'}
  function frameRmsSeries(samples,sampleRate){
   const sr=+sampleRate,x=samples,n=x?x.length|0:0;
@@ -757,7 +774,7 @@ function bFn(){
 function rebuild(keepStep){
   const raise=PT.needsPitchRaise(G.sess.prescan||{});
   G.curve=activeCurve();
-  G.seq=PT.expandTuning(PT.buildSequence({raise}),G.sess.split2,G.sess.split3);
+  const prefs=tunePrefs();G.seq=PT.expandTuning(PT.buildSequence({raise,temperament:prefs.temperament}),G.sess.split2,G.sess.split3,{unison:prefs.unison});
   if(!keepStep)G.sess.step=0;
   if(G.sess.step>=G.seq.length)G.sess.step=G.seq.length-1;
   if(G.sess.step<0)G.sess.step=0;
@@ -920,7 +937,7 @@ function jumpTo(i){G.previewHold=false;G.unisonRead=null;if(window.PartialDial&&
 function onKey(m){if(G.pickSplit){if(G.pickSplit===3)G.sess.split3=m;else G.sess.split2=m;if(G.sess.split2!=null&&G.sess.split3!=null&&G.sess.split2>=G.sess.split3)G.sess.split2=G.sess.split3-1;renderSplits();return}jumpToMidi(m)}
 function jumpToMidi(m){const i=G.seq.findIndex((s,idx)=>idx>=G.sess.step&&s.midis&&s.midis.indexOf(m)>=0);if(i>=0)jumpTo(i)}
 function renderSplits(){renderKeys();if($g('gtSplit3Lab'))$g('gtSplit3Lab').textContent='Lowest 3-string key: '+(G.sess.split3!=null?PT.label(G.sess.split3):'');if($g('gtSplit2Lab'))$g('gtSplit2Lab').textContent='Lowest 2-string key: '+(G.sess.split2!=null?PT.label(G.sess.split2):'');
- if($g('gtModelLine')){const m=G.sess.pianoModel;const spec=m&&PT.MODELS[m.id];$g('gtModelLine').hidden=!m;$g('gtModelLine').textContent=spec?(spec.maker+' '+spec.model+' is the piano on record. Height '+spec.heightCm+' cm, width '+spec.widthCm+' cm, depth '+spec.depthCm+' cm, weight '+spec.weightKg+' kg. No. 1 speaking length '+spec.speakingNo1Mm+' mm. Duplex scale: no. Agraffes: no. The string breaks below are a generic studio starting point, not a '+spec.model+' specification.'):''}
+ if($g('gtModelLine')){const m=G.sess.pianoModel;const spec=m&&PT.MODELS[m.id];$g('gtModelLine').hidden=!m;$g('gtModelLine').textContent=spec?(spec.maker+' '+spec.model+' is the piano on record. Height '+spec.heightCm+' cm, width '+spec.widthCm+' cm, depth '+spec.depthCm+' cm, weight '+spec.weightKg+' kg. No. 1 speaking length '+spec.speakingNo1Mm+' mm. Duplex scale: no. Agraffes: no. '+(spec.id==='kawai-k200'?V44Core.k200Splits().note:'The string breaks below are a starting point, not a '+spec.model+' specification.')):''}
  document.querySelectorAll('#gtSplits .pick').forEach(b=>b.classList.toggle('on',+b.dataset.which===G.pickSplit));document.querySelectorAll('#gtKeys button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');el.classList.add(m===G.sess.split2||m===G.sess.split3?'next':'dim')})}
 function stopListen(){G.listening=false;if(G.raf){cancelAnimationFrame(G.raf);G.raf=0}
   if(G.stream){G.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});G.stream=null}}
@@ -951,7 +968,7 @@ function loop(){
       if(G.wave&&G.waveN>=need){const tc=targetCents(step,step.midi);const f1=tc==null?PT.etFreq(step.midi,G.sess.a4):PT.targetFreq(step.midi,tc,G.sess.a4);const Bb=bFn()?bFn()(step.midi):0;
        G.unisonRead=PT.analyzeUnison(waveSlice(need),G.waveSr,{f1,strings:step.stringCount,searchB:Bb});logUnisonRead(step);render()}}
     }else if(!(step&&step.phase==='check')){
-     const f=TunerCore.yin(G.buf,G.ctx.sampleRate,0.12);
+     const f=TunerCore.yin(G.buf,G.ctx.sampleRate,0.12,{minRms:0.002,maxHz:9000});
      if(f)onFreq(f,now)}}
   G.raf=requestAnimationFrame(loop)}
 function trackAttack(rms){
@@ -1051,7 +1068,7 @@ async function listen(){
     const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();
     const src=ctx.createMediaStreamSource(stream);const an=ctx.createAnalyser();an.fftSize=8192;an.smoothingTimeConstant=0;src.connect(an);
     G.stream=stream;G.ctx=ctx;G.an=an;G.buf=new Float32Array(an.fftSize);G.listening=true;G.raf=requestAnimationFrame(loop)}catch(e){$g('gtPrompt').textContent=(stepNow()&&stepNow().prompt?stepNow().prompt+' ':'')+(e&&e.name==='NotAllowedError'?'Microphone not allowed.':'No microphone available.')}}
-function showOnly(id){['gtPick','gtStyle','gtSplits','gtTuneCard','gtCal'].forEach(k=>{const n=$g(k);if(n)n.hidden=k!==id});if(id)$g('gtune').classList.add('setup');if(id==='gtSplits'&&$g('gtSplitsStart'))$g('gtSplitsStart').disabled=!G.sess.targetChoice;syncA4Field()}
+function showOnly(id){['gtPick','gtStyle','gtSplits','gtTuneCard','gtCal','gtMute','gtCalNext'].forEach(k=>{const n=$g(k);if(n)n.hidden=k!==id});if(id)$g('gtune').classList.add('setup');if(id==='gtSplits'&&$g('gtSplitsStart'))$g('gtSplitsStart').disabled=!G.sess.targetChoice;syncA4Field()}
 function activeA4(){let v=G.sess&&+G.sess.a4;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));if(G.sess)G.sess.a4=v;return v}
 function syncA4Field(){const el=$g('gtA4');if(!el||!G.sess||document.activeElement===el)return;el.value=String(activeA4())}
 function commitA4(raw){const cur=activeA4();const text=String(raw==null?'':raw).trim();let v=cur;if(text!==''&&isFinite(+text))v=Math.max(430,Math.min(450,Math.round(+text*10)/10));G.sess.a4=v;if(G.sess.calibration)G.sess.calibration.refA4=v;const el=$g('gtA4');if(el)el.value=String(v);saveSess();if(G.seq&&G.seq.length)render();else syncA4Field();if(stepNow()&&stepNow().phase!=='prescan')playStep()}
@@ -1064,7 +1081,9 @@ function syncCalNav(){const retry=$g('gtCalRetry'),skip=$g('gtCalSkip'),has=PT.C
 function stopOwnedStream(stream){if(!stream)return;try{stream.getTracks().forEach(t=>t.stop())}catch(e){}if(G.calStream===stream)G.calStream=null}
 function dropCalCapture(){G.calGen=(G.calGen||0)+1;G.calBusy=false;const cancel=G.calCancel;G.calCancel=null;if(cancel)cancel();const nodes=G.calNodes;G.calNodes=null;if(nodes){try{nodes.proc.disconnect()}catch(e){}try{nodes.src.disconnect()}catch(e){}try{nodes.mute.disconnect()}catch(e){}}stopOwnedStream(G.calStream);G.calOn=false}
 function stopCal(){dropCalCapture()}
-function rejectText(label,reason){if(reason==='multiple-strings')return 'More than one string is sounding. Mute the others and retry.';if(reason==='wrong-note')return 'That did not sound like '+label+'. Retry.';if(reason==='unclear'||reason==='few-partials')return 'Not enough reliable partials were heard to measure '+label+'. Retry.';if(reason==='fit')return 'The partials did not agree, so '+label+' was not measured. Retry.';if(reason==='short')return 'The take was too short. Play the note after Listening appears, and hold it.';if(reason==='silence')return 'No clear tone was in the take. Play '+label+' after Listening appears, and hold it. You do not need a harder strike if the note was already sounding.';if(reason==='early')return 'The take caught only the fade of '+label+'. It was likely played before Listening appeared. Play '+label+' after Listening appears, and hold it.';return 'Not accepted ('+(reason||'rejected')+'). Retry.'}
+function tunePrefs(){let o={};try{o=JSON.parse(localStorage.getItem('pp-v44-resume')||'null')||{}}catch(e){}const p=o.prefs||{};return {temperament:p.temperament==='f3f4'?'f3f4':'a2a4',unison:p.unison==='after-checks'?'after-checks':'sanderson',ring:[1,2,4,8].indexOf(+p.ring)>=0?+p.ring:1}}
+function saveTunePrefs(part){let o={};try{o=JSON.parse(localStorage.getItem('pp-v44-resume')||'null')||{}}catch(e){}o.prefs=Object.assign(tunePrefs(),part||{});o.prefs.ring=+o.prefs.ring||1;try{localStorage.setItem('pp-v44-resume',JSON.stringify(o));return true}catch(e){return false}}
+function rejectText(label,reason){if(reason==='multiple-strings')return 'Heard more than one string. Mute the others and retry.';if(reason==='wrong-note')return 'That did not sound like '+label+'. Retry.';if(reason==='unclear'||reason==='few-partials')return 'Not enough reliable partials were heard to measure '+label+'. Retry.';if(reason==='fit')return 'The partials did not agree, so '+label+' was not measured. Retry.';if(reason==='short')return 'The take was too short. Play the note after Listening appears, and hold it.';if(reason==='silence')return 'No clear tone was in the take. Play '+label+' after Listening appears, and hold it. You do not need a harder strike if the note was already sounding.';if(reason==='early')return 'The take caught only the fade of '+label+'. It was likely played before Listening appeared. Play '+label+' after Listening appears, and hold it.';return 'Not accepted ('+(reason||'rejected')+'). Retry.'}
 function heardWords(cents){if(!isFinite(+cents))return 'an unknown offset';return (cents>=0?'+':'')+(+cents).toFixed(1)+' cents'}
 function buildCalKeys(){const box=$g('gtCalKeys');if(!box||box.childElementCount)return;const whites=[];for(let m=PT.LO;m<=PT.HI;m++)if(PT.isWhite(m))whites.push(m);whites.forEach(m=>{const k=document.createElement('button');k.type='button';k.className='wk';k.dataset.m=m;k.tabIndex=-1;box.append(k)});whites.forEach((m,i)=>{const n=m+1;if(n>PT.HI||PT.isWhite(n))return;const k=document.createElement('button');k.type='button';k.className='bk';k.dataset.m=n;k.style.left=((i+0.62)/whites.length*100)+'%';k.tabIndex=-1;box.append(k)})}
 function paintCalKeys(){const box=$g('gtCalKeys');if(!box)return;buildCalKeys();const cur=PT.CAL_NOTES[G.calI];const stored={};(G.calNotes||[]).forEach(n=>{if(n&&n.status==='measured'&&n.B>0)stored[n.midi]=1});const scheduled={};PT.CAL_NOTES.forEach(m=>{scheduled[m]=1});const fail=G.calFail||{};box.querySelectorAll('button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('meas','wait','fail','now','failTry','plain');const isCur=m===cur,isStored=!!stored[m],bad=!!fail[m];let state='Not a sample note. Not measured.';if(isStored){el.classList.add('meas');state='Measurement kept. Not a tuned note.'}else if(bad){el.classList.add('fail');state='This try was not kept.'}else if(scheduled[m]){el.classList.add('wait');state='Sample note still waiting.'}else el.classList.add('plain');if(isStored&&bad){el.classList.add('failTry');state='Measurement kept. The latest try was not kept. Not a tuned note.'}if(isCur){el.classList.add('now');state='Play this note. '+state}el.setAttribute('aria-label',PT.label(m)+'. '+state)});if(box)box.setAttribute('aria-label',(cur!=null?'Play '+PT.label(cur)+'. ':'')+'Colors show sample measurements, not tuning. Plain keys are not measured.')}
@@ -1086,10 +1105,19 @@ function logCalAttempt(midi,r,keptPrior){
   frameRms:SessionLog.trimSeries(d.frames||[])}))}catch(e){}
  G.calMeta=null}
 function applyCalResult(midi,r){const label=PT.label(midi);const prior=(G.calNotes||[]).filter(item=>item&&item.midi===midi&&item.status==='measured'&&item.B>0);if(!G.calFail)G.calFail={};if(r.status==='measured'){G.calNotes=(G.calNotes||[]).filter(item=>item.midi!==midi);G.calNotes.push(r);delete G.calFail[midi];const heard=heardWords(r.heardCents);const still=PT.CAL_NOTES[G.calI]===midi;const next=still?PT.CAL_NOTES[G.calI+1]:null;if(still&&next!=null){G.calI++;calPrompt();setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target. Now play '+PT.label(next)+'.')}else if(still){if($g('gtCalPrompt'))$g('gtCalPrompt').textContent=label+' accepted. That is the last sample note. Use these measurements only if the screen says the coverage is enough. Nothing here marks a note as tuned.';setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target.')}else setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target.');setHear('accepted')}else{G.calFail[midi]=r.reason||'rejected';const why=rejectText(label,r.reason);setCalResult(prior.length?why+' The earlier measurement of '+label+' is still kept.':why);setHear('rejected')}logCalAttempt(midi,r,prior.length>0);refreshCalUse()}
-async function captureCal(){const midi=PT.CAL_NOTES[G.calI];if(midi==null||G.calBusy)return;const gen=G.calGen=(G.calGen||0)+1;G.calBusy=true;setHear('opening');syncCalNav();if($g('gtCalUse'))$g('gtCalUse').disabled=true;setCalResult('Opening the microphone for '+PT.label(midi)+'.');paintCalKeys();const tapAt=Date.now();let micAt=0,listAt=0,firstBufAt=0;let stream=null;try{if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))throw new Error('no-mic');stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});if(gen!==G.calGen){stopOwnedStream(stream);return}G.calStream=stream;micAt=Date.now();const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();if(gen!==G.calGen){stopOwnedStream(stream);return}setHear('listening');listAt=Date.now();setCalResult('Play '+PT.label(midi)+' now and hold it.');const src=ctx.createMediaStreamSource(stream);const chunks=[];const proc=ctx.createScriptProcessor(4096,1,1);const mute=ctx.createGain();mute.gain.value=0;src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);const nodes={proc,src,mute};G.calNodes=nodes;let total=0;const sr0=ctx.sampleRate||48000;const det=PT.makeCaptureOnset(sr0);proc.onaudioprocess=e=>{if(!firstBufAt)firstBufAt=Date.now();const c=new Float32Array(e.inputBuffer.getChannelData(0));chunks.push(c);det.push(c);total+=c.length};const t0=Date.now();await new Promise(resolve=>{const tick=()=>{const waited=Date.now()-t0;const after=det.attackAt>=0?(total-det.attackAt)/sr0:0;if((det.attackAt>=0&&after>=0.75)||waited>=2400){resolve();return}G.calTimer=setTimeout(tick,40)};G.calCancel=()=>{clearTimeout(G.calTimer);resolve()};tick()});if(gen!==G.calGen)return;try{proc.disconnect();src.disconnect();mute.disconnect()}catch(e){}if(G.calNodes===nodes)G.calNodes=null;stopOwnedStream(stream);stream=null;if(gen!==G.calGen)return;let n=0;chunks.forEach(c=>n+=c.length);const x=new Float32Array(n);let o=0;chunks.forEach(c=>{x.set(c,o);o+=c.length});const r=PT.analyzeCalibrationNote(x,ctx.sampleRate,{midi,a4:activeA4()});if(gen!==G.calGen)return;G.calMeta={sr:sr0,takeSec:+(x.length/sr0).toFixed(3),buffers:det.buffers,attackDetected:det.attackDetected,attackAtSec:det.attackAt>=0?+(det.attackAt/sr0).toFixed(3):null,startedHot:det.startedHot,maxChunkRms:+det.maxChunkRms.toFixed(5),maxSubRms:+det.maxSubRms.toFixed(5),onsetFloor:+det.floor.toFixed(5),tapToMicMs:micAt?micAt-tapAt:null,micToListenMs:micAt&&listAt?listAt-micAt:null,listenToFirstBufferMs:firstBufAt&&listAt?firstBufAt-listAt:null};applyCalResult(midi,r)}catch(e){if(gen!==G.calGen)return;stopOwnedStream(stream);const denied=e&&(e.name==='NotAllowedError'||e.name==='SecurityError');slog('cal-attempt',{note:PT.label(midi),midi,status:'error',reason:denied?'mic-denied':'mic-unavailable',tapToMicMs:Date.now()-tapAt});setCalResult(denied?'Microphone not allowed.':'No microphone available.');setHear('rejected');paintCalKeys()}finally{if(gen===G.calGen){G.calBusy=false;G.calCancel=null;refreshCalUse();syncCalNav()}}}
+async function captureCal(){const midi=PT.CAL_NOTES[G.calI];if(midi==null||G.calBusy)return;const gen=G.calGen=(G.calGen||0)+1;G.calBusy=true;setHear('opening');syncCalNav();if($g('gtCalUse'))$g('gtCalUse').disabled=true;setCalResult('Opening the microphone for '+PT.label(midi)+'.');paintCalKeys();const tapAt=Date.now();let micAt=0,listAt=0,firstBufAt=0;let stream=null;try{if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))throw new Error('no-mic');stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});if(gen!==G.calGen){stopOwnedStream(stream);return}G.calStream=stream;micAt=Date.now();const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();if(gen!==G.calGen){stopOwnedStream(stream);return}setHear('listening');listAt=Date.now();setCalResult('Play '+PT.label(midi)+' now and hold it.');const src=ctx.createMediaStreamSource(stream);const chunks=[];const proc=ctx.createScriptProcessor(4096,1,1);const mute=ctx.createGain();mute.gain.value=0;src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);const nodes={proc,src,mute};G.calNodes=nodes;let total=0;const sr0=ctx.sampleRate||48000;const det=PT.makeCaptureOnset(sr0);proc.onaudioprocess=e=>{if(!firstBufAt)firstBufAt=Date.now();const c=new Float32Array(e.inputBuffer.getChannelData(0));chunks.push(c);det.push(c);total+=c.length};const t0=Date.now();await new Promise(resolve=>{const tick=()=>{const waited=Date.now()-t0;const after=det.attackAt>=0?(total-det.attackAt)/sr0:0;if($g('gtCalStatus')&&det.attackAt<0)$g('gtCalStatus').textContent='Play '+PT.label(midi)+' now. '+Math.max(0,Math.ceil((10000-waited)/1000))+' s left to strike.';if((det.attackAt>=0&&after>=0.75)||waited>=10000){resolve();return}G.calTimer=setTimeout(tick,40)};G.calCancel=()=>{clearTimeout(G.calTimer);resolve()};tick()});if(gen!==G.calGen)return;try{proc.disconnect();src.disconnect();mute.disconnect()}catch(e){}if(G.calNodes===nodes)G.calNodes=null;stopOwnedStream(stream);stream=null;if(gen!==G.calGen)return;let n=0;chunks.forEach(c=>n+=c.length);const x=new Float32Array(n);let o=0;chunks.forEach(c=>{x.set(c,o);o+=c.length});const r=PT.analyzeCalibrationNote(x,ctx.sampleRate,{midi,a4:activeA4()});if(gen!==G.calGen)return;G.calMeta={sr:sr0,takeSec:+(x.length/sr0).toFixed(3),buffers:det.buffers,attackDetected:det.attackDetected,attackAtSec:det.attackAt>=0?+(det.attackAt/sr0).toFixed(3):null,startedHot:det.startedHot,maxChunkRms:+det.maxChunkRms.toFixed(5),maxSubRms:+det.maxSubRms.toFixed(5),onsetFloor:+det.floor.toFixed(5),tapToMicMs:micAt?micAt-tapAt:null,micToListenMs:micAt&&listAt?listAt-micAt:null,listenToFirstBufferMs:firstBufAt&&listAt?firstBufAt-listAt:null};applyCalResult(midi,r)}catch(e){if(gen!==G.calGen)return;stopOwnedStream(stream);const denied=e&&(e.name==='NotAllowedError'||e.name==='SecurityError');slog('cal-attempt',{note:PT.label(midi),midi,status:'error',reason:denied?'mic-denied':'mic-unavailable',tapToMicMs:Date.now()-tapAt});setCalResult(denied?'Microphone not allowed.':'No microphone available.');setHear('rejected');paintCalKeys()}finally{if(gen===G.calGen){G.calBusy=false;G.calCancel=null;refreshCalUse();syncCalNav()}}}
 function skipCal(){const m=PT.CAL_NOTES[G.calI];if(m==null)return;const label=PT.label(m);dropCalCapture();slog('cal-skip',{note:label,midi:m});G.calI++;calPrompt();const next=PT.CAL_NOTES[G.calI];setCalResult(next!=null?label+' skipped. Now play '+PT.label(next)+'.':label+' skipped. That is the last sample note.');setHear('idle');refreshCalUse();syncCalNav()}
 function retryCal(){const m=PT.CAL_NOTES[G.calI];if(m==null)return;dropCalCapture();captureCal()}
-function openCal(){dropCalCapture();slog('cal-open',{});G.calI=0;G.calNotes=[];G.calFail={};showOnly('gtCal');calPrompt();setCalResult('Nothing accepted yet. A measurement is not a tuned note.');setHear('idle');refreshCalUse();syncCalNav()}
+function openCal(){dropCalCapture();slog('cal-open',{});G.calI=0;G.calNotes=[];G.calFail={};G.calMulti={};if(!G.muteAck){showOnly('gtMute');slog('mute-card',{shown:true});return}showOnly('gtCal');calPrompt();setCalResult('Nothing accepted yet. A measurement is not a tuned note.');setHear('idle');refreshCalUse();syncCalNav()}
+function beginCal(){G.muteAck=true;slog('mute-card',{acked:true});showOnly('gtCal');calPrompt();setCalResult('Nothing accepted yet. A measurement is not a tuned note.');setHear('idle');refreshCalUse();syncCalNav()}
+function missedCal(){return PT.CAL_NOTES.filter(m=>!(G.calNotes||[]).some(n=>n&&n.midi===m&&n.status==='measured'&&n.B>0))}
+function offerCalNext(){const cal=PT.deriveCalibration(G.calNotes,activeA4(),G.sess.type);const miss=missedCal().map(m=>PT.label(m));if($g('gtCalNextText'))$g('gtCalNextText').textContent=(cal.accepted?'Coverage is enough. ':'Not enough coverage yet. ')+(miss.length?'Missing: '+miss.join(', ')+'. ':'All sample notes are kept. ')+'A measurement is not a tuned note.';if($g('gtCalScan'))$g('gtCalScan').hidden=!cal.accepted;showOnly('gtCalNext')}
+function useCal(){const cal=PT.deriveCalibration(G.calNotes,activeA4(),G.sess.type);if(!cal.accepted){offerCalNext();slog('calibration-refused',{keptNotes:(G.calNotes||[]).length});return}G.sess.calibration=cal;G.sess.targetChoice='measured';saveSess();slog('calibration-used',{keptNotes:cal.notes.length,accepted:true});offerCalNext()}
+function scanFromCal(){if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=!G.sess.targetChoice;showOnly('gtSplits');render()}
+function fixCal(){const miss=missedCal();G.calI=miss.length?PT.CAL_NOTES.indexOf(miss[0]):0;showOnly('gtCal');calPrompt();setHear('idle');refreshCalUse();syncCalNav()}
+function pauseTune(why){if(!G.on||G.paused)return;G.paused=true;G.pauseWhy=why||'button';stopListen();if($g('gtPause'))$g('gtPause').textContent='Resume';slog('session-pause',{why:G.pauseWhy,step:G.sess&&G.sess.step});const p=$g('gtPrompt');if(p&&G.sess&&G.sess.ready)p.textContent='Paused. Tap Resume to keep listening on this note.'}
+function resumeTune(){if(!G.paused)return;G.paused=false;G.armAt=performance.now();if($g('gtPause'))$g('gtPause').textContent='Pause';slog('session-resume',{step:G.sess&&G.sess.step});listen();render()}
+function saveProgress(from){let name=($g('gtPianoName')&&$g('gtPianoName').value||'').trim();if(!name){name=(window.prompt('Type a name for this piano, then tap Save progress','')||'').trim();if($g('gtPianoName'))$g('gtPianoName').value=name}if(!name){const box=from==='cal'?$g('gtCalStatus'):$g('gtPrompt');if(box)box.textContent='Type a name for this piano, then tap Save progress.';return}const kept=(G.calNotes||[]).filter(n=>n&&n.status==='measured').length;const place=from==='cal'?'Measure, '+((PT.CAL_NOTES[G.calI]!=null)?PT.label(PT.CAL_NOTES[G.calI]):'done')+', '+kept+' of '+PT.CAL_NOTES.length+' notes kept':(G.sess.ready?'Step '+(G.sess.step+1):'String layout');const item={name,at:Date.now(),place,screen:from||'tune',calI:G.calI|0,calNotes:G.calNotes||[],calFail:G.calFail||{},step:G.sess.step|0,type:G.sess.type,a4:G.sess.a4,split2:G.sess.split2,split3:G.sess.split3,ready:!!G.sess.ready,targetChoice:G.sess.targetChoice||null,pianoModel:G.sess.pianoModel||null,serial:G.sess.serial||''};let all={};try{all=JSON.parse(localStorage.getItem('pp-v44-resume')||'null')||{}}catch(e){}all.prefs=tunePrefs();all.items=(all.items||[]).filter(x=>x.name!==name);all.items.push(item);try{localStorage.setItem('pp-v44-resume',JSON.stringify(all));const back=JSON.parse(localStorage.getItem('pp-v44-resume'));const got=back&&(back.items||[]).some(x=>x.name===name&&x.place===place);const msg='Saved: '+name+', at '+place+'. '+new Date(item.at).toLocaleString();const box=from==='cal'?$g('gtCalStatus'):$g('gtPrompt');if(box)box.textContent=got?msg:'Could not save. The saved copy could not be read back.';slog('progress-saved',{name,place,ok:!!got})}catch(e){const box=from==='cal'?$g('gtCalStatus'):$g('gtPrompt');if(box)box.textContent='Could not save. '+(e&&e.name==='QuotaExceededError'?'Storage is full.':'The browser refused the write.');}}
 function backCal(){dropCalCapture();setHear('idle');showOnly('gtSplits');syncA4Field()}
 function downloadLog(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.append(a);a.click();
@@ -1115,10 +1143,10 @@ function openTune(){
   try{if(window.Metro&&Metro.M&&Metro.M.on)Metro.stop()}catch(e){}
   try{if(typeof au!=='undefined'&&au&&!au.paused)au.pause()}catch(e){}
   G.sess=loadSess();G.tuningOk=!!G.sess.tuningOk;G.on=true;
-  if(typeof SessionLog!=='undefined'){if(!SessionLog.count())SessionLog.start({screen:'piano',appVersion:'V43',type:G.sess.type||null,a4:G.sess.a4});else slog('tune-open',{})}
+  if(typeof SessionLog!=='undefined'){if(!SessionLog.count())SessionLog.start({screen:'piano',appVersion:'V44',type:G.sess.type||null,a4:G.sess.a4});else slog('tune-open',{})}
   $g('gtune').hidden=false;document.body.classList.add('gtOpen');
   fillTypes();
-  renderPianos();showOnly('gtPick');syncA4Field()}
+  renderPianos();showOnly('gtPick');syncA4Field();if(G.ringTimer)clearTimeout(G.ringTimer);paintRing()}
 function acceptTuning(){if(!G.showTuningCard)return;G.showTuningCard=false;G.tuningOk=true;G.sess.tuningOk=true;advanceStep('prescan',G.pendingFreq||0,false)}
 function tapDone(){if(!G.showDone)return;G.showDone=false;G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);G.hold=coreJump(G.hold||PT.emptyState(),G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);G.lastCents=null;G.colors={};saveSess();render();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
 function helpChrome(on){
@@ -1142,6 +1170,26 @@ function returnFromHelp(){
   $g('gtune').hidden=false;document.body.classList.add('gtOpen');syncA4Field();
   if(G.wasListening)listen()}
 function closeTune(){slog('session-end',{});G.holdHelp=false;G.wasListening=false;helpChrome(false);G.on=false;dropCalCapture();stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
+function paintRing(){
+  const ring=$g('strobeRing');if(!ring||!window.V44Core)return;
+  if(!ring.childElementCount){for(let i=0;i<8;i++){const l=document.createElement('i');l.style.transform='rotate('+(i*45)+'deg) translateY(-130%)';ring.append(l)}const hub=document.createElement('i');hub.className='hub';ring.append(hub)}
+  const step=G.seq&&G.sess?stepNow():null;
+  const midi=step&&step.midi||69;
+  const heard=typeof G.lastCents==='number'&&isFinite(G.lastCents)&&!G.paused;
+  const n=V44Core.autoPartial(midi);
+  const f=PT.etFreq(midi,G.sess&&G.sess.a4||440)*n;
+  const offset=heard?f*(Math.pow(2,G.lastCents/1200)-1):0;
+  const prefs=tunePrefs();
+  const st=V44Core.ringFrame(G.ringPhase||0,offset,prefs.ring,1/30,heard&&G.listening);
+  G.ringPhase=st.angle;
+  ring.classList.toggle('grey',!!st.grey);
+  const lights=ring.querySelectorAll('i');
+  for(let j=0;j<4;j++){const on=st.lights&&st.lights[j]>0.45;if(lights[j*2])lights[j*2].classList.toggle('on',!!on);if(lights[j*2+1])lights[j*2+1].classList.toggle('on',!!on)}
+  const hub=ring.querySelector('.hub');if(hub)hub.classList.toggle('on',!!st.center);
+  const line=$g('gtPartialLine');
+  if(line&&step&&step.midi)line.textContent='Listening to partial '+n+' of '+PT.label(step.midi)+'. '+(st.grey?'No clear signal.':(st.frozen?'That partial is on its target.':(st.clockwise?'Sharp.':'Flat.')));
+  if(G.on)G.ringTimer=setTimeout(paintRing,33);
+}
 function init(){
   const b=$g('gtOpen');if(!b||G.ready)return;G.ready=true;
   b.onclick=openTune;
@@ -1158,7 +1206,7 @@ function init(){
   if($g('gtRetry'))$g('gtRetry').onclick=retryUnread;
   if($g('gtNew'))$g('gtNew').onclick=()=>{G.pickStyle=null;$g('gtStyleNext').disabled=true;document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.classList.remove('on'));showOnly('gtStyle')};
   document.querySelectorAll('#gtStyle button[data-style]').forEach(b=>b.onclick=()=>{G.pickStyle=b.dataset.style;document.querySelectorAll('#gtStyle button[data-style]').forEach(x=>x.classList.toggle('on',x===b));$g('gtStyleNext').disabled=false;const spec=PT.MODELS[G.pickStyle];if($g('gtK200'))$g('gtK200').hidden=!spec;if($g('gtK200Spec')&&spec)$g('gtK200Spec').textContent=spec.maker+' '+spec.model+': '+spec.heightCm+' cm high, '+spec.widthCm+' cm wide, '+spec.depthCm+' cm deep, '+spec.weightKg+' kg. No. 1 speaking length '+spec.speakingNo1Mm+' mm. No duplex scale. No agraffes. This is a reference, not a tuning curve.';if(!spec&&$g('gtSerial'))$g('gtSerial').value=''});
-  if($g('gtStyleNext'))$g('gtStyleNext').onclick=()=>{if(!G.pickStyle)return;const spec=PT.MODELS[G.pickStyle];const style=spec?spec.layoutStart:G.pickStyle;const sp=PT.SPLITS[style];if(!sp)return;const serial=($g('gtSerial')&&spec?$g('gtSerial').value:'').trim();G.sess.type=style;G.sess.pianoModel=spec?{id:spec.id,maker:spec.maker,model:spec.model,serial}:null;G.sess.serial=spec?serial:'';G.sess.split2=sp.split2;G.sess.split3=sp.split3;G.pickSplit=3;if($g('gtSerialLive'))$g('gtSerialLive').value=G.sess.serial;renderSplits();fillTypes();showOnly('gtSplits')};
+  if($g('gtStyleNext'))$g('gtStyleNext').onclick=()=>{if(!G.pickStyle)return;const spec=PT.MODELS[G.pickStyle];const style=spec?spec.layoutStart:G.pickStyle;let sp=PT.SPLITS[style];if(spec&&spec.id==='kawai-k200'&&window.V44Core){const saved=(loadPianos()||[]).filter(p=>p.pianoModel&&p.pianoModel.id==='kawai-k200'&&p.split2<p.split3).sort((a,b)=>(b.updated||0)-(a.updated||0));sp=saved.length?{split2:saved[0].split2,split3:saved[0].split3}:{split2:V44Core.k200Splits().split2,split3:V44Core.k200Splits().split3}}if(!sp)return;const serial=($g('gtSerial')&&spec?$g('gtSerial').value:'').trim();G.sess.type=style;G.sess.pianoModel=spec?{id:spec.id,maker:spec.maker,model:spec.model,serial}:null;G.sess.serial=spec?serial:'';G.sess.split2=sp.split2;G.sess.split3=sp.split3;G.pickSplit=2;if($g('gtSerialLive'))$g('gtSerialLive').value=G.sess.serial;slog('layout-chosen',{style,split2:sp.split2,split3:sp.split3,model:spec?spec.id:null});renderSplits();fillTypes();showOnly('gtSplits')};
   document.querySelectorAll('#gtSplits .pick').forEach(b=>b.onclick=()=>{G.pickSplit=+b.dataset.which;renderSplits()});
   if($g('gtSplitsStart'))$g('gtSplitsStart').onclick=()=>{if(!(G.sess.split2<G.sess.split3)||!G.sess.targetChoice)return;G.sess.ready=true;G.sess.step=0;G.sess.prescan={};G.tuningOk=false;G.sess.tuningOk=false;G.pickSplit=0;hideSetup();startWork()};
   if($g('gtCalModel'))$g('gtCalModel').onclick=()=>{G.sess.targetChoice='model';G.sess.calibration={accepted:false,fallback:'model',status:'model',version:PT.CAL_VERSION,algorithm:'size-model',targets:null};saveSess();if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=false;render()};
@@ -1167,13 +1215,21 @@ function init(){
   if($g('gtCalSkip'))$g('gtCalSkip').onclick=skipCal;
   if($g('gtCalRetry'))$g('gtCalRetry').onclick=retryCal;
   if($g('gtCalHear'))$g('gtCalHear').onclick=()=>{captureCal()};
-  if($g('gtCalUse'))$g('gtCalUse').onclick=()=>{const cal=PT.deriveCalibration(G.calNotes,activeA4(),G.sess.type);if(!cal.accepted){const n=(G.calNotes||[]).filter(item=>item&&item.status==='measured').length;if($g('gtCalCoverage'))$g('gtCalCoverage').textContent='Not enough of the keyboard was measured. Nothing was turned into targets. '+n+(n===1?' note measured.':' notes measured.');slog('calibration-refused',{keptNotes:n});return}G.sess.calibration=cal;G.sess.targetChoice='measured';saveSess();slog('calibration-used',{keptNotes:cal.notes.length,accepted:true});if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=false;showOnly('gtSplits');render()};
+  if($g('gtCalUse'))$g('gtCalUse').onclick=useCal;
   if($g('gtCalLog'))$g('gtCalLog').onclick=exportLog;
   if($g('gtLog'))$g('gtLog').onclick=exportLog;
   if($g('gtTuneOk'))$g('gtTuneOk').onclick=acceptTuning;
   if($g('gtDone'))$g('gtDone').onclick=tapDone;
   if($g('gtSave'))$g('gtSave').onclick=savePiano;
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.on)stopListen()});
+  if($g('gtMuteOk'))$g('gtMuteOk').onclick=beginCal;
+  if($g('gtCalScan'))$g('gtCalScan').onclick=scanFromCal;
+  if($g('gtCalFix'))$g('gtCalFix').onclick=fixCal;
+  if($g('gtPause'))$g('gtPause').onclick=()=>{if(G.paused)resumeTune();else pauseTune('button')};
+  if($g('gtSaveProgress'))$g('gtSaveProgress').onclick=()=>saveProgress('layout');
+  if($g('gtSaveProgressCal'))$g('gtSaveProgressCal').onclick=()=>saveProgress('cal');
+  if($g('gtSaveProgressTune'))$g('gtSaveProgressTune').onclick=()=>saveProgress('tune');
+  ['gtRingSpeed','gtTemper','gtUnison'].forEach(id=>{const el=$g(id);if(!el)return;const prefs=tunePrefs();if(id==='gtRingSpeed')el.value=String(prefs.ring);if(id==='gtTemper')el.value=prefs.temperament;if(id==='gtUnison')el.value=prefs.unison;el.onchange=()=>{saveTunePrefs({ring:+$g('gtRingSpeed').value,temperament:$g('gtTemper').value,unison:$g('gtUnison').value});if(G.sess&&G.sess.ready){rebuild(true);render()}}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&G.on)pauseTune('hidden')});
 }
 function previewInterval(samples,sampleRate){
  const step=stepNow();if(!step||step.phase!=='check')return null;

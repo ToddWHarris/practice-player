@@ -197,16 +197,7 @@ function drawDial(result){
  const g=$p('pdRings');if(!g)return;g.innerHTML='';
  const cx=160,cy=160;
  const parts=(result&&result.partials||[]).filter(p=>!(p.n===1&&result&&!result.f1Heard));
- parts.forEach((p,i)=>{
-  const radius=58+i*12;
-  const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',radius);
-  c.setAttribute('fill','none');c.setAttribute('stroke','#8a7760');c.setAttribute('stroke-width','2.5');
-  c.setAttribute('stroke-dasharray','3 4');g.appendChild(c);
-  const pt=ringPoint(cx,cy,radius,p.cents);
-  const m=document.createElementNS('http://www.w3.org/2000/svg','circle');
-  m.setAttribute('cx',pt.x.toFixed(1));m.setAttribute('cy',pt.y.toFixed(1));m.setAttribute('r','8');
-  m.setAttribute('fill','#1f6b45');m.dataset.n=String(p.n);g.appendChild(m)});
+ void parts;void cx;void cy;
  const cents=$p('pdCents');
  if(cents){
   if(!result||!result.partials||!result.partials.length){

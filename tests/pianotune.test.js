@@ -35,7 +35,7 @@ const tune=calm.filter(s=>s.phase==='a4'||s.phase==='temper'||s.phase==='check')
 a.equal(tune[0].midi,69);a.ok(tune[0].prompt.indexOf('440')<0||tune[0].prompt.indexOf('Mute')>=0);
 a.ok(tune[0].prompt.indexOf('Mute')>=0&&tune[0].prompt.indexOf('unison')>=0);
 const sk=tune.filter(s=>s.phase!=='check').map(s=>s.midi);
-a.deepEqual(sk.slice(0,5),[69,57,53,61,65]);
+a.deepEqual(sk.slice(0,5),[69,57,45,49,53]);
 const thirds=calm.find(s=>s.title==='Progressive thirds');
 a.deepEqual(thirds.midis,[53,57,61,65]);
 a.ok(thirds.intervals.length===3);

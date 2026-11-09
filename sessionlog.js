@@ -3,7 +3,7 @@
 // this module. The only way a log leaves the device is the user tapping Download session log
 // in the piano screens and sending the file themselves.
 const SessionLog=(function(){
- const FORMAT=1,MAX_ENTRIES=800,MAX_SERIES=300;
+ const FORMAT=1,MAX_ENTRIES=2000,MAX_SERIES=300,LOG_KEY='pp-v44-log';
  let session=null,entries=[],seq=0,t0=0;
  function clock(){return (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now()}
  function start(meta){
@@ -16,7 +16,8 @@ const SessionLog=(function(){
   const e={seq:++seq,ms:Math.round(clock()-t0),type:String(type||'event')};
   if(data)for(const k in data)e[k]=data[k];
   entries.push(e);
-  if(entries.length>MAX_ENTRIES)entries.splice(0,entries.length-MAX_ENTRIES);
+  if(entries.length>MAX_ENTRIES){const drop=entries.length-(MAX_ENTRIES-1);entries.splice(0,drop);entries.push({seq:++seq,ms:Math.round(clock()-t0),type:'log-trimmed',dropped:drop})}
+  try{if(typeof localStorage!=='undefined')localStorage.setItem(LOG_KEY,toJSON())}catch(err){}
   return e}
  function trimSeries(arr){
   if(!Array.isArray(arr))return arr;
@@ -41,7 +42,9 @@ const SessionLog=(function(){
    lines.push(parts.join(' '))});
   return lines.join('\n')}
  function clear(){session=null;entries=[];seq=0}
- const api={FORMAT,MAX_ENTRIES,MAX_SERIES,start,record,trimSeries,all,count,toJSON,toText,clear};
+ function restore(){try{if(typeof localStorage==='undefined')return false;const o=JSON.parse(localStorage.getItem(LOG_KEY)||'null');if(!o||!o.entries)return false;entries=o.entries;session={startedAt:o.startedAt,meta:o.meta||{}};seq=entries.reduce((m,e)=>Math.max(m,e.seq||0),0);t0=clock();return true}catch(e){return false}}
+ const api={FORMAT,MAX_ENTRIES,MAX_SERIES,LOG_KEY,start,record,trimSeries,all,count,toJSON,toText,clear,restore};
+ try{restore()}catch(e){}
  if(typeof module!=='undefined')module.exports=api;
  return api})();
 if(typeof window!=='undefined')window.SessionLog=SessionLog;

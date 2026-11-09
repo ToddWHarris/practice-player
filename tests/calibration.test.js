@@ -175,7 +175,7 @@ a.notEqual(a0mix.status,'measured',a0mix.reason);
 const oneCue=P.calibrationCue(21,24,53);
 a.ok(oneCue.indexOf('A0')>=0&&oneCue.indexOf('one string')>=0&&oneCue.indexOf('Mute')<0&&oneCue.indexOf('not for whether it is in tune')>=0,oneCue);
 const manyCue=P.calibrationCue(69,24,53);
-a.ok(manyCue.indexOf('one string only')>=0&&manyCue.indexOf('Mute the other strings')>=0,manyCue);
+a.ok(manyCue.indexOf('one string only')>=0&&manyCue.indexOf('Mute 2')>=0,manyCue);
 const jagged=[57,69,81,93].map((midi,i)=>({status:'measured',midi,B:[0.0002,0.004,0.00015,0.005][i],residualCents:0.4,confidence:'high',partials:[{n:1,hz:1},{n:2,hz:2},{n:3,hz:3}],heardCents:5}));
 const low=[33,45].map(midi=>({status:'measured',midi,B:0.0006,residualCents:0.4,confidence:'high',partials:[{n:1,hz:1},{n:2,hz:2},{n:3,hz:3}],heardCents:-10}));
 const rough=P.deriveCalibration(low.concat(jagged),442,'concert');

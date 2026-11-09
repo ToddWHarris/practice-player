@@ -72,6 +72,7 @@ with sync_playwright() as p:
   assert pg.input_value('#gtA4')=='450' and pg.evaluate('PianoTune._session().a4')==450
   pg.fill('#gtA4','442'); pg.dispatch_event('#gtA4','change')
   pg.click('#gtCalOpen'); pg.wait_for_timeout(80)
+  if pg.locator('#gtMuteOk').is_visible(): pg.click('#gtMuteOk')
   prompt=pg.inner_text('#gtCalPrompt')
   assert 'A0' in prompt and 'one string' in prompt and 'Mute' not in prompt and 'not for whether it is in tune' in prompt, prompt
   assert pg.input_value('#gtA4')=='442'
@@ -138,6 +139,7 @@ with sync_playwright() as p:
   pg.wait_for_timeout(1500)
   assert pg.is_hidden('#gtCal') and pg.is_visible('#gtSplits')
   pg.click('#gtCalOpen'); pg.wait_for_timeout(80)
+  if pg.locator('#gtMuteOk').is_visible(): pg.click('#gtMuteOk')
   fresh=snap(pg)
   assert 'A0' in fresh['prompt'] and '0 notes measured' in fresh['coverage'] and fresh['hear']=='Listen to this note', fresh
   # no microphone
@@ -155,7 +157,8 @@ with sync_playwright() as p:
   assert 'A0' in un['prompt'], un
   # last sample note stays put
   pg.evaluate("window.__mode='measured'; window.__heard=1.2")
-  for _ in range(11):
+  for _ in range(20):
+    if 'C8' in pg.inner_text('#gtCalPrompt') and 'accepted' not in pg.inner_text('#gtCalPrompt'): break
     pg.click('#gtCalSkip')
   assert 'C8' in pg.inner_text('#gtCalPrompt')
   pg.click('#gtCalHear'); pg.wait_for_timeout(1500)
@@ -190,6 +193,7 @@ with sync_playwright() as p:
     pg.click('#gtOpen'); pg.wait_for_timeout(100)
     pg.click('#gtNew'); pg.click('#gtStyle button[data-style=kawai-k200]'); pg.click('#gtStyleNext'); pg.wait_for_timeout(80)
     pg.click('#gtCalOpen'); pg.wait_for_timeout(80)
+    if pg.locator('#gtMuteOk').is_visible(): pg.click('#gtMuteOk')
     info=pg.evaluate('''()=>{
       const box=document.getElementById('gtCal');
       const ids=['gtCalHear','gtCalRetry','gtCalSkip','gtCalUse','gtCalBack','gtA4','gtCalPrompt','gtCalStatus','gtCalCoverage','gtCalLegend','gtCalKeys'];

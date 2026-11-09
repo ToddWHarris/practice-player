@@ -15,7 +15,8 @@ with sync_playwright() as p:
   assert pg.is_disabled('#gtSplitsStart')
   assert 'not a measurement' in pg.inner_text('#gtSplits').lower()
   pg.screenshot(path='/opt/cursor/artifacts/cal-ipad-choice-1024x768.png')
-  pg.click('#gtCalOpen')
+  pg.click('#gtCalOpen');
+  if pg.locator('#gtMuteOk').is_visible(): pg.click('#gtMuteOk')
   prompt=pg.inner_text('#gtCalPrompt')
   assert 'A0' in prompt and 'one string' in prompt and 'Mute' not in prompt and 'not for whether it is in tune' in prompt
   assert pg.is_disabled('#gtCalUse')
@@ -98,13 +99,13 @@ with sync_playwright() as p:
   pg2.fill('#gtSerial','TEST-1')
   pg2.click('#gtStyleNext'); pg2.wait_for_timeout(200)
   line=pg2.inner_text('#gtModelLine')
-  assert 'Kawai K-200' in line and 'generic studio' in line.lower() and 'not a K-200 specification' in line
+  assert 'Kawai K-200' in line and 'C2' in line and 'F3' in line and 'Still adjustable' in line
   pg2.click('#gtCalModel'); pg2.click('#gtSplitsStart'); pg2.wait_for_timeout(300)
   ident=pg2.inner_text('#gtIdentity')
   assert 'Kawai K-200' in ident and 'TEST-1' in ident and 'Not a measured curve' in ident
   assert pg2.inner_text('#gtModelBadge')=='Model: Kawai K-200'
   assert pg2.locator('#gtType').input_value()=='studio'
-  assert 'generic studio' in pg2.inner_text('#gtTargetSrc').lower()
+  assert 'size model' in pg2.inner_text('#gtTargetSrc').lower()
   assert pg2.inner_text('#gtPrompt').count('Play')==1
   pg2.screenshot(path='/opt/cursor/artifacts/cal-k200-identity-1024x768.png')
   pg2.fill('#gtPianoName','Upright')

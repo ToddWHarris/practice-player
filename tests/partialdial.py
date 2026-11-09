@@ -67,7 +67,7 @@ with sync_playwright() as p:
   assert pg.is_hidden('#pdTarget')
   r=pg.evaluate("()=>PartialDial.preview({midi:69,f1:440,B:0.0004,partials:[1,2,3,4,5,6]})")
   assert r['f1Heard'] and r['bStatus']=='measured', r
-  assert pg.locator('#pdRings [data-n="1"]').count()>=1
+  assert pg.locator('#pdRings [data-n="1"]').count()==0
   prompt=pg.inner_text('#gtPrompt')
   assert prompt.count('Play A4 alone')==1 and 'what was heard' in prompt and 'not the tuning target' in prompt
   assert pg.inner_text('#pdListen')==''

@@ -110,6 +110,12 @@
  <div class="row"><button id="stOpen" class="btn">Storage</button></div>
  <div id="bkReady" hidden><p id="bkMsg" class="hintline"></p><div id="bkProg" class="bkProg" hidden><div class="bkProgTxt" id="bkProgTxt"></div><div class="bkBar"><div id="bkBarFill"></div></div></div><button id="bkSave" class="btn primary big bkSaveBtn">Save backup</button><p id="bkNote" class="hintline" hidden>iPhone needs one tap per part. Files remembers the last folder you used.</p><button id="bkCancel" class="btn bkCancel">Cancel backup</button></div><p id="bkStatus" class="hintline" role="status"></p>
 <h2 class="acc">Color</h2><button id="colorBtn" class="btn colorBtn" aria-haspopup="dialog"><span id="colorSw" class="csw"></span><span class="clab">Highlight color<small id="colorName">Green</small></span><span class="chev">›</span></button>
+<div class="setCard" id="pianoMeterSet"><h3 class="acc">Piano meter</h3>
+<label>Ring speed <select id="gtRingSpeed" aria-label="Ring speed"><option value="1">1 to 1</option><option value="2">1 to 2</option><option value="4">1 to 4</option><option value="8">1 to 8</option></select></label>
+<label>Temperament <select id="gtTemper" aria-label="Temperament order"><option value="a2a4">A2 to A4</option><option value="f3f4">F3 to F4</option></select></label>
+<label>Unisons <select id="gtUnison" aria-label="Unison order"><option value="sanderson">Treble as you go, bass and middle last</option><option value="after-checks">Right after the checks</option></select></label>
+<p class="hintline">These choices change how the guided piano works. They are saved on this device.</p>
+</div>
 <h2 class="acc">Loop and practice</h2><button id="prBtn" class="btn colorBtn" aria-haspopup="dialog"><span class="csw prIcon">⏱</span><span class="clab">Loop and practice settings<small id="prSum"></small></span><span class="chev">›</span></button></section>
 <section id="help" class="tab"><div id="helpBody">
 <button type="button" id="gtHelpBack" class="btn" hidden>Back to piano</button>
@@ -236,6 +242,12 @@
 <p>The stretch between notes does not ask the strings of one note to be apart. A beat in the lower overtones can mean one string is shifted in pitch. Beats that show mainly in the higher overtones can come from different stiffness. The screen says when it cannot tell those apart. It does not call every beat a mistake, and it does not call every beat fine. You still finish the step the way you did before.</p>
 <p>This section is a starting guide. Professional training (for example through the Piano Technicians Guild) goes deeper. Use this app's guided steps together with careful hammer feel and firm test blows.</p>
 
+<h2 id="h-meter">About this meter</h2>
+<p><b>About this meter</b></p>
+<p>This meter is modeled on how the Sanderson Accu-Tuner works. This app is not made, sold, approved or supported by that company or by Dr. Sanderson's family, and it is not connected with them in any way. Product names belong to their owners. We built our own meter from public descriptions of how that kind of meter works.</p>
+<p><b>How it works.</b> The meter has a ring of eight lights and one light in the center. It listens to one partial of the note, not to the whole sound. A partial is one of the overtones that make up a piano note. A bar of light turns when that partial is off its target. It turns clockwise when the note is sharp and counter-clockwise when it is flat. The farther off the note is, the faster it turns. When the lights stand still, that partial is on its target. The center light is on when the note is sharp and off when it is flat.</p>
+<p><b>Which partial.</b> The app picks the partial for the part of the piano you are tuning: the 6th partial for A0 to B2, the 4th for C3 to B4, the 2nd for C5 to B5, and the note itself from C6 up. You can pick a different partial for any note. The app remembers your choice for that note.</p>
+<p><b>What it cannot do.</b> This is a practice aid. It listens through your phone or iPad microphone in a room, so it can be wrong. If it cannot hear the partial clearly, the lights stop and turn grey instead of guessing. It does not replace a piano technician, and it is not an exam, a certification or a guarantee of any result.</p>
 <h2 id="h-partial-dial">Partial dial</h2>
 <button type="button" id="pdHelpBack" class="btn" hidden>Back to piano</button>
 <p>The partial dial is the face of Guided piano tune. It is not a second screen. It is not certified, and it is not a tuning exam.</p>
@@ -401,9 +413,9 @@
 <input id="gtPianoName" class="gtName" placeholder="Piano name" aria-label="Piano name">
 <input id="gtSerialLive" class="gtName" type="text" autocomplete="off" placeholder="Serial" aria-label="Piano serial number" hidden>
 <button type="button" id="gtSave" class="btn">Save piano</button>
-<button type="button" id="gtLog" class="btn">Session log</button>
 </div>
 </div>
+<div class="gtRun"><button type="button" id="gtPause" class="btn">Pause</button><button type="button" id="gtSaveProgressTune" class="btn">Save progress</button><button type="button" id="gtLog" class="btn">Session log</button></div>
 <div class="gtStage">
 <div id="gtPick" class="gtCover" hidden>
 <h2>Choose a piano</h2>
@@ -428,20 +440,32 @@
 </div>
 <div id="gtSplits" class="gtCover" hidden>
 <h2>String layout</h2>
-<p id="gtSplit3Lab">Lowest 3-string key</p>
 <p id="gtSplit2Lab">Lowest 2-string key</p>
+<p id="gtSplit3Lab">Lowest 3-string key</p>
 <p id="gtModelLine" class="hintline" hidden></p>
 <p class="hintline">Notes below the 2-string key have one string. Tap a key until the breaks match this piano.</p>
 <div class="gtSplitBtns">
-<button type="button" class="btn pick" data-which="3">Set lowest 3-string key</button>
 <button type="button" class="btn pick" data-which="2">Set lowest 2-string key</button>
+<button type="button" class="btn pick" data-which="3">Set lowest 3-string key</button>
 </div>
 <p class="hintline">Choose the targets before the pre-scan. A size model is not a measurement of this piano.</p>
 <div class="gtSplitBtns">
 <button type="button" id="gtCalModel" class="btn">Use size model, not a measurement</button>
 <button type="button" id="gtCalOpen" class="btn">Measure this piano first</button>
 </div>
+<button type="button" id="gtSaveProgress" class="btn">Save progress</button>
 <button type="button" id="gtSplitsStart" class="btn primary" disabled>Start pre-scan</button>
+</div>
+<div id="gtMute" class="gtCover" hidden>
+<h2>Mute to one string</h2>
+<p>Mute all but one string of each note before you play it. Use a felt strip or a rubber wedge, or press the other strings down. The meter needs one string at a time to measure the piano's stiffness.</p>
+<button type="button" id="gtMuteOk" class="btn primary">I have muted the strings</button>
+</div>
+<div id="gtCalNext" class="gtCover" hidden>
+<h2>Measurements kept</h2>
+<p id="gtCalNextText"></p>
+<button type="button" id="gtCalScan" class="btn primary">Scan the piano</button>
+<button type="button" id="gtCalFix" class="btn">Go back and fix missed notes</button>
 </div>
 <div id="gtCal" class="gtCover" hidden>
 <h2>Measure this piano</h2>
@@ -454,6 +478,8 @@
 <button type="button" id="gtCalRetry" class="btn">Retry this note</button>
 <button type="button" id="gtCalSkip" class="btn">Skip this note</button>
 <button type="button" id="gtCalUse" class="btn primary" disabled>Use these measurements</button>
+<button type="button" id="gtCalAnyway" class="btn" hidden>Use this note anyway</button>
+<button type="button" id="gtSaveProgressCal" class="btn">Save progress</button>
 <button type="button" id="gtCalBack" class="btn">Back</button>
 <button type="button" id="gtCalLog" class="btn">Download session log</button>
 <p class="hintline">The session log records every measurement try, the pre-scan, and the checks, on this device only. Download it and send it yourself if you want it looked at. Nothing is sent automatically.</p>
@@ -470,7 +496,9 @@
 </div>
 <div class="pdStage">
 <div class="pdDialWrap" id="gtNeedleWrap">
-<svg id="pdSvg" viewBox="0 0 320 320" role="img" aria-label="Partial dial">
+<div id="strobeRing" class="strobe" aria-hidden="true"></div>
+<p id="gtPartialLine" class="gtPartialLine"></p>
+<svg id="pdSvg" viewBox="0 0 320 320" role="img" aria-label="Tuning meter">
 <defs>
 <radialGradient id="pdRim" cx="50%" cy="40%" r="70%">
 <stop offset="0%" stop-color="#f4f7fb"/><stop offset="45%" stop-color="#c5ccd6"/><stop offset="100%" stop-color="#7d868f"/>
@@ -519,4 +547,4 @@
 </div>
 </div>
 <audio id="audio" preload="metadata"></audio>
-<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="sessionlog.js"></script><script src="pianotune.js"></script><script src="partials.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>
+<script src="db.js"></script><script src="clip.js"></script><script src="zip.js"></script><script src="logic.js"></script><script src="metronome.js"></script><script src="tuner.js"></script><script src="meter.js"></script><script src="sessionlog.js"></script><script src="v44core.js"></script><script src="pianotune.js"></script><script src="partials.js"></script><script src="app.js"></script><script src="sharepl.js"></script></body></html>

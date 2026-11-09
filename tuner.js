@@ -37,21 +37,23 @@ const TunerCore=(()=>{
   const cents=1200*Math.log2(f/targetFreq);
   const n=noteFromMidi(midi);
   return{freq:f,midi,name:n.name,octave:n.octave,label:n.label,cents,targetCents:target,targetFreq,etFreq,mode}}
- function yin(buf,sampleRate,threshold){
-  threshold=threshold==null?0.15:threshold;const N=buf.length|0,half=N>>1;if(half<32||!sampleRate)return null;
-  let energy=0;for(let i=0;i<N;i++)energy+=buf[i]*buf[i];const rms=Math.sqrt(energy/N);if(rms<0.01)return null;
+ function yin(buf,sampleRate,threshold,opts){
+  opts=opts||{};threshold=threshold==null?0.15:threshold;const N=buf.length|0,half=N>>1;if(half<32||!sampleRate)return null;
+  let energy=0;for(let i=0;i<N;i++)energy+=buf[i]*buf[i];const rms=Math.sqrt(energy/N);
+  const minRms=opts.minRms==null?0.01:+opts.minRms;const maxHz=opts.maxHz==null?4200:+opts.maxHz;
+  if(rms<minRms)return null;
   const d=new Float32Array(half);
   for(let tau=0;tau<half;tau++){let s=0;for(let i=0;i<half;i++){const x=buf[i]-buf[i+tau];s+=x*x}d[tau]=s}
   const cmnd=new Float32Array(half);cmnd[0]=1;let run=0;
   for(let tau=1;tau<half;tau++){run+=d[tau];cmnd[tau]=run>0?(d[tau]*tau)/run:1}
-  const minTau=Math.max(2,Math.floor(sampleRate/4200)),maxTau=Math.min(half-2,Math.ceil(sampleRate/27));
+  const minTau=Math.max(2,Math.floor(sampleRate/maxHz)),maxTau=Math.min(half-2,Math.ceil(sampleRate/27));
   let tauEst=-1;
   for(let tau=minTau;tau<=maxTau;tau++){if(cmnd[tau]<threshold){while(tau+1<=maxTau&&cmnd[tau+1]<cmnd[tau])tau++;tauEst=tau;break}}
   if(tauEst<0){let best=1,bt=-1;for(let tau=minTau;tau<=maxTau;tau++)if(cmnd[tau]<best){best=cmnd[tau];bt=tau}
    if(bt<0||best>0.45)return null;tauEst=bt}
   const x0=tauEst>0?tauEst-1:tauEst,x2=tauEst+1<half?tauEst+1:tauEst;let better=tauEst;
   if(x0!==tauEst&&x2!==tauEst){const s0=cmnd[x0],s1=cmnd[tauEst],s2=cmnd[x2],den=2*(2*s1-s2-s0);if(Math.abs(den)>1e-12)better=tauEst+(s2-s0)/den}
-  const f=sampleRate/better;return(f>=27&&f<=4200)?f:null}
+  const f=sampleRate/better;return(f>=27&&f<=maxHz)?f:null}
  function tone(freq,sampleRate,secs,kind){
   const n=Math.max(1,Math.round(sampleRate*secs)),buf=new Float32Array(n);
   for(let i=0;i<n;i++){const t=i/sampleRate;if(kind==='rich'){let s=0;for(let h=1;h<=8;h++)s+=(1/h)*Math.sin(2*Math.PI*freq*h*t);buf[i]=0.35*s}
