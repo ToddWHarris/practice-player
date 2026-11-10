@@ -160,8 +160,8 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .gtBadge{display:inline-flex;align-items:center;min-height:32px;padding:2px 8px;border-radius:8px;background:#1f2937;border:1px solid #fde68a;color:#fde68a;font-weight:800;font-size:14px;white-space:nowrap}
 .gtBadge[hidden]{display:none!important}
 .gtStage{flex:1 1 auto;min-height:0;position:relative;overflow:hidden;width:100%}
-.gtRun{position:absolute;right:max(6px,env(safe-area-inset-right));bottom:102px;z-index:7;display:flex;gap:4px}
-.gtRun .btn{min-height:28px;font-size:12px;padding:2px 8px}
+.gtRun{order:7;position:relative;z-index:7;display:flex;flex:0 0 auto;gap:10px;justify-content:center;align-self:center;margin:6px auto 4px;margin-top:auto;max-width:calc(100% - 12px)}
+.gtRun .btn{min-height:52px;min-width:104px;font-size:18px;font-weight:800;padding:10px 14px}
 #gtune.setup .gtRun{display:none}
 #gtune select,#gtune input{max-width:46vw}
 .gtTop label{display:flex;gap:4px;align-items:center;font-size:14px;white-space:nowrap}
@@ -275,6 +275,8 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
  .pdPanel{position:absolute;z-index:3;left:max(15%,env(safe-area-inset-left));right:max(15%,env(safe-area-inset-right));top:61.5%;height:26.3%;display:flex;flex-direction:column;justify-content:center;background:rgba(11,15,23,.94);border-radius:12px;padding:6px 12px;text-align:center;overflow:hidden}
  .pdListen,.pdStatus,.pdStretch{text-align:center}
  #gtune .gtKeys{position:absolute;z-index:4;left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));top:auto;bottom:max(2px,env(safe-area-inset-bottom));height:72px;min-height:72px;flex:none;border-radius:6px}
+ .gtRun{position:absolute;left:50%;bottom:80px;transform:translateX(-50%);margin:0}
+ .gtRun .btn{min-height:44px;min-width:88px;font-size:16px;padding:6px 10px}
  #gtune.checking #gtBeats{max-height:32px;overflow:hidden}
  #pdDetails{top:10%;max-height:50%;left:max(16%,env(safe-area-inset-left));right:max(16%,env(safe-area-inset-right))}
 }
@@ -327,6 +329,10 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
  #gtune .pdPanel{flex:0 0 auto;min-height:0;overflow:visible}
  #gtune .pdStage{flex:0 0 auto;min-height:0;overflow:visible}
  #gtune .pdDialWrap{width:min(40vw,160px)}
+ @media (max-height:900px){
+  .gtRun{position:absolute;left:50%;bottom:100px;transform:translateX(-50%);margin:0}
+  #gtune:not(.prescan) .gtRun{bottom:88px}
+ }
  #gtune .gtKeys{flex:0 0 92px;height:92px}
  #gtune:not(.prescan) .gtKeys{flex-basis:80px;height:80px}
 }
@@ -355,6 +361,7 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
  .pdDialWrap{width:min(34vh,320px)}
  #gtune .pdRight{flex-direction:row;flex-wrap:wrap;justify-content:center}
  #gtune .gtKeys{flex:0 0 130px;height:130px;min-height:0}
+ .gtRun .btn{min-height:64px;min-width:140px;font-size:22px}
  #gtPrompt{font-size:20px}
 }
 .gtBeats{color:#9ca3af}

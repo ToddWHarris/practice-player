@@ -7,6 +7,7 @@ class PartialLockProcessor extends AudioWorkletProcessor {
     this.pr=0;this.pi=0;this.ang=0;
     this.buf=new Float32Array(2048);
     this.n=0;
+    this.lastPost=-1;
     this.port.onmessage=e=>{
       const d=e.data||{};
       if(d.targetHz>0)this.target=+d.targetHz;
@@ -29,7 +30,9 @@ class PartialLockProcessor extends AudioWorkletProcessor {
           this.port.postMessage({samples:this.buf.slice(0)});
           this.n=0}}}
     this.pr=pr;this.pi=pi;this.ang=ang;
-    this.port.postMessage({re:pr,im:pi,level:Math.hypot(pr,pi)});
+    if(currentTime-this.lastPost>=0.016){
+      this.lastPost=currentTime;
+      this.port.postMessage({re:pr,im:pi,level:Math.hypot(pr,pi)});}
     return true;
   }
 }

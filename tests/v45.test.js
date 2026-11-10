@@ -45,7 +45,7 @@ a.ok(html.includes('Pause and keep my place'));
 a.ok(!html.includes('Back</b> and <b>Steps'));
 const notes=fs.readFileSync('app.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
-a.ok(notes.includes('APP_VERSION=45')&&sw.includes('const V=45'));
+a.ok(notes.includes('APP_VERSION=46')&&sw.includes('const V=46'));
 a.ok(!notes.includes('\u2014'));
 const at=fs.readFileSync('pianotune.js','utf8').indexOf('function savePiano()');
 const body=fs.readFileSync('pianotune.js','utf8').slice(at,at+700);

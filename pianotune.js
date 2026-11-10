@@ -799,7 +799,7 @@ function slogStep(){const s=stepNow();if(!s)return;const key=G.sess.step+':'+(s.
 const PKEY='pp-piano-profiles';
 function blankSess(){return{v:3,type:null,a4:440,step:0,prescan:{},split2:null,split3:null,tuningOk:false,profileId:null,ready:false,updated:0,calibration:null,targetChoice:null,pianoModel:null,serial:''}}
 function loadSess(){try{const o=JSON.parse(localStorage.getItem(GK)||'null');if(o&&o.v===3)return Object.assign(blankSess(),o);if(o&&o.v===2&&o.type&&PT.SPLITS[o.type])return Object.assign(blankSess(),o,{v:3,ready:true,split2:PT.SPLITS[o.type].split2,split3:PT.SPLITS[o.type].split3})}catch(e){}return blankSess()}
-function saveSess(){try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:3,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,split2:G.sess.split2,split3:G.sess.split3,tuningOk:!!G.sess.tuningOk,profileId:G.sess.profileId,ready:!!G.sess.ready,updated:G.sess.updated,calibration:G.sess.calibration||null,targetChoice:G.sess.targetChoice||null,pianoModel:G.sess.pianoModel||null,serial:G.sess.serial||''}))}catch(e){}}
+function saveSess(){G.saves=(G.saves||0)+1;try{G.sess.updated=Date.now();localStorage.setItem(GK,JSON.stringify({v:3,type:G.sess.type,a4:G.sess.a4,step:G.sess.step,prescan:G.sess.prescan,split2:G.sess.split2,split3:G.sess.split3,tuningOk:!!G.sess.tuningOk,profileId:G.sess.profileId,ready:!!G.sess.ready,updated:G.sess.updated,calibration:G.sess.calibration||null,targetChoice:G.sess.targetChoice||null,pianoModel:G.sess.pianoModel||null,serial:G.sess.serial||''}))}catch(e){}}
 function loadPianos(){try{const a=JSON.parse(localStorage.getItem(PKEY)||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
 function savePianos(a){try{localStorage.setItem(PKEY,JSON.stringify(a))}catch(e){}}
 function profiles(){try{const a=JSON.parse(localStorage.getItem('pp-tuner-profiles')||'[]');return Array.isArray(a)?a:[]}catch(e){return[]}}
@@ -911,6 +911,7 @@ function paintKeys(colors,lean){
 }
 function render(){
   const step=stepNow();if(!step)return;
+  G.renders=(G.renders||0)+1;
   const shown=G.showGot?Math.max(0,G.sess.step-1):G.sess.step;
   $g('gtTitle').textContent=(G.showGot&&G.gotMidi!=null)?('Pre-scan '+PT.label(G.gotMidi)):(step.title||'');
   const unisonStep=step.phase!=='prescan'&&step.phase!=='check'&&(step.stringCount||1)>1&&(step.stringIndex||1)>1;
@@ -982,14 +983,15 @@ function fillTypes(){
   [['concert','Concert grand (9 ft)'],['baby','Baby grand'],['studio','Studio upright'],['spinet','Spinet'],['typical','Typical']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;s.append(o)});
   profiles().forEach(p=>{const o=document.createElement('option');o.value='profile:'+p.id;o.textContent='Saved: '+p.name;s.append(o)});
   if(curV&&s.querySelector('option[value="'+curV+'"]'))s.value=curV}
-function jumpTo(i){G.previewHold=false;G.unisonRead=null;G.showMiss=false;G.unreadStat=freshUnread();if(window.PartialDial&&PartialDial.clearSim)PartialDial.clearSim();G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];clearWave();saveSess();render();slogStep();if(stepNow()&&stepNow().phase==='prescan')cueNext();else playStep()}
+function bumpCue(){G.cueGen=(G.cueGen||0)+1;G.armAt=0;return G.cueGen}
+function jumpTo(i){G.previewHold=false;G.unisonRead=null;G.showMiss=false;G.unreadStat=freshUnread();bumpCue();if(window.PartialDial&&PartialDial.clearSim)PartialDial.clearSim();G.showGot=false;G.showUnread=false;G.showNext=false;G.showDone=false;G.showTuningCard=false;G.gotUntil=0;G.settleUntil=0;G.prevFreq=0;G.hold=coreJump(G.hold||PT.emptyState(),i,G.seq.length);G.sess.step=G.hold.step;G.colors={};G.lastCents=null;G.measured=null;G.env=[];clearWave();G.paintAt=0;G.paintCents=null;saveSess();render();slogStep();if(stepNow()&&stepNow().phase==='prescan')cueNext();else if(!G.paused)playStep()}
 function onKey(m){if(G.pickSplit){if(G.pickSplit===3)G.sess.split3=m;else G.sess.split2=m;if(G.sess.split2!=null&&G.sess.split3!=null&&G.sess.split2>=G.sess.split3)G.sess.split2=G.sess.split3-1;renderSplits();return}jumpToMidi(m)}
 function jumpToMidi(m){const i=G.seq.findIndex((s,idx)=>idx>=G.sess.step&&s.midis&&s.midis.indexOf(m)>=0);if(i>=0)jumpTo(i)}
 function renderSplits(){renderKeys();if($g('gtSplit3Lab'))$g('gtSplit3Lab').textContent='Lowest 3-string key: '+(G.sess.split3!=null?PT.label(G.sess.split3):'');if($g('gtSplit2Lab'))$g('gtSplit2Lab').textContent='Lowest 2-string key: '+(G.sess.split2!=null?PT.label(G.sess.split2):'');
  if($g('gtModelLine')){const m=G.sess.pianoModel;const spec=m&&PT.MODELS[m.id];$g('gtModelLine').hidden=!m;$g('gtModelLine').textContent=spec?(spec.maker+' '+spec.model+' is the piano on record. Height '+spec.heightCm+' cm, width '+spec.widthCm+' cm, depth '+spec.depthCm+' cm, weight '+spec.weightKg+' kg. No. 1 speaking length '+spec.speakingNo1Mm+' mm. Duplex scale: no. Agraffes: no. '+(spec.id==='kawai-k200'?V44Core.k200Splits().note:'The string breaks below are a starting point, not a '+spec.model+' specification.')):''}
  document.querySelectorAll('#gtSplits .pick').forEach(b=>b.classList.toggle('on',+b.dataset.which===G.pickSplit));document.querySelectorAll('#gtKeys button').forEach(el=>{const m=+el.dataset.m;el.classList.remove('next','ok','bad','sharp','flat','dim','near','blink');el.classList.add(m===G.sess.split2||m===G.sess.split3?'next':'dim')})}
-function stopListen(){G.listening=false;if(G.raf){cancelAnimationFrame(G.raf);G.raf=0}
-  if(G.stream){G.stream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});G.stream=null}}
+function dropMine(mine){if(!mine)return;try{if(mine.node){mine.node.port.onmessage=null;mine.node.disconnect()}}catch(e){}try{if(mine.mute)mine.mute.disconnect()}catch(e){}try{if(mine.src)mine.src.disconnect()}catch(e){}try{if(mine.an)mine.an.disconnect()}catch(e){}try{if(mine.stream)mine.stream.getTracks().forEach(t=>t.stop())}catch(e){}if(G.lockNode===mine.node)G.lockNode=null;if(G.lockMute===mine.mute)G.lockMute=null;if(G.srcNode===mine.src)G.srcNode=null;if(G.an===mine.an)G.an=null;if(G.stream===mine.stream)G.stream=null;if(!G.an&&!G.lockNode)G.liveNodes=0}
+function stopListen(){G.listenGen=(G.listenGen||0)+1;G.listening=false;if(G.raf){cancelAnimationFrame(G.raf);G.raf=0}dropMine({node:G.lockNode,mute:G.lockMute,src:G.srcNode,an:G.an,stream:G.stream});G.lockMsg=null;G.lockPhase=null;G.buf=null;G.liveNodes=0}
 function loop(){
   if(!G.listening||!G.an)return;
   G.an.getFloatTimeDomainData(G.buf);
@@ -1062,7 +1064,10 @@ function onFreq(freq,now){
    G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);
    G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);
    G.showDone=false;G.lastCents=null;saveSess();render();return}
-  G.showDone=false;saveSess();render()}
+  G.showDone=false;
+  const moved=G.paintCents==null||Math.abs(cents-G.paintCents)>=0.5||!G.paintAt||now-G.paintAt>=100;
+  if(moved){G.paintAt=now;G.paintCents=cents;render()}
+  if(!G.saveAt||now-G.saveAt>=3000){G.saveAt=now;saveSess()}}
 function advanceStep(was,freq,doChime){
   const next=G.sess.step+1;
   if(was==='prescan'&&G.seq[next]&&G.seq[next].phase!=='prescan'&&!G.tuningOk){G.showTuningCard=true;G.pendingFreq=freq;saveSess();render();return}
@@ -1081,12 +1086,14 @@ function beginGot(freq){
   G.prevFreq=freq||0;G.attack=false;G.sawQuiet=false;G.peak=0;
   G.gotUntil=performance.now()+PT.GOT_MS;G.settleUntil=G.gotUntil+350;G.armAt=0;
   render();
-  setTimeout(()=>{if(!G.on)return;G.showGot=false;cueNext()},PT.GOT_MS)}
+  const cue=G.cueGen||0;
+  setTimeout(()=>{if(!G.on||cue!==(G.cueGen||0))return;G.showGot=false;cueNext()},PT.GOT_MS)}
 function cueNext(){
-  const step=stepNow();G.showMiss=false;G.unreadStat=freshUnread();G.loggedAttack=false;G.showNext=!!(step&&step.phase==='prescan');G.blinking=G.showNext;G.lastCents=null;G.armAt=performance.now();
+  const step=stepNow();if(!step||step.phase!=='prescan')return;
+  const cue=G.cueGen||0;
+  G.showMiss=false;G.unreadStat=freshUnread();G.loggedAttack=false;G.showNext=true;G.blinking=true;G.lastCents=null;G.armAt=performance.now();
   render();
-  if(G.showNext)setTimeout(()=>{G.blinking=false;if(G.on)render()},1500);
-  else playStep()}
+  setTimeout(()=>{if(cue!==(G.cueGen||0)||!G.on)return;G.blinking=false;render()},1500)}
 function freshUnread(){return {windows:0,readings:0,dropped:0,maxRms:0,spread:null,blocked:'none',cents:[]}}
 function unreadStats(){const s=G.unreadStat||freshUnread();const xs=s.cents||[];let spread=null;if(xs.length>=2){let lo=xs[0],hi=xs[0];for(let i=1;i<xs.length;i++){if(xs[i]<lo)lo=xs[i];if(xs[i]>hi)hi=xs[i]}spread=+((hi-lo).toFixed(2))}return {windows:s.windows,readings:s.readings,droppedLoud:s.dropped,maxRms:+(s.maxRms||0).toFixed(5),spread:spread,readingsUsed:xs.length,blocked:s.blocked,sampleRate:G.ctx?G.ctx.sampleRate:null,roomFloor:+(G.roomFloor||0).toFixed(5),frames:(G.pitchRing||[]).slice(-24)}}
 function offerMiss(){
@@ -1114,7 +1121,8 @@ function markUnread(){
     rebuild(false);G.sess.step=Math.max(0,G.seq.findIndex(s=>s.phase!=='prescan'))}
   G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);
   G.armAt=0;saveSess();render();
-  setTimeout(()=>{if(!G.on)return;G.showUnread=false;cueNext()},PT.GOT_MS)}
+  const cue=G.cueGen||0;
+  setTimeout(()=>{if(!G.on||cue!==(G.cueGen||0))return;G.showUnread=false;cueNext()},PT.GOT_MS)}
 function retryUnread(){
   for(let i=0;i<G.seq.length;i++){const s=G.seq[i];if(s.phase!=='prescan')continue;const r=G.sess.prescan[s.midi];if(r&&r.confidence==='unread'){delete G.sess.prescan[s.midi];jumpTo(i);return}}}
 function unreadIndex(){
@@ -1123,6 +1131,7 @@ function unreadIndex(){
 function chime(){try{const ctx=tuneAudio();const o=ctx.createOscillator(),g=ctx.createGain();o.frequency.value=880;o.type='sine';g.gain.setValueAtTime(0.0001,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.08,ctx.currentTime+0.02);g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.22);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+0.24)}catch(e){}}
 function tuneAudio(){if(G.play)return G.play;const AC=window.AudioContext||window.webkitAudioContext;G.play=new AC();return G.play}
 function playStep(){
+  if(G.paused)return;
   const step=stepNow();if(!step||step.phase==='prescan')return;
   const midi=(step.midis&&step.midis[0])||step.midi;
   const tones=(step.phase==='check'?step.midis:[midi]).map(m=>{const tc=targetCents(step,m);if(tc==null)return null;const B=bFn()?bFn()(m):0;return {f:PT.targetFreq(m,tc,G.sess.a4),B:B>0?B:0}}).filter(Boolean);
@@ -1142,17 +1151,25 @@ function sound(tones){
   }catch(e){}
   setTimeout(()=>{G.sounding=false},1200)}
 async function listen(){
-  if(G.listening)return;
+  if(G.paused||G.listening)return;
+  const gen=(G.listenGen=(G.listenGen||0)+1);
+  let stream=null,src=null,an=null,node=null,mute=null;
+  const stale=()=>gen!==G.listenGen||G.paused;
+  const abort=()=>{dropMine({node,mute,src,an,stream});G.listening=false};
   try{if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))return;
-    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});
+    if(stale()){abort();return}
     const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();
-    const src=ctx.createMediaStreamSource(stream);const an=ctx.createAnalyser();an.fftSize=8192;an.smoothingTimeConstant=0;src.connect(an);
-    G.stream=stream;G.ctx=ctx;G.an=an;G.buf=new Float32Array(an.fftSize);G.listening=true;G.simpleMeter=true;
-    try{await ctx.audioWorklet.addModule('partial-lock-worklet.js');const node=new AudioWorkletNode(ctx,'partial-lock');src.connect(node);const mute=ctx.createGain();mute.gain.value=0;node.connect(mute);mute.connect(ctx.destination);G.lockNode=node;G.simpleMeter=false;node.port.onmessage=ev=>{const d=ev.data||{};G.lockMsg=d;G.lockMsg.t=performance.now()};postLockTarget()}catch(err){G.simpleMeter=true;G.lockNode=null}
+    if(stale()){abort();return}
+    src=ctx.createMediaStreamSource(stream);an=ctx.createAnalyser();an.fftSize=8192;an.smoothingTimeConstant=0;src.connect(an);
+    G.stream=stream;G.ctx=ctx;G.srcNode=src;G.an=an;G.buf=new Float32Array(an.fftSize);G.listening=true;G.simpleMeter=true;
+    try{await ctx.audioWorklet.addModule('partial-lock-worklet.js');if(stale()){abort();return}node=new AudioWorkletNode(ctx,'partial-lock');mute=ctx.createGain();mute.gain.value=0;src.connect(node);node.connect(mute);mute.connect(ctx.destination);G.lockNode=node;G.lockMute=mute;G.simpleMeter=false;node.port.onmessage=ev=>{if(gen!==G.listenGen)return;const d=ev.data||{};if(d.samples)return;G.lockMsg=d;G.lockMsg.t=performance.now()};postLockTarget()}catch(err){G.simpleMeter=true;G.lockNode=null;node=null}
+    if(stale()){abort();return}
+    G.liveNodes=1;
     const track=stream.getAudioTracks&&stream.getAudioTracks()[0];
     let settings=null;try{settings=track&&track.getSettings?track.getSettings():null}catch(err){settings=null}
     slog('mic',{sampleRate:ctx.sampleRate,label:track&&track.label||'',echoCancellation:settings&&settings.echoCancellation,noiseSuppression:settings&&settings.noiseSuppression,autoGainControl:settings&&settings.autoGainControl,sampleRateSetting:settings&&settings.sampleRate,simpleMeter:!!G.simpleMeter});
-    G.raf=requestAnimationFrame(loop)}catch(e){$g('gtPrompt').textContent=(stepNow()&&stepNow().prompt?stepNow().prompt+' ':'')+(e&&e.name==='NotAllowedError'?'Microphone not allowed.':'No microphone available.')}}
+    G.raf=requestAnimationFrame(loop)}catch(e){abort();if($g('gtPrompt'))$g('gtPrompt').textContent=(stepNow()&&stepNow().prompt?stepNow().prompt+' ':'')+(e&&e.name==='NotAllowedError'?'Microphone not allowed.':'No microphone available.')}}
 function postLockTarget(){const step=stepNow();if(!G.lockNode||!step||!step.midi)return;const n=partialFor(step.midi);const tc=targetCents(step,step.midi);const f1=tc==null?PT.etFreq(step.midi,G.sess.a4):PT.targetFreq(step.midi,tc,G.sess.a4);const target=PT.partialFreq?PT.partialFreq(f1,n,0):f1*n;try{G.lockNode.port.postMessage({targetHz:target})}catch(e){}}
 function showOnly(id){['gtPick','gtStyle','gtSplits','gtTuneCard','gtCal','gtMute','gtCalNext'].forEach(k=>{const n=$g(k);if(n)n.hidden=k!==id});if(id)$g('gtune').classList.add('setup');if(id==='gtSplits'&&$g('gtSplitsStart'))$g('gtSplitsStart').disabled=!G.sess.targetChoice;syncA4Field()}
 function activeA4(){let v=G.sess&&+G.sess.a4;if(!isFinite(v))v=440;v=Math.max(430,Math.min(450,Math.round(v*10)/10));if(G.sess)G.sess.a4=v;return v}
@@ -1213,7 +1230,7 @@ function offerCalNext(){const cal=PT.deriveCalibration(G.calNotes,activeA4(),G.s
 function useCal(){const cal=PT.deriveCalibration(G.calNotes,activeA4(),G.sess.type);if(!cal.accepted){offerCalNext();slog('calibration-refused',{keptNotes:(G.calNotes||[]).length});return}G.sess.calibration=cal;G.sess.targetChoice='measured';saveSess();slog('calibration-used',{keptNotes:cal.notes.length,accepted:true});offerCalNext()}
 function scanFromCal(){if($g('gtSplitsStart'))$g('gtSplitsStart').disabled=!G.sess.targetChoice;showOnly('gtSplits');render()}
 function fixCal(){const miss=missedCal();G.calI=miss.length?PT.CAL_NOTES.indexOf(miss[0]):0;showOnly('gtCal');calPrompt();setHear('idle');refreshCalUse();syncCalNav()}
-function pauseTune(why){if(!G.on||G.paused)return;G.paused=true;G.pauseWhy=why||'button';stopListen();if($g('gtPause'))$g('gtPause').textContent='Resume';slog('session-pause',{why:G.pauseWhy,step:G.sess&&G.sess.step});const p=$g('gtPrompt');if(p&&G.sess&&G.sess.ready)p.textContent='Paused. Tap Resume to keep listening on this note.'}
+function pauseTune(why){if(!G.on||G.paused)return;G.paused=true;G.pauseWhy=why||'button';stopListen();saveSess();if($g('gtPause'))$g('gtPause').textContent='Resume';slog('session-pause',{why:G.pauseWhy,step:G.sess&&G.sess.step});const p=$g('gtPrompt');if(p&&G.sess&&G.sess.ready)p.textContent='Paused. Tap Resume to keep listening on this note.'}
 function resumeTune(){if(!G.paused)return;G.paused=false;G.armAt=performance.now();if($g('gtPause'))$g('gtPause').textContent='Pause';slog('session-resume',{step:G.sess&&G.sess.step});listen();render()}
 function saveProgress(from){let name=($g('gtPianoName')&&$g('gtPianoName').value||'').trim();if(!name){name=(window.prompt('Type a name for this piano, then tap Save progress','')||'').trim();if($g('gtPianoName'))$g('gtPianoName').value=name}if(!name){const box=from==='cal'?$g('gtCalStatus'):$g('gtPrompt');if(box)box.textContent='Type a name for this piano, then tap Save progress.';return}const kept=(G.calNotes||[]).filter(n=>n&&n.status==='measured').length;const place=from==='cal'?'Measure, '+((PT.CAL_NOTES[G.calI]!=null)?PT.label(PT.CAL_NOTES[G.calI]):'done')+', '+kept+' of '+PT.CAL_NOTES.length+' notes kept':(G.sess.ready?'Step '+(G.sess.step+1):'String layout');const item={name,at:Date.now(),place,screen:from||'tune',calI:G.calI|0,calNotes:G.calNotes||[],calFail:G.calFail||{},step:G.sess.step|0,type:G.sess.type,a4:G.sess.a4,split2:G.sess.split2,split3:G.sess.split3,ready:!!G.sess.ready,targetChoice:G.sess.targetChoice||null,pianoModel:G.sess.pianoModel||null,serial:G.sess.serial||'',partials:tunePrefs().partials||{},prescan:G.sess.prescan||{}};let all={};try{all=JSON.parse(localStorage.getItem('pp-v44-resume')||'null')||{}}catch(e){}all.prefs=tunePrefs();all.items=(all.items||[]).filter(x=>x.name!==name);all.items.push(item);try{localStorage.setItem('pp-v44-resume',JSON.stringify(all));const back=JSON.parse(localStorage.getItem('pp-v44-resume'));const got=back&&(back.items||[]).some(x=>x.name===name&&x.place===place);const msg='Saved: '+name+', at '+place+'. '+new Date(item.at).toLocaleString();const box=from==='cal'?$g('gtCalStatus'):$g('gtPrompt');if(box)box.textContent=got?msg:'Could not save. The saved copy could not be read back.';slog('progress-saved',{name,place,ok:!!got})}catch(e){const box=from==='cal'?$g('gtCalStatus'):$g('gtPrompt');if(box)box.textContent='Could not save. '+(e&&e.name==='QuotaExceededError'?'Storage is full.':'The browser refused the write.');}}
 function backCal(){dropCalCapture();setHear('idle');showOnly('gtSplits');syncA4Field()}
@@ -1243,7 +1260,7 @@ function openTune(){
   try{if(window.Metro&&Metro.M&&Metro.M.on)Metro.stop()}catch(e){}
   try{if(typeof au!=='undefined'&&au&&!au.paused)au.pause()}catch(e){}
   G.sess=loadSess();G.tuningOk=!!G.sess.tuningOk;G.on=true;
-  if(typeof SessionLog!=='undefined'){if(!SessionLog.count())SessionLog.start({screen:'piano',appVersion:'V45',type:G.sess.type||null,a4:G.sess.a4});else slog('tune-open',{})}
+  if(typeof SessionLog!=='undefined'){if(!SessionLog.count())SessionLog.start({screen:'piano',appVersion:'V46',type:G.sess.type||null,a4:G.sess.a4});else slog('tune-open',{})}
   $g('gtune').hidden=false;document.body.classList.add('gtOpen');
   fillTypes();
   renderPianos();showOnly('gtPick');syncA4Field();if(G.ringTimer)clearTimeout(G.ringTimer);paintRing()}
@@ -1360,7 +1377,7 @@ function previewInterval(samples,sampleRate){
  G.previewHold=true;
  G.beatRead=PT.analyzeIntervalAudio(samples,sampleRate,intervalQuery(step));
  G.showDone=true;G.logBeatKey=null;logBeatRead(step,intervalQuery(step).pairs);render();return G.beatRead}
-Object.assign(PianoTune,{init,open:openTune,close:finishClose,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,openHelpTopic:openToolsHelp,previewInterval,stepTitles:()=>(G.seq||[]).map(s=>s.title),_setPrescanWait:ms=>{G.prescanWait=+ms||PT.PRESCAN_WAIT},feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess});
+Object.assign(PianoTune,{init,open:openTune,close:finishClose,playAgain:playStep,jump:jumpTo,holdingHelp:()=>!!G.holdHelp,returnFromHelp,openHelpTopic:openToolsHelp,previewInterval,stepTitles:()=>(G.seq||[]).map(s=>s.title),_setPrescanWait:ms=>{G.prescanWait=+ms||PT.PRESCAN_WAIT},feedHz:function(freq,now){if(G.sounding)return{ignored:true};onFreq(freq,now==null?performance.now():now);return{ignored:false,step:G.sess.step,sounding:G.sounding}},_sounding:()=>G.sounding,_setSounding:v=>{G.sounding=!!v},_attack:()=>{G.attack=true},_session:()=>G.sess,_counts:()=>({saves:G.saves||0,renders:G.renders||0,live:G.liveNodes||0,sounding:!!G.sounding,paused:!!G.paused,listening:!!G.listening,armed:!!(G.armAt&&stepNow()&&stepNow().phase==='prescan'),phase:stepNow()?stepNow().phase:''}),_resetCounts:()=>{G.saves=0;G.renders=0}});
 window.PianoTune=PianoTune;
 document.addEventListener('DOMContentLoaded',init);
 if(document.readyState!=='loading')init();
