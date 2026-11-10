@@ -34,20 +34,17 @@ with sync_playwright() as p:
   ev("""()=>{const steps=[...document.querySelectorAll('#gtList button')];return 0}""")
   ev("""()=>{window.__idx=0;const hold=1}""")
   # Use the Steps list after opening it once so buttons exist
-  pg.click('#gtSteps');pg.wait_for_timeout(100)
-  labels=pg.locator('#gtList button').all_inner_texts()
+  labels=pg.evaluate("()=>PianoTune.stepTitles()")
   a4=next(i for i,t in enumerate(labels) if 'Set A4 string 1 of 3' in t)
   thirds=next(i for i,t in enumerate(labels) if 'Progressive thirds' in t)
   ev('(i)=>PianoTune.jump(i)',a4);pg.wait_for_timeout(200)
   assert pg.inner_text('#gtNote')=='A4'
   assert 'Play A4 alone' in pg.inner_text('#gtPrompt') and 'Mute the other strings' in pg.inner_text('#gtPrompt') and 'pitch' in pg.inner_text('#gtPrompt')
   assert pg.locator('#gtKeys button.next').count()>=1
-  ev("document.getElementById('gtList').hidden=true")
   pg.screenshot(path='/opt/cursor/artifacts/v34-guided-tune-a4-landscape.png')
   ev('(i)=>PianoTune.jump(i)',thirds);pg.wait_for_timeout(200)
   assert pg.locator('#gtKeys button.next').count()==4
   assert 'beats' in pg.inner_text('#gtBeats').lower()
-  ev("document.getElementById('gtList').hidden=true")
   pg.screenshot(path='/opt/cursor/artifacts/v34-guided-tune-thirds-landscape.png')
   # Back returns to the previous step
   before=pg.inner_text('#gtTitle')

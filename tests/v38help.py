@@ -46,7 +46,8 @@ with sync_playwright() as p:
   assert pg.inner_text('#gtTitle').startswith('Pre-scan A0')
   assert pg.inner_text('#gtToolsBack') == 'Back to topics'
   # The same section from the Help tab still jumps here, and Back to topics stays on Help.
-  pg.click('#gtClose'); pg.wait_for_timeout(150)
+  pg.click('#gtClose'); pg.wait_for_timeout(80)
+  if pg.locator('#gtCloseGo').is_visible(): pg.click('#gtCloseGo'); pg.wait_for_timeout(80)
   pg.click('nav button[data-t=help]'); pg.wait_for_timeout(200)
   pg.locator('#toc .tocb', has_text='Piano tuning tools').click(); pg.wait_for_timeout(200)
   again = pg.evaluate("""() => {

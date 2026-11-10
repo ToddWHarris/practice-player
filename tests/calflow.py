@@ -78,9 +78,9 @@ with sync_playwright() as p:
   assert pg.input_value('#gtA4')=='442'
   pg.evaluate(STUB)
   pg.click('#gtCalHear')
-  pg.wait_for_function("document.getElementById('gtCalHear').textContent==='Listening...'")
+  pg.wait_for_function("document.getElementById('gtCalHear').textContent==='Stop'")
   early=snap(pg)
-  assert early['disabled'] and early['busy']=='true', early
+  assert (not early['disabled']) and early['busy']=='true' and early['hear']=='Stop', early
   assert 'Play A0 now' in early['result'] and 'notes measured' not in early['result'], early
   assert '0 notes measured' in early['coverage'] or '0 note' in early['coverage'], early
   assert 'now' in keyclass(pg, 21) and 'wait' in keyclass(pg, 21)
@@ -89,7 +89,7 @@ with sync_playwright() as p:
   pg.screenshot(path='/opt/cursor/artifacts/cal-listening-1024.png')
   pg.wait_for_timeout(1500)
   ok=snap(pg)
-  assert ok['hear']=='Measurement accepted' and not ok['disabled'], ok
+  assert ok['hear']=='Start' and not ok['disabled'], ok
   assert 'A0 accepted' in ok['result'] and 'Now play A1' in ok['result'] and '-11.0' in ok['result'], ok
   assert 'notes measured' not in ok['result'] and 'Not enough coverage' not in ok['result'], ok
   assert '1 note measured' in ok['coverage'] and 'Not enough coverage' in ok['coverage'], ok
@@ -102,7 +102,7 @@ with sync_playwright() as p:
   pg.evaluate("window.__mode='reject'")
   pg.click('#gtCalHear'); pg.wait_for_timeout(1500)
   bad=snap(pg)
-  assert bad['hear']=='Not accepted. Try again.' and not bad['disabled'], bad
+  assert bad['hear']=='Start' and not bad['disabled'], bad
   assert 'did not sound like A1' in bad['result'], bad
   assert 'notes measured' not in bad['result'], bad
   assert '1 note measured' in bad['coverage'], bad
@@ -116,7 +116,7 @@ with sync_playwright() as p:
   pg.evaluate("window.__heard=-22")
   pg.click('#gtCalRetry')
   mid=snap(pg)
-  assert mid['disabled'] and mid['hear'] in ('Listening...','Opening microphone...'), mid
+  assert (not mid['disabled']) and mid['hear']=='Stop', mid
   pg.wait_for_timeout(1600)
   late=snap(pg)
   assert '-22.0' in late['result'] and '-11.0' not in late['result'], late
@@ -131,7 +131,7 @@ with sync_playwright() as p:
   sk=snap(pg)
   assert 'A2 skipped' in sk['result'] and 'Now play E3' in sk['result'], sk
   assert '2 notes measured' in sk['coverage'], sk
-  assert 'E3' in sk['prompt'] and sk['hear']=='Listen to this note', sk
+  assert 'E3' in sk['prompt'] and sk['hear']=='Start', sk
   assert sk['n']==0, sk
   # close during capture
   pg.click('#gtCalHear'); pg.wait_for_timeout(80)
@@ -141,19 +141,19 @@ with sync_playwright() as p:
   pg.click('#gtCalOpen'); pg.wait_for_timeout(80)
   if pg.locator('#gtMuteOk').is_visible(): pg.click('#gtMuteOk')
   fresh=snap(pg)
-  assert 'A0' in fresh['prompt'] and '0 notes measured' in fresh['coverage'] and fresh['hear']=='Listen to this note', fresh
+  assert 'A0' in fresh['prompt'] and '0 notes measured' in fresh['coverage'] and fresh['hear']=='Start', fresh
   # no microphone
   pg.evaluate("""() => { navigator.mediaDevices.getUserMedia = () => Promise.reject(Object.assign(new Error('no'), {name:'NotAllowedError'})); }""")
   pg.click('#gtCalHear'); pg.wait_for_timeout(200)
   mic=snap(pg)
-  assert mic['hear']=='Not accepted. Try again.' and 'Microphone not allowed' in mic['result'], mic
+  assert mic['hear']=='Start' and 'Microphone not allowed' in mic['result'], mic
   assert '0 notes measured' in mic['coverage'], mic
   # unclear copy
   pg.evaluate(STUB)
   pg.evaluate("window.__mode='unclear'")
   pg.click('#gtCalHear'); pg.wait_for_timeout(1500)
   un=snap(pg)
-  assert 'Not enough reliable partials' in un['result'] and un['hear']=='Not accepted. Try again.', un
+  assert 'Not enough reliable partials' in un['result'] and un['hear']=='Start', un
   assert 'A0' in un['prompt'], un
   # last sample note stays put
   pg.evaluate("window.__mode='measured'; window.__heard=1.2")
@@ -165,7 +165,7 @@ with sync_playwright() as p:
   last=snap(pg)
   assert 'C8 accepted' in last['result'] and 'last sample note' in last['prompt'], last
   assert 'Now play' not in last['result'], last
-  assert last['hear']=='Measurement accepted', last
+  assert last['hear']=='Start', last
   assert '1 note measured' in last['coverage'], last
   assert 'meas' in keyclass(pg, 108) and 'now' in keyclass(pg, 108)
   pg.evaluate("window.__mode='reject'")

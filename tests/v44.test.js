@@ -116,8 +116,9 @@ a.ok(!body.includes('pp-v44'));
 // storage names
 const app=fs.readFileSync('app.js','utf8');
 const sw=fs.readFileSync('sw.js','utf8');
-a.ok(app.includes('APP_VERSION=44'));
-a.ok(sw.includes('const V=44'));
+a.ok(app.includes('APP_VERSION=45'));
+a.ok(sw.includes('const V=45'));
+a.ok(fac.targets[93].cents!==0&&fac.targets[105].cents!==0,'treble stretch must not collapse');
 a.ok(sw.includes('v44core.js')&&sw.includes('partial-lock-worklet.js'));
 a.ok(app.includes('pp-v44-resume')||src.includes('pp-v44-resume'));
 a.ok(fs.readFileSync('sessionlog.js','utf8').includes('pp-v44-log'));

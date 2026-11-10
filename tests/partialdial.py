@@ -58,10 +58,8 @@ with sync_playwright() as p:
   pg.evaluate("localStorage.setItem('pp-pianotune', JSON.stringify({v:3,keep:1})); localStorage.setItem('pp-piano-profiles','[]')")
   pg.locator('#gtOpen').scroll_into_view_if_needed(); pg.click('#gtOpen'); pg.wait_for_timeout(200)
   pg.click('#gtNew'); pg.click('#gtStyle button[data-style=concert]'); pg.click('#gtStyleNext'); pg.click('#gtCalModel');   pg.click('#gtSplitsStart'); pg.wait_for_timeout(300)
-  pg.click('#gtSteps'); pg.wait_for_timeout(80)
-  labels=pg.locator('#gtList button').all_inner_texts()
+  labels=pg.evaluate("()=>PianoTune.stepTitles()")
   a4=next(i for i,t in enumerate(labels) if 'Set A4 string 1 of 3' in t)
-  pg.evaluate('document.getElementById("gtList").hidden=true')
   pg.evaluate('(i)=>PianoTune.jump(i)', a4); pg.wait_for_timeout(150)
   assert pg.evaluate('PianoTune.PRESCAN.length')==88
   assert pg.is_hidden('#pdTarget')

@@ -105,14 +105,12 @@ with sync_playwright() as p:
   pg.set_viewport_size({'width':844,'height':390})
   pg.wait_for_timeout(150)
   # last pre-scan note shows the Tuning mode card and does not move on
-  pg.click('#gtSteps'); pg.wait_for_timeout(80)
-  labels = pg.locator('#gtList button').all_inner_texts()
+  labels = pg.evaluate("()=>PianoTune.stepTitles()")
   c8 = next(i for i,t in enumerate(labels) if t.endswith('Pre-scan C8'))
   a4last = next(i for i,t in enumerate(labels) if 'Set A4 string 3 of 3' in t)
   one = next(i for i,t in enumerate(labels) if 'Bass A0 string 1 of 1' in t)
   two = next(i for i,t in enumerate(labels) if 'Bass E1 string 2 of 2' in t)
   mid = next(i for i,t in enumerate(labels) if 'Set A4 string 2 of 3' in t)
-  ev("document.getElementById('gtList').hidden=true")
   ev('(i)=>PianoTune.jump(i)', c8); pg.wait_for_timeout(150)
   before = ev("JSON.parse(localStorage.getItem('pp-pianotune')).step")
   ev("""() => { const midi=108; const cents=PianoTune.curveFor('concert').cents[midi];
@@ -157,6 +155,7 @@ with sync_playwright() as p:
   assert ev("JSON.parse(localStorage.getItem('pp-tuner-profiles'))[0].name") == 'Do not touch'
   assert ev("localStorage.getItem('pp-name')") == 'Todd'
   pg.click('#gtClose'); pg.wait_for_timeout(100)
+  if pg.locator('#gtCloseGo').is_visible(): pg.click('#gtCloseGo'); pg.wait_for_timeout(100)
   pg.locator('#gtOpen').scroll_into_view_if_needed(); pg.click('#gtOpen'); pg.wait_for_timeout(200)
   assert pg.is_visible('#gtPick')
   assert 'Church' in pg.inner_text('#gtSaved')
@@ -167,7 +166,9 @@ with sync_playwright() as p:
   pg.click('#gtSaved button:text("Load")'); pg.wait_for_timeout(250)
   assert ev("JSON.parse(localStorage.getItem('pp-pianotune')).step") == saved_step
   assert pg.is_hidden('#gtPick')
-  pg.click('#gtClose'); pg.click('#gtOpen'); pg.wait_for_timeout(200)
+  pg.click('#gtClose'); pg.wait_for_timeout(80)
+  if pg.locator('#gtCloseGo').is_visible(): pg.click('#gtCloseGo')
+  pg.click('#gtOpen'); pg.wait_for_timeout(200)
   pg.once('dialog', lambda d: d.accept('Chapel'))
   pg.click('#gtSaved button:text("Rename")'); pg.wait_for_timeout(150)
   assert 'Chapel' in pg.inner_text('#gtSaved')

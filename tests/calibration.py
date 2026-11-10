@@ -51,20 +51,18 @@ with sync_playwright() as p:
   pg.get_by_role('button', name='Load').click(); pg.wait_for_timeout(500)
   low=pg.inner_text('#gtTargetSrc')
   assert 'unavailable' in low and 'size model is not being substituted' in low
-  pg.click('#gtSteps'); pg.wait_for_timeout(100)
-  labels=pg.locator('#gtList button').all_inner_texts()
+  labels=pg.evaluate("()=>PianoTune.stepTitles()")
   a4=next(i for i,t in enumerate(labels) if 'Set A4 string 1 of 3' in t)
-  pg.locator('#gtList button').nth(a4).click(); pg.wait_for_timeout(300)
+  pg.evaluate('(i)=>PianoTune.jump(i)', a4); pg.wait_for_timeout(300)
   anchor=pg.inner_text('#gtTargetSrc')
   assert 'anchored' in anchor and 'not at the pitch the microphone heard' in anchor
   assert 'size model' not in anchor
   pg.set_viewport_size({'width':1180,'height':820})
   pg.wait_for_timeout(200)
   pg.screenshot(path='/opt/cursor/artifacts/cal-ipad-anchor-1180x820.png')
-  pg.click('#gtSteps'); pg.wait_for_timeout(100)
-  labels=pg.locator('#gtList button').all_inner_texts()
+  labels=pg.evaluate("()=>PianoTune.stepTitles()")
   u=next(i for i,t in enumerate(labels) if 'Set A4 string 2 of 3' in t)
-  pg.locator('#gtList button').nth(u).click(); pg.wait_for_timeout(250)
+  pg.evaluate('(i)=>PianoTune.jump(i)', u); pg.wait_for_timeout(250)
   up=pg.inner_text('#gtPrompt')
   assert 'together' in up and 'beats' in up and 'Play A4 alone' not in up
   box=pg.evaluate("""()=>{

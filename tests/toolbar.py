@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 import os
 os.makedirs('/opt/cursor/artifacts', exist_ok=True)
 errs=[]
-IDS=['gtClose','gtHelp','pdHelp','gtBack','gtSteps','gtType','gtA4','gtModelBadge','gtPrompt','gtKeys','pdDetailsBtn','pdSaveNote','pdRetry']
+IDS=['gtClose','gtHelp','pdHelp','gtBack','gtType','gtA4','gtModelBadge','gtPrompt','gtKeys','pdDetailsBtn','pdSaveNote','pdRetry']
 SIZES=[(390,844,'phone-portrait'),(844,390,'phone-landscape'),(768,1024,'tablet-portrait'),(1024,768,'tablet-landscape')]
 
 def inside(box, view):

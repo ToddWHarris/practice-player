@@ -57,18 +57,42 @@ const V44Core=(function(){
   const et=a4*Math.pow(2,(midi-69)/12);
   const fp=n*et*Math.sqrt((1+B*n*n)/(1+B));
   return 1200*Math.log2(fp/(n*et))}
+ function octaveQP(q,p,Bl,Bu){
+  const sq=Math.sqrt((1+q*q*Bl)/(1+Bl));
+  const sp=Math.sqrt((1+p*p*Bu)/(1+Bu));
+  return 1200*Math.log2(sq/sp)}
+ function octaveBlend(Bl,Bu,midi){
+  const m=midi|0;
+  let w63=m<36?1:m<48?(48-m)/12:0;
+  let w21=m>=84?1:m>=72?(m-72)/12:0;
+  let w42=Math.max(0,1-w63-w21);
+  const s=w63+w42+w21||1;
+  w63/=s;w42/=s;w21/=s;
+  return w63*octaveQP(6,3,Bl,Bu)+w42*octaveQP(4,2,Bl,Bu)+w21*octaveQP(2,1,Bl,Bu)}
+ function registerWalk(bOf,a4Cents){
+  const b=m=>{let B=bOf(m);if(!(B>0))B=0.0004;return Math.max(1e-6,Math.min(0.02,B))};
+  const cents={69:a4Cents==null?0:a4Cents};
+  for(let m=69;m<108;m++)cents[m+1]=cents[m]+octaveBlend(b(m),b(m+1),m)/12;
+  for(let m=69;m>21;m--)cents[m-1]=cents[m]-octaveBlend(b(m-1),b(m),m-1)/12;
+  return cents}
  function facTargets(f3,a4s,c6,a4hz){
   const bs=facB(f3,a4s,c6);
+  const shown=a4DisplayedFromStretch(a4s);
+  const walked=registerWalk(m=>bAt(m,bs),shown);
   const targets={};
   for(let m=21;m<=108;m++){
    const n=autoPartial(m);
    let B=bAt(m,bs);
    if(!(B>0))B=0.0004;
    B=Math.max(1e-6,Math.min(0.02,B));
-   let cents=partialCents(m,B,n,a4hz||440);
-   if(m===69)cents=a4DisplayedFromStretch(a4s);
-   targets[m]={partial:n,cents,B,source:'modeled'}}
-  return {bs,targets}}
+   const cents=walked[m];
+   targets[m]={partial:n,cents,B,source:'modeled',rule:n>=6?'6:3':n>=4?'4:2':n>=2?'2:1':'2:1'}}
+  return {bs,targets,a4hz:a4hz||440}}
+ function stretchOf(partials,lo,hi){
+  if(!partials)return null;
+  const a=partials.find(p=>p.n===lo),b=partials.find(p=>p.n===hi);
+  if(!a||!b||!(a.hz>0)||!(b.hz>0))return null;
+  return stretchCents(a.hz,b.hz,lo,hi)}
  function median(xs){const a=xs.slice().sort((p,q)=>p-q);return a[a.length>>1]}
  function strikeGreen(readings){
   if(!readings||readings.length<3)return {green:false,median:null,spread:null};
@@ -105,7 +129,7 @@ const V44Core=(function(){
   const offsetHz=slope/(2*Math.PI);
   const rms=Math.sqrt(energy/n);
   return {offsetHz,cents:1200*Math.log2((targetHz+offsetHz)/targetHz),rms,level:Math.hypot(pr,pi)}}
- const api={EXAMPLE,autoPartial,stretchCents,bFromStretch,stretchFromB,a4DisplayedFromStretch,k200Splits,temperamentOrder,A_ORDER,F_ORDER,ringFrame,facB,facTargets,partialCents,median,strikeGreen,lockPartial};
+ const api={EXAMPLE,autoPartial,stretchCents,bFromStretch,stretchFromB,a4DisplayedFromStretch,k200Splits,temperamentOrder,A_ORDER,F_ORDER,ringFrame,facB,facTargets,partialCents,octaveBlend,registerWalk,stretchOf,median,strikeGreen,lockPartial};
  if(typeof module!=='undefined')module.exports=api;
  return api})();
 if(typeof window!=='undefined')window.V44Core=V44Core;

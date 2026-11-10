@@ -114,6 +114,7 @@
 <label>Ring speed <select id="gtRingSpeed" aria-label="Ring speed"><option value="1">1 to 1</option><option value="2">1 to 2</option><option value="4">1 to 4</option><option value="8">1 to 8</option></select></label>
 <label>Temperament <select id="gtTemper" aria-label="Temperament order"><option value="a2a4">A2 to A4</option><option value="f3f4">F3 to F4</option></select></label>
 <label>Unisons <select id="gtUnison" aria-label="Unison order"><option value="sanderson">Treble as you go, bass and middle last</option><option value="after-checks">Right after the checks</option></select></label>
+<label>Double octave trim <select id="gtDob" aria-label="Double octave trim"><option value="0">0</option><option value="0.25">A quarter beat</option><option value="0.5">A half beat</option></select></label>
 <p class="hintline">These choices change how the guided piano works. They are saved on this device.</p>
 </div>
 <h2 class="acc">Loop and practice</h2><button id="prBtn" class="btn colorBtn" aria-haspopup="dialog"><span class="csw prIcon">⏱</span><span class="clab">Loop and practice settings<small id="prSum"></small></span><span class="chev">›</span></button></section>
@@ -184,7 +185,7 @@
 <li><b>Piano</b> has a <b>Target</b> menu: <b>Stretch (typical)</b> uses a typical Railsback curve (bass a little flat, treble a little sharp, A4 at 0), <b>Equal temperament</b> uses plain equal temperament, or pick a saved profile from this piano. The screen shows the target offset, for example Target +12 cents (stretch). Real piano tuners tailor the curve to each piano, so the typical stretch is a guide and not a replacement for a professional tuner.</li>
 <li><b>Sample this piano</b> walks through the 88 keys from A0 to C8. Play each key and hold it until the reading is steady; the app stores that offset from equal temperament. Tap <b>Skip key</b> to leave a gap (gaps are filled by interpolating the sampled curve). Tap <b>Save profile</b> to name it (for example Church piano). The date and A reference are stored with it. You can rename, delete, or re-sample one note later. Profiles are saved on this device and go into your Backup.</li>
 <li>The mic only runs while the Tuner tab is open and Start is on. Playing a song, opening Level, or leaving the tab stops it.</li>
-<li><b>Guided piano tune</b> is the only piano screen. It works upright or sideways. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. <b>Kawai K-200</b> can be chosen as the piano on record. That choice stores the maker and model, plus a serial number only if you type one. The serial box starts empty. It is not used to guess the year. Published reference figures are height 114 cm, width 149 cm, depth 57 cm, weight 208 kg, and a No. 1 speaking length of 1157 mm. Kawai lists no duplex scale and no agraffes. Sources: <a href="https://kawaius.com/products/kawai-k-200-upright-piano">Kawai US</a> and <a href="https://www.kawai.co.uk/products/uprightpianos/kseries/k200/">Kawai UK</a>. Those figures are not a stiffness curve and not string breaks. The breaks start from a generic studio layout. Tap the keys until they match the piano. Before the pre-scan, choose <b>Use size model, not a measurement</b> or <b>Measure this piano first</b>. The size model is calculated from the piano style. It is not this piano, and it is not labeled as measured. Measure this piano asks for one string of each sample note, from A0 through C8. If that note has more than one string, mute the others. A note with one string needs no mute. It keeps the stiffness, not the note's current pitch. The guide then aims at that curve, anchored at the A you set. Between measured notes the target is inferred. Past the last clear measurement, a smooth stiffness trend can extrapolate and is labeled extrapolated, not measured. If that trend is not smooth, the note says unavailable and cannot turn green. The pre-scan plays no tone and speaks nothing. It measures every note from A0 to C8, however sharp or flat, then shows <b>Got it</b> and <b>Next</b>. The mic stays on. Unreadable notes can be retried. Tap <b>OK</b> on the Tuning mode card before any string is tuned. Each string is tuned on its own. The first string is tuned to the pitch target. Later strings of the same note are matched by ear. The screen can show beats between those strings. A beat is not a pass and not a fail. The next note waits until you tap <b>Done</b> on the last string. Rings are overtones that were actually heard. A missing overtone is not drawn. <b>Use this measurement</b> keeps a stiffness reading and does not mark the note tuned. Later tuning steps still play the note, and a key turns green within about 2 cents of the chosen target. <b>Back</b> and <b>Steps</b> repeat any step. Tap <b>Help</b> on that screen for the hammer, the mutes, and how to turn a pin. Progress, including a measured curve, is saved on this device and included in Backup. An older saved piano without a measurement stays on its size model and is not labeled as measured.</li></ul>
+<li><b>Guided piano tune</b> is the only piano screen. It works upright or sideways. Pick <b>Concert grand (9 ft)</b>, <b>Baby grand</b>, <b>Studio upright</b>, <b>Spinet</b>, <b>Typical</b>, or a saved profile. <b>Kawai K-200</b> can be chosen as the piano on record. That choice stores the maker and model, plus a serial number only if you type one. The serial box starts empty. It is not used to guess the year. Published reference figures are height 114 cm, width 149 cm, depth 57 cm, weight 208 kg, and a No. 1 speaking length of 1157 mm. Kawai lists no duplex scale and no agraffes. Sources: <a href="https://kawaius.com/products/kawai-k-200-upright-piano">Kawai US</a> and <a href="https://www.kawai.co.uk/products/uprightpianos/kseries/k200/">Kawai UK</a>. Those figures are not a stiffness curve and not string breaks. The breaks start from a generic studio layout. Tap the keys until they match the piano. Before the pre-scan, choose <b>Use size model, not a measurement</b> or <b>Measure this piano first</b>. The size model is calculated from the piano style. It is not this piano, and it is not labeled as measured. Measure this piano asks for one string of each sample note, from A0 through C8. If that note has more than one string, mute the others. A note with one string needs no mute. It keeps the stiffness, not the note's current pitch. The guide then aims at that curve, anchored at the A you set. Between measured notes the target is inferred. Past the last clear measurement, a smooth stiffness trend can extrapolate and is labeled extrapolated, not measured. If that trend is not smooth, the note says unavailable and cannot turn green. The pre-scan plays no tone and speaks nothing. It measures every note from A0 to C8, however sharp or flat, then shows <b>Got it</b> and <b>Next</b>. The mic stays on. If a note is not read, Try again listens for it once more, or Skip to next note marks it unread and moves on. Retry unread brings a skipped note back. Measure this piano waits until you tap Start. Stop turns the microphone off. It does not listen by itself. Tap <b>OK</b> on the Tuning mode card before any string is tuned. Each string is tuned on its own. The first string is tuned to the pitch target. Later strings of the same note are matched by ear. The screen can show beats between those strings. A beat is not a pass and not a fail. The next note waits until you tap <b>Done</b> on the last string. Rings are overtones that were actually heard. A missing overtone is not drawn. <b>Use this measurement</b> keeps a stiffness reading and does not mark the note tuned. Later tuning steps still play the note, and a key turns green within about 2 cents of the chosen target. <b>Back</b> repeats the previous step. The screen shows one step at a time. Tap <b>Help</b> on that screen for the hammer, the mutes, and how to turn a pin. Progress, including a measured curve, is saved on this device and included in Backup. An older saved piano without a measurement stays on its size model and is not labeled as measured.</li></ul>
 
 <h2 id="h-stretch">Piano stretch curves</h2>
 <p>Smaller pianos stretch more. Their strings are shorter, so they are stiffer. A stiff string rings a little sharp in its upper partials. That is called inharmonicity. Tuners stretch the scale so those partials line up. Bass notes sit flat of equal temperament. Treble notes sit sharp. A spinet stretches more than a studio upright. A studio upright stretches more than a baby grand. A baby grand stretches more than a 9 ft concert grand.</p>
@@ -402,7 +403,6 @@
 <button type="button" id="gtHelp" class="btn">Help</button>
 <button type="button" id="pdHelp" class="btn">Dial help</button>
 <button type="button" id="gtBack" class="btn">Back</button>
-<button type="button" id="gtSteps" class="btn">Steps</button>
 <button type="button" id="gtRetry" class="btn" hidden>Retry unread</button>
 <span id="gtTitle" class="gtTitle"></span><span id="gtCount" class="gtCount"></span>
 </div>
@@ -474,7 +474,7 @@
 <p id="gtCalCoverage" role="status">Not enough coverage yet. 0 notes measured. A measurement is not a tuned note.</p>
 <p id="gtCalLegend" class="gtCalLegend">Blue outline is the note to play now. Green is a measurement kept. Yellow is a sample note still waiting. Red is a try that was not kept. Plain keys are not sample notes and are not measured. Green is not a tuned note.</p>
 <div id="gtCalKeys" class="gtCalKeys" role="img" aria-label="Sample measurement keyboard"></div>
-<button type="button" id="gtCalHear" class="btn primary" aria-live="polite">Listen to this note</button>
+<button type="button" id="gtCalHear" class="btn primary" aria-live="polite">Start</button>
 <button type="button" id="gtCalRetry" class="btn">Retry this note</button>
 <button type="button" id="gtCalSkip" class="btn">Skip this note</button>
 <button type="button" id="gtCalUse" class="btn primary" disabled>Use these measurements</button>
@@ -482,6 +482,7 @@
 <button type="button" id="gtSaveProgressCal" class="btn">Save progress</button>
 <button type="button" id="gtCalBack" class="btn">Back</button>
 <button type="button" id="gtCalLog" class="btn">Download session log</button>
+<p id="gtStretchLine" class="hintline">Stretch numbers: F3 not read yet, A4 not read yet, C6 not read yet, default 6.</p>
 <p class="hintline">The session log records every measurement try, the pre-scan, and the checks, on this device only. Download it and send it yourself if you want it looked at. Nothing is sent automatically.</p>
 </div>
 <div id="gtTuneCard" class="gtCover" hidden>
@@ -497,18 +498,19 @@
 <div class="pdStage">
 <div class="pdDialWrap" id="gtNeedleWrap">
 <div id="strobeRing" class="strobe" aria-hidden="true"></div>
+<p id="gtGuide" class="gtGuide"></p>
 <p id="gtPartialLine" class="gtPartialLine"></p>
-<svg id="pdSvg" viewBox="0 0 320 320" role="img" aria-label="Tuning meter">
-<defs>
-<radialGradient id="pdRim" cx="50%" cy="40%" r="70%">
-<stop offset="0%" stop-color="#f4f7fb"/><stop offset="45%" stop-color="#c5ccd6"/><stop offset="100%" stop-color="#7d868f"/>
-</radialGradient>
-</defs>
-<circle cx="160" cy="160" r="152" fill="url(#pdRim)"/>
-<circle cx="160" cy="160" r="138" fill="#f6f1e6"/>
+<p id="gtSimple" class="gtSimple" hidden>Simple meter mode</p>
+<div class="gtMeterBar">
+<button type="button" id="gtHold" class="btn">Hold</button>
+<button type="button" id="gtZero" class="btn">Zero</button>
+<button type="button" id="gtPartMinus" class="btn" aria-label="Partial down">Partial down</button>
+<button type="button" id="gtPartAuto" class="btn">Auto</button>
+<button type="button" id="gtPartPlus" class="btn" aria-label="Partial up">Partial up</button>
+</div>
+<svg id="pdSvg" viewBox="0 0 320 320" aria-hidden="true">
+<rect width="320" height="320" fill="none"/>
 <g id="pdTicks"></g>
-<text x="40" y="196" fill="#3f2a1d" font-size="14" font-family="Georgia, serif">flat</text>
-<text x="242" y="196" fill="#3f2a1d" font-size="14" font-family="Georgia, serif">sharp</text>
 <g id="pdRings"></g>
 </svg>
 <div class="pdCenter"><div id="gtNote" class="gtNote">A0</div><div id="gtCents" class="gtCents">--</div><div id="pdCents"></div></div>
@@ -542,7 +544,17 @@
 <button type="button" id="pdSave" class="btn">Save profile</button>
 </div>
 <div id="gtKeys" class="gtKeys"></div>
-<div id="gtList" class="gtList" hidden></div>
+<div id="gtMiss" class="gtMiss" hidden>
+<p id="gtMissText">This note was not read.</p>
+<button type="button" id="gtMissAgain" class="btn primary">Try again</button>
+<button type="button" id="gtMissSkip" class="btn">Skip to next note</button>
+</div>
+<div id="gtCloseAsk" class="gtCover" hidden>
+<h2>Leave this scan?</h2>
+<p>Pause and keep my place, or close?</p>
+<button type="button" id="gtClosePause" class="btn primary">Pause and keep my place</button>
+<button type="button" id="gtCloseGo" class="btn">Close</button>
+</div>
 </div>
 </div>
 </div>

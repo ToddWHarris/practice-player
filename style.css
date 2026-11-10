@@ -169,8 +169,8 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 #gtA4{width:4.5em}
 .gtTitle{font-weight:700;white-space:nowrap}.gtCount{color:#9ca3af;font-size:14px;white-space:nowrap}
 .gtBody{height:100%}
-.pdCenter #gtNote{font:800 clamp(48px,22cqi,84px) Georgia,serif;color:#3f2a1d;line-height:.85;margin:0}
-.pdCenter #gtCents{font-size:7cqi;color:#3f2a1d;font-weight:800}
+.pdCenter #gtNote{font:800 clamp(48px,22cqi,84px) Georgia,serif;color:#f8fafc;line-height:.85;margin:0}
+.pdCenter #gtCents{font-size:7cqi;color:#f8fafc;font-weight:800}
 .pdCenter #pdCents{font-size:5cqi;color:#3f2a1d;font-weight:800;line-height:1.1}
 .gtNote{font-size:96px;font-weight:800;text-align:center;line-height:.86;margin:0}
 #gtune.hasDone .gtNote{font-size:64px}
@@ -205,7 +205,16 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .strobe .hub{width:16%;height:16%;margin:-8% 0 0 -8%;background:#0f172a}
 .strobe .hub.on{background:#e2e8f0}
 .gtPartialLine{position:absolute;left:0;right:0;bottom:0;margin:0;text-align:center;font-size:12px;color:#e5e7eb;z-index:4;background:rgba(11,15,23,.82);pointer-events:none}
-#pdSvg{width:100%;height:auto;display:block}
+#pdSvg{width:100%;height:auto;display:block;visibility:hidden}
+#gtune.prescan .strobe,#gtune.prescan #pdCents{visibility:hidden}
+#gtune.prescan .gtMeterBar{display:none}
+.gtGuide{position:absolute;left:0;right:0;top:0;margin:0;text-align:center;font-size:12px;color:#e5e7eb;z-index:4;pointer-events:none}
+.gtSimple{margin:0;text-align:center;color:#fde68a;font-weight:800}
+.gtMeterBar{position:absolute;left:0;right:0;bottom:16px;z-index:5;display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.gtMeterBar .btn{min-height:28px;font-size:12px;padding:2px 6px}
+.gtMiss{position:absolute;left:8px;right:8px;bottom:98px;z-index:8;background:#111827;border:1px solid #374151;border-radius:12px;padding:8px;text-align:center;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.gtMiss[hidden]{display:none!important}
+.gtMiss p{flex:1 1 100%;margin:0}
 .pdCenter{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);text-align:center;color:#3f2a1d;pointer-events:none;width:42%}
 #pdNote{font:800 20cqi Georgia,serif;line-height:.85}
 #pdCents{font-size:6.4cqi;font-weight:800;line-height:1.1}
