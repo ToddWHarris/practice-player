@@ -1,10 +1,16 @@
-// Heterodyne one partial near a known target. The main thread reads the phase slope.
+// Heterodyne one partial near a known target, and optionally copy the mic for a Measure take.
 class PartialLockProcessor extends AudioWorkletProcessor {
   constructor(){
     super();
     this.target=440;
+    this.capture=false;
     this.pr=0;this.pi=0;this.ang=0;
-    this.port.onmessage=e=>{if(e.data&&e.data.targetHz>0)this.target=+e.data.targetHz};
+    this.buf=new Float32Array(2048);
+    this.n=0;
+    this.port.onmessage=e=>{
+      const d=e.data||{};
+      if(d.targetHz>0)this.target=+d.targetHz;
+      if(d.capture!=null)this.capture=!!d.capture};
   }
   process(inputs){
     const ch=inputs[0]&&inputs[0][0];
@@ -17,7 +23,11 @@ class PartialLockProcessor extends AudioWorkletProcessor {
       pr=a*pr+(1-a)*x*Math.cos(ang);
       pi=a*pi+(1-a)*x*(-Math.sin(ang));
       ang+=w;
-    }
+      if(this.capture){
+        this.buf[this.n++]=x;
+        if(this.n>=this.buf.length){
+          this.port.postMessage({samples:this.buf.slice(0)});
+          this.n=0}}}
     this.pr=pr;this.pi=pi;this.ang=ang;
     this.port.postMessage({re:pr,im:pi,level:Math.hypot(pr,pi)});
     return true;

@@ -75,19 +75,34 @@ const V44Core=(function(){
   for(let m=69;m<108;m++)cents[m+1]=cents[m]+octaveBlend(b(m),b(m+1),m)/12;
   for(let m=69;m>21;m--)cents[m-1]=cents[m]-octaveBlend(b(m-1),b(m),m-1)/12;
   return cents}
+ const SHAPE=[[21,-13.5],[33,-4.4],[45,0.9],[57,1.2],[69,8.7],[81,7.7],[93,9.5],[105,26.9]];
+ function shapeCents(midi){
+  const m=midi|0;
+  if(m<=SHAPE[0][0])return SHAPE[0][1];
+  if(m>=SHAPE[SHAPE.length-1][0]){
+   const a=SHAPE[SHAPE.length-2],b=SHAPE[SHAPE.length-1];
+   return b[1]+(b[1]-a[1])*((m-b[0])/(b[0]-a[0]))}
+  for(let i=0;i<SHAPE.length-1;i++){
+   const a=SHAPE[i],b=SHAPE[i+1];
+   if(m>=a[0]&&m<=b[0])return a[1]+(b[1]-a[1])*((m-a[0])/(b[0]-a[0]))}
+  return 0}
+ function facScale(midi,f3,a4,c6){
+  const sF=(f3==null?8:f3)/8,sA=(a4==null?7:a4)/7,sC=(c6==null?6:c6)/6,m=midi|0;
+  if(m<=53)return sF;
+  if(m<=69){const t=(m-53)/16;return sF*(1-t)+sA*t}
+  if(m<=84){const t=(m-69)/15;return sA*(1-t)+sC*t}
+  return sC}
  function facTargets(f3,a4s,c6,a4hz){
-  const bs=facB(f3,a4s,c6);
-  const shown=a4DisplayedFromStretch(a4s);
-  const walked=registerWalk(m=>bAt(m,bs),shown);
+  const F=f3==null?8:+f3,A=a4s==null?7:+a4s,C=c6==null?6:+c6;
+  const bs=facB(F,A,C);
   const targets={};
+  const a4disp=shapeCents(69)*facScale(69,F,A,C);
   for(let m=21;m<=108;m++){
    const n=autoPartial(m);
-   let B=bAt(m,bs);
-   if(!(B>0))B=0.0004;
-   B=Math.max(1e-6,Math.min(0.02,B));
-   const cents=walked[m];
-   targets[m]={partial:n,cents,B,source:'modeled',rule:n>=6?'6:3':n>=4?'4:2':n>=2?'2:1':'2:1'}}
-  return {bs,targets,a4hz:a4hz||440}}
+   const display=shapeCents(m)*facScale(m,F,A,C);
+   targets[m]={partial:n,cents:display,fundamental:display-a4disp,B:bAt(m,bs)||0.0004,source:'modeled',rule:n>=6?'6:3':n>=4?'4:2':'2:1',
+    f3Source:f3==null?'default':'measured',a4Source:a4s==null?'default':'measured',c6Source:c6==null?'default':'measured'}}
+  return {bs,targets,a4hz:a4hz||440,inputs:{f3:F,a4:A,c6:C}}}
  function stretchOf(partials,lo,hi){
   if(!partials)return null;
   const a=partials.find(p=>p.n===lo),b=partials.find(p=>p.n===hi);
@@ -129,7 +144,7 @@ const V44Core=(function(){
   const offsetHz=slope/(2*Math.PI);
   const rms=Math.sqrt(energy/n);
   return {offsetHz,cents:1200*Math.log2((targetHz+offsetHz)/targetHz),rms,level:Math.hypot(pr,pi)}}
- const api={EXAMPLE,autoPartial,stretchCents,bFromStretch,stretchFromB,a4DisplayedFromStretch,k200Splits,temperamentOrder,A_ORDER,F_ORDER,ringFrame,facB,facTargets,partialCents,octaveBlend,registerWalk,stretchOf,median,strikeGreen,lockPartial};
+ const api={EXAMPLE,autoPartial,stretchCents,bFromStretch,stretchFromB,a4DisplayedFromStretch,k200Splits,temperamentOrder,A_ORDER,F_ORDER,ringFrame,facB,facTargets,shapeCents,facScale,partialCents,octaveBlend,registerWalk,stretchOf,median,strikeGreen,lockPartial};
  if(typeof module!=='undefined')module.exports=api;
  return api})();
 if(typeof window!=='undefined')window.V44Core=V44Core;

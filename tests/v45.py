@@ -27,6 +27,15 @@ with sync_playwright() as p:
     navigator.mediaDevices.getUserMedia=async()=>{window.__mic++; return {getTracks:()=>[{stop(){window.__stops++}}]}};
     const AC=window.AudioContext||window.webkitAudioContext;
     AC.prototype.createMediaStreamSource=function(){return {connect(){},disconnect(){}}};
+    Object.defineProperty(AC.prototype,'audioWorklet',{configurable:true,get(){return {addModule:async()=>{}}}});
+    window.AudioWorkletNode=function(){
+      const node={connect(){},disconnect(){if(node._stop)node._stop()},port:{postMessage(){}}};
+      Object.defineProperty(node.port,'onmessage',{configurable:true,set(fn){
+        const id=setInterval(()=>fn({data:{samples:new Float32Array(4096).fill(0.05)}}),30);
+        node._stop=()=>clearInterval(id);
+      }});
+      return node;
+    };
     AC.prototype.createScriptProcessor=function(){
       const node={connect(){},disconnect(){}};
       Object.defineProperty(node,'onaudioprocess',{set(fn){
@@ -89,10 +98,11 @@ with sync_playwright() as p:
     return {svg, ring, prescan:document.getElementById('gtune').classList.contains('prescan'), note:document.getElementById('gtNote').innerText};
   }""")
   assert tune['svg']=='hidden' and tune['ring']=='visible' and not tune['prescan'] and tune['note']=='A4', tune
-  for w,h,name in [(390,844,'phone'),(844,390,'phone-land'),(768,1024,'ipad'),(1024,768,'ipad-land')]:
+  sizes=[(390,844,'phone'),(844,390,'phone-land'),(440,956,'iphone17'),(956,440,'iphone17-land'),(768,1024,'ipad'),(1024,768,'ipad-land'),(1032,1376,'ipad13'),(1376,1032,'ipad13-land')]
+  for w,h,name in sizes:
     pg.set_viewport_size({'width':w,'height':h}); pg.wait_for_timeout(150)
     info=pg.evaluate("""()=>{
-      const ids=['gtClose','gtBack','gtNote','gtCents','gtPrompt','gtKeys','gtHold','gtZero'];
+      const ids=['gtClose','gtBack','gtNote','gtCents','gtPrompt','gtKeys','gtHold','gtZero','gtNoteUp','gtNoteDown','gtOctUp','gtOctDown','gtTrimUp','gtTrimDown','gtAutoStep'];
       const view={w:innerWidth,h:innerHeight};
       const boxes={};
       ids.forEach(id=>{
@@ -101,9 +111,19 @@ with sync_playwright() as p:
         const s=getComputedStyle(e);
         boxes[id]={l:r.left,t:r.top,r:r.right,b:r.bottom,w:r.width,h:r.height,hidden:e.hidden||s.display==='none'||s.visibility==='hidden'};
       });
-      return {view, scrollW:document.documentElement.scrollWidth, clientW:document.documentElement.clientWidth, boxes};
+      const ring=document.getElementById('strobeRing').getBoundingClientRect();
+      const controls=['gtHold','gtZero','gtNoteUp','gtNoteDown','gtOctUp','gtOctDown','gtTrimUp','gtTrimDown','gtAutoStep'];
+      const hits=[];
+      controls.forEach(id=>{
+        const b=boxes[id];
+        if(!b||b.hidden)return;
+        const overlap=b.r>ring.left+2 && b.l<ring.right-2 && b.b>ring.top+2 && b.t<ring.bottom-2;
+        if(overlap) hits.push(id);
+      });
+      return {view, scrollW:document.documentElement.scrollWidth, clientW:document.documentElement.clientWidth, boxes, hits};
     }""")
     assert info['scrollW']<=info['clientW']+2, (name, info['scrollW'])
+    assert not info['hits'], (name, info['hits'])
     for i,box in info['boxes'].items():
       assert not box['hidden'], (name, i, box)
       assert inside(box, info['view']), (name, i, box, info['view'])

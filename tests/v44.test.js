@@ -43,9 +43,9 @@ const rows=[];
  a.equal(fac.targets[m].partial,V.autoPartial(m));
  a.equal(fac.targets[m].source,'modeled');
  rows.push(m+' modeled '+got.toFixed(2)+' manual table '+want+' difference '+(got-want).toFixed(2));
- if(m===69)a.ok(Math.abs(got-want)<0.1,got);
+ a.ok(Math.abs(got-want)<1,m+' '+got+' vs '+want);
 });
-console.log('T8 comparison (patent stretch equation was not available, so only A4 is required to match; other rows are reported):\n'+rows.join('\n'));
+console.log('T8 comparison (published example shape, scaled by the three stretch numbers; not a claim of accuracy):\n'+rows.join('\n'));
 
 // T3 synthetic decaying high notes
 function strike(freq,sec,peak,noise){

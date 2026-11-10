@@ -19,6 +19,15 @@ STUB = r'''
   navigator.mediaDevices.getUserMedia = async () => ({getTracks:()=>[{stop(){}}]});
   const AC = window.AudioContext || window.webkitAudioContext;
   AC.prototype.createMediaStreamSource = function(){ return {connect(){}, disconnect(){}}; };
+  Object.defineProperty(AC.prototype, 'audioWorklet', {configurable:true, get(){return {addModule: async ()=>{}}}});
+  window.AudioWorkletNode = function(){
+    const node = {connect(){}, disconnect(){ if(node._stop) node._stop(); }, port:{postMessage(){}}};
+    Object.defineProperty(node.port, 'onmessage', {configurable:true, set(fn){
+      const id = setInterval(()=>fn({data:{samples:new Float32Array(4096).fill(0.05)}}), 30);
+      node._stop = () => clearInterval(id);
+    }});
+    return node;
+  };
   AC.prototype.createScriptProcessor = function(){
     const node = {connect(){}, disconnect(){}};
     Object.defineProperty(node, 'onaudioprocess', {set(fn){

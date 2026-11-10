@@ -722,6 +722,18 @@ const PianoTune=(function(){
   if(secondPeak&&!opts.anyway)return Object.assign(blank('rejected','multiple-strings'),{heardCents,diag,secondPeak,partials,residualCents:fit?fit.residualCents:null,B:fit&&fit.status==='measured'?fit.B:null});
   if(fit.status!=='measured')return Object.assign(blank('rejected',fit.reason||'fit'),{heardCents,partials,residualCents:fit.residualCents,diag,secondPeak});
   return {status:'measured',reason:'ok',midi,B:fit.B,residualCents:fit.residualCents,partials,heardCents,stretchS,secondPeak,maybeTwoStrings:!!(opts.anyway&&secondPeak),confidence:(opts.anyway&&secondPeak)?'low':(partials.length>=4&&fit.residualCents<3?'high':'low'),fundamental:'heard',diag}}
+ function facCurve(f3,a4,c6){
+  const F=f3==null?8:+f3,A=a4==null?7:+a4,C=c6==null?6:+c6;
+  const pts=[[21,-13.5],[33,-4.4],[45,0.9],[57,1.2],[69,8.7],[81,7.7],[93,9.5],[105,26.9]];
+  function shape(m){
+   if(m<=pts[0][0])return pts[0][1];
+   if(m>=pts[pts.length-1][0]){const a=pts[pts.length-2],b=pts[pts.length-1];return b[1]+(b[1]-a[1])*((m-b[0])/(b[0]-a[0]))}
+   for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1];if(m>=a[0]&&m<=b[0])return a[1]+(b[1]-a[1])*((m-a[0])/(b[0]-a[0]))}
+   return 0}
+  function scale(m){const sF=F/8,sA=A/7,sC=C/6;if(m<=53)return sF;if(m<=69){const t=(m-53)/16;return sF*(1-t)+sA*t}if(m<=84){const t=(m-69)/15;return sA*(1-t)+sC*t}return sC}
+  const display={},fundamental={};const a4d=shape(69)*scale(69);
+  for(let m=21;m<=108;m++){display[m]=shape(m)*scale(m);fundamental[m]=display[m]-a4d}
+  return {display,fundamental,f3:F,a4:A,c6:C,f3Source:f3==null?'default':'measured',a4Source:a4==null?'default':'measured',c6Source:c6==null?'default':'measured'}}
  function deriveCalibration(notes,refA4,styleId){
   const meas=(notes||[]).filter(n=>n&&n.status==='measured'&&n.B>0).slice().sort((a,b)=>a.midi-b.midi);
   const base={version:CAL_VERSION,algorithm:CAL_ALGORITHM,refA4:refA4||440,styleId:styleId||null,accepted:false,fallback:null,status:'insufficient',notes:meas,targets:{},extrapolation:null};
@@ -745,23 +757,26 @@ const PianoTune=(function(){
    const ext=midi>hi?fromTrend(midi,up,hi):midi<lo?fromTrend(midi,down,lo):null;
    if(ext)return {B:ext,bSource:'extrapolated'};
    return {B:null,bSource:'unavailable'}}
+  const gotF=meas.find(n=>n.midi===53&&n.stretchS!=null&&isFinite(+n.stretchS));
+  const gotA=meas.find(n=>n.midi===69&&n.stretchS!=null&&isFinite(+n.stretchS));
+  const gotC=meas.find(n=>n.midi===84&&n.stretchS!=null&&isFinite(+n.stretchS));
+  const fac=(gotF||gotA||gotC)?facCurve(gotF?+gotF.stretchS:null,gotA?+gotA.stretchS:null,gotC?+gotC.stretchS:null):null;
   const cents={69:0};
-  for(let m=69;m<HI;m++){const bl=bAt(m),bu=bAt(m+1);if(!bl.B||!bu.B)break;cents[m+1]=cents[m]+octaveBlend(bl.B,bu.B,m)/12}
-  for(let m=69;m>LO;m--){const bl=bAt(m-1),bu=bAt(m);if(!bl.B||!bu.B||cents[m]==null)break;cents[m-1]=cents[m]-octaveBlend(bl.B,bu.B,m-1)/12}
+  if(fac){for(let m=LO;m<=HI;m++)cents[m]=fac.fundamental[m]}
+  else{
+   for(let m=69;m<HI;m++){const bl=bAt(m),bu=bAt(m+1);if(!bl.B||!bu.B)break;cents[m+1]=cents[m]+octaveBlend(bl.B,bu.B,m)/12}
+   for(let m=69;m>LO;m--){const bl=bAt(m-1),bu=bAt(m);if(!bl.B||!bu.B||cents[m]==null)break;cents[m-1]=cents[m]-octaveBlend(bl.B,bu.B,m-1)/12}}
   const model=SIZES[styleId]?SIZE_CURVE[styleId]:null;
   const targets={};
   for(let m=LO;m<=HI;m++){
    const b=bAt(m);
    const part=listenedPartial(m),rule=part>=6?'6:3':part===4?'4:2':'2:1';
-   if(m===69)targets[m]={cents:0,source:'anchor',B:b.B,bSource:b.bSource,partial:part,rule:rule};
+   if(m===69)targets[m]={cents:fac?fac.fundamental[69]:0,source:'anchor',B:b.B,bSource:b.bSource,partial:part,rule:rule,meterCents:fac?fac.display[69]:0};
+   else if(fac&&cents[m]!=null)targets[m]={cents:cents[m],source:fac.f3Source==='measured'||fac.a4Source==='measured'||fac.c6Source==='measured'?'stretch':'fallback',B:b.B,bSource:b.bSource||'stretch',partial:part,rule:rule,meterCents:fac.display[m]};
    else if(cents[m]!=null&&b.B)targets[m]={cents:cents[m],source:b.bSource,B:b.B,bSource:b.bSource,partial:part,rule:rule};
    else if(model)targets[m]={cents:null,source:'unavailable',B:null,bSource:'unavailable',modelCents:model.cents[m]};
    else targets[m]={cents:null,source:'unavailable',B:null,bSource:'unavailable'}}
-  const stretch={};
-  meas.forEach(n=>{if(n.stretchS!=null&&isFinite(+n.stretchS)){if(n.midi===53)stretch.f3=+n.stretchS;if(n.midi===69)stretch.a4=+n.stretchS;if(n.midi===84)stretch.c6=+n.stretchS}});
-  if(stretch.c6==null){stretch.c6=6;stretch.c6Source='default'}
-  if(stretch.f3==null){stretch.f3=8;stretch.f3Source='default'}
-  stretch.a4Source=stretch.a4==null?'missing':'measured';
+  const stretch=fac?{f3:fac.f3,a4:fac.a4,c6:fac.c6,f3Source:fac.f3Source,a4Source:fac.a4Source,c6Source:fac.c6Source,used:true}:{used:false};
   return {version:CAL_VERSION,algorithm:CAL_ALGORITHM,refA4:refA4||440,styleId:styleId||null,accepted:true,fallback:null,status:'accepted',extrapolation:{up,down},stretch,notes:meas.map(n=>({midi:n.midi,B:n.B,residualCents:n.residualCents,confidence:n.confidence,partials:n.partials,heardCents:n.heardCents,stretchS:n.stretchS==null?null:n.stretchS})),targets}}
  function curveFromCalibration(cal,styleId){
   const model=SIZES[styleId]?SIZE_CURVE[styleId]:typicalCurve();
@@ -922,6 +937,7 @@ function render(){
   if($g('gtMiss'))$g('gtMiss').hidden=!G.showMiss;
   if($g('gtGuide'))$g('gtGuide').textContent=step.phase==='prescan'?'Guide step 2 of 16. Pre-scan from A0, one note at a time.':step.phase==='raise'||step.phase==='remind'?'Guide step 4 of 16. Pitch raise from A0.':step.phase==='a4'?'Guide step 7 of 16. Set A4.':step.phase==='temper'?'Guide step 8 of 16. Temperament.':step.phase==='up'&&step.midi>=96?'Guide step 13 of 16. Each string from C7.':step.phase==='up'?'Guide step 12 of 16. Treble upward.':step.phase==='down'?'Guide step 14 of 16. Bass downward.':step.phase==='unison'?'Guide step 15 of 16. Unisons.':step.phase==='fine'||(step.phase==='check'&&/Contiguous/.test(step.title||''))?'Guide step 16 of 16. Fine pass.':step.phase==='check'?'Guide step 9 of 16. Checks.':'';
   if($g('gtSimple'))$g('gtSimple').hidden=step.phase==='prescan'||!G.simpleMeter;
+  if($g('gtAutoStep'))$g('gtAutoStep').textContent=G.autoStep===false?'Auto step off':'Auto step on';
   postLockTarget();
   const show=G.showGot&&G.gotMidi!=null?G.gotMidi:(step.midis?step.midis[0]:step.midi);
   $g('gtNote').textContent=PT.label(show)+(G.showGot?' ✓':'');
@@ -945,7 +961,9 @@ function render(){
    const cal=G.sess&&G.sess.calibration;
    const midi=step.midi;
    if(cal&&cal.accepted){const t=cal.targets&&(cal.targets[midi]||cal.targets[String(midi)]);
-    $g('gtTargetSrc').textContent=!t||t.source==='unavailable'?'Target unavailable for this note. The size model is not being substituted.':t.source==='measured'?'Target measured from this piano\'s stiffness. The pitch you played was not copied.':t.source==='inferred'?'Target inferred between measured notes. Not a direct measurement of this note.':t.source==='extrapolated'?'Target extrapolated from the measured stiffness trend. Not a measurement of this note.':t.source==='anchor'?'Target anchored at the A you set, not at the pitch the microphone heard.':t.source==='model-fallback'?'Target from the size model for this note. Not a measurement.':'Target '+t.source+'.'}
+    const st=cal.stretch||{};
+    const facLine=st.used?(' Targets follow the F3, A4 and C6 stretch numbers'+(st.f3Source==='default'||st.a4Source==='default'||st.c6Source==='default'?' (a missing number is the labeled default, not a measurement)':'')+'.'):'';
+    $g('gtTargetSrc').textContent=(!t||t.source==='unavailable'?'Target unavailable for this note. The size model is not being substituted.':t.source==='stretch'?'Target set from the stretch numbers. The listened partial for this note is '+(t.meterCents>=0?'+':'')+(+t.meterCents).toFixed(1)+' cents on the published shape.':t.source==='measured'?'Target measured from this piano\'s stiffness. The pitch you played was not copied.':t.source==='inferred'?'Target inferred between measured notes. Not a direct measurement of this note.':t.source==='extrapolated'?'Target extrapolated from the measured stiffness trend. Not a measurement of this note.':t.source==='anchor'?'Target anchored at the A you set, not at the pitch the microphone heard.':t.source==='model-fallback'?'Target from the size model for this note. Not a measurement.':'Target '+t.source+'.')+facLine}
    else if(G.sess&&G.sess.targetChoice==='model')$g('gtTargetSrc').textContent=G.sess.pianoModel?'Target from the generic '+G.sess.type+' size model. Not a measurement of this '+G.sess.pianoModel.maker+' '+G.sess.pianoModel.model+'.':'Target from the size model. Not a measurement of this piano.';
    else $g('gtTargetSrc').textContent=''}
   if($g('gtIdentity')){
@@ -1012,7 +1030,7 @@ function loop(){
       G.lockPhase={ph,t:now}}
      else G.lockPhase=null;
      if(f==null)f=TunerCore.yin(G.buf,G.ctx.sampleRate,0.12,{minRms:gate,maxHz:nyq});
-     if(f)G.unreadStat.readings++;else if(winRms<gate)G.unreadStat.dropped++;
+     if(f){G.unreadStat.readings++;if(step&&step.midi){const hz=PT.etFreq(step.midi,G.sess.a4);const c=1200*Math.log2(f/hz);if(isFinite(c)&&Math.abs(c)<700){const arr=G.unreadStat.cents;arr.push(+c.toFixed(2));if(arr.length>60)arr.shift()}}}else if(winRms<gate)G.unreadStat.dropped++;
      G.pitchRing.push({t:Math.round(now),rms:+winRms.toFixed(5),hz:f?+f.toFixed(2):null});if(G.pitchRing.length>40)G.pitchRing.shift();
      if(f)onFreq(f,now)}}
   G.raf=requestAnimationFrame(loop)}
@@ -1040,7 +1058,7 @@ function onFreq(freq,now){
   if(res.advance){
    slog('step-result',{midi:midi,note:PT.label(midi),cents:+cents.toFixed(1),advance:true,why:midi>=84?'median of last 3 strikes':'held within 2 cents',strikes:res.strikes||null,phase:step.phase});
    if(step.phase==='prescan'){slog('prescan',{midi:step.midi,note:PT.label(step.midi),cents:+cents.toFixed(1),freq:+picked.freq.toFixed(2)});advanceStep('prescan',picked.freq,false);return}
-   if(step.waitDone||step.lastString||step.phase==='check'){G.showDone=true;saveSess();render();return}
+   if(step.waitDone||step.lastString||step.phase==='check'||G.autoStep===false){G.showDone=true;saveSess();render();return}
    G.sess.step=Math.min(G.seq.length-1,G.sess.step+1);
    G.hold=coreJump(G.hold,G.sess.step,G.seq.length);G.hold.prescan=Object.assign({},G.sess.prescan);
    G.showDone=false;G.lastCents=null;saveSess();render();return}
@@ -1069,8 +1087,8 @@ function cueNext(){
   render();
   if(G.showNext)setTimeout(()=>{G.blinking=false;if(G.on)render()},1500);
   else playStep()}
-function freshUnread(){return {windows:0,readings:0,dropped:0,maxRms:0,spread:null,blocked:'none'}}
-function unreadStats(){const s=G.unreadStat||freshUnread();return {windows:s.windows,readings:s.readings,droppedLoud:s.dropped,maxRms:+(s.maxRms||0).toFixed(5),spread:s.spread,blocked:s.blocked,sampleRate:G.ctx?G.ctx.sampleRate:null,roomFloor:+(G.roomFloor||0).toFixed(5),frames:(G.pitchRing||[]).slice(-24)}}
+function freshUnread(){return {windows:0,readings:0,dropped:0,maxRms:0,spread:null,blocked:'none',cents:[]}}
+function unreadStats(){const s=G.unreadStat||freshUnread();const xs=s.cents||[];let spread=null;if(xs.length>=2){let lo=xs[0],hi=xs[0];for(let i=1;i<xs.length;i++){if(xs[i]<lo)lo=xs[i];if(xs[i]>hi)hi=xs[i]}spread=+((hi-lo).toFixed(2))}return {windows:s.windows,readings:s.readings,droppedLoud:s.dropped,maxRms:+(s.maxRms||0).toFixed(5),spread:spread,readingsUsed:xs.length,blocked:s.blocked,sampleRate:G.ctx?G.ctx.sampleRate:null,roomFloor:+(G.roomFloor||0).toFixed(5),frames:(G.pitchRing||[]).slice(-24)}}
 function offerMiss(){
   const step=stepNow();if(!step||step.phase!=='prescan'||G.showGot||G.showMiss)return;
   G.showMiss=true;G.armAt=0;G.showNext=false;G.showUnread=false;
@@ -1180,9 +1198,9 @@ function logCalAttempt(midi,r,keptPrior){
   frameRms:SessionLog.trimSeries(d.frames||[])}))}catch(e){}
  G.calMeta=null}
 function stretchMed(midi){const xs=(G.stretchHits&&G.stretchHits[midi])||[];if(!xs.length)return null;const s=xs.slice().sort((a,b)=>a-b);return s[s.length>>1]}
-function paintStretch(){const el=$g('gtStretchLine');if(!el)return;const f=stretchMed(53),a=stretchMed(69),c=stretchMed(84);el.textContent='Stretch numbers: F3 '+(f==null?'not read yet':f.toFixed(1))+', A4 '+(a==null?'not read yet':a.toFixed(1))+', C6 '+(c==null?'not read yet, default 6':c.toFixed(1))+'. These set the register targets. A measurement is not a tuned note.';}
+function paintStretch(){const el=$g('gtStretchLine');if(!el)return;const f=stretchMed(53),a=stretchMed(69),c=stretchMed(84);const bit=(name,v,fallback)=>name+' '+(v==null?fallback+' default, not a measurement':v.toFixed(1)+' measured');el.textContent='Stretch numbers: '+bit('F3',f,'8')+', '+bit('A4',a,'7')+', '+bit('C6',c,'6')+'. These three numbers set the targets across the keyboard. A missing number uses its labeled default. A measurement is not a tuned note.';}
 function applyCalResult(midi,r){const label=PT.label(midi);const prior=(G.calNotes||[]).filter(item=>item&&item.midi===midi&&item.status==='measured'&&item.B>0);if(!G.calFail)G.calFail={};if(!G.calMulti)G.calMulti={};if(r.status==='measured'&&r.stretchS!=null&&isFinite(+r.stretchS)){G.stretchHits=G.stretchHits||{};G.stretchHits[midi]=(G.stretchHits[midi]||[]).concat([+r.stretchS]).slice(-3);r.stretchS=stretchMed(midi)}if(r.status==='measured'){G.calNotes=(G.calNotes||[]).filter(item=>item.midi!==midi);G.calNotes.push(r);delete G.calFail[midi];G.calMulti[midi]=0;if($g('gtCalAnyway'))$g('gtCalAnyway').hidden=true;const heard=heardWords(r.heardCents);const still=PT.CAL_NOTES[G.calI]===midi;const next=still?PT.CAL_NOTES[G.calI+1]:null;const off=' The microphone is off.';if(still&&next!=null){G.calI++;calPrompt();setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target. Now play '+PT.label(next)+'. Tap Start to listen for '+PT.label(next)+'.'+off)}else if(still){if($g('gtCalPrompt'))$g('gtCalPrompt').textContent=label+' accepted. That is the last sample note. Use these measurements only if the screen says the coverage is enough. Nothing here marks a note as tuned.';setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target.'+off)}else setCalResult(label+' accepted. It was '+heard+' from equal temperament when you played it. That offset is not the target.'+off);setHear('accepted')}else{G.calFail[midi]=r.reason||'rejected';G.calLast=r;if(r.reason==='multiple-strings')G.calMulti[midi]=(G.calMulti[midi]||0)+1;const why=rejectText(label,r.reason,r);const again=G.calMulti[midi]>=3&&r.B>0;if($g('gtCalAnyway'))$g('gtCalAnyway').hidden=!again;setCalResult((prior.length?why+' The earlier measurement of '+label+' is still kept.':why)+(again?' Tap Use this note anyway to keep the strongest peak, marked low confidence.':'')+' Tap Start to listen again. The microphone is off.');setHear('rejected')}paintStretch();logCalAttempt(midi,r,prior.length>0);refreshCalUse()}
-async function captureCal(){const midi=PT.CAL_NOTES[G.calI];if(midi==null||G.calBusy)return;const gen=G.calGen=(G.calGen||0)+1;G.calBusy=true;setHear('opening');syncCalNav();if($g('gtCalUse'))$g('gtCalUse').disabled=true;setCalResult('Opening the microphone for '+PT.label(midi)+'.');paintCalKeys();const tapAt=Date.now();let micAt=0,listAt=0,firstBufAt=0;let stream=null;try{if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))throw new Error('no-mic');stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});if(gen!==G.calGen){stopOwnedStream(stream);return}G.calStream=stream;micAt=Date.now();const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();if(gen!==G.calGen){stopOwnedStream(stream);return}setHear('listening');listAt=Date.now();setCalResult('Play '+PT.label(midi)+' now and hold it.');const src=ctx.createMediaStreamSource(stream);const chunks=[];const proc=ctx.createScriptProcessor(4096,1,1);const mute=ctx.createGain();mute.gain.value=0;src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);const nodes={proc,src,mute};G.calNodes=nodes;let total=0;const sr0=ctx.sampleRate||48000;const det=PT.makeCaptureOnset(sr0);proc.onaudioprocess=e=>{if(!firstBufAt)firstBufAt=Date.now();const c=new Float32Array(e.inputBuffer.getChannelData(0));chunks.push(c);det.push(c);total+=c.length};const t0=Date.now();await new Promise(resolve=>{const tick=()=>{const waited=Date.now()-t0;const after=det.attackAt>=0?(total-det.attackAt)/sr0:0;if($g('gtCalStatus')&&det.attackAt<0)$g('gtCalStatus').textContent='Play '+PT.label(midi)+' now. '+Math.max(0,Math.ceil((10000-waited)/1000))+' s left to strike.';if((det.attackAt>=0&&after>=0.75)||waited>=10000){resolve();return}G.calTimer=setTimeout(tick,40)};G.calCancel=()=>{clearTimeout(G.calTimer);resolve()};tick()});if(gen!==G.calGen)return;try{proc.disconnect();src.disconnect();mute.disconnect()}catch(e){}if(G.calNodes===nodes)G.calNodes=null;stopOwnedStream(stream);stream=null;if(gen!==G.calGen)return;let n=0;chunks.forEach(c=>n+=c.length);const x=new Float32Array(n);let o=0;chunks.forEach(c=>{x.set(c,o);o+=c.length});const r=PT.analyzeCalibrationNote(x,ctx.sampleRate,{midi,a4:activeA4()});if(gen!==G.calGen)return;G.calMeta={sr:sr0,takeSec:+(x.length/sr0).toFixed(3),buffers:det.buffers,attackDetected:det.attackDetected,attackAtSec:det.attackAt>=0?+(det.attackAt/sr0).toFixed(3):null,startedHot:det.startedHot,maxChunkRms:+det.maxChunkRms.toFixed(5),maxSubRms:+det.maxSubRms.toFixed(5),onsetFloor:+det.floor.toFixed(5),tapToMicMs:micAt?micAt-tapAt:null,micToListenMs:micAt&&listAt?listAt-micAt:null,listenToFirstBufferMs:firstBufAt&&listAt?firstBufAt-listAt:null};applyCalResult(midi,r)}catch(e){if(gen!==G.calGen)return;stopOwnedStream(stream);const denied=e&&(e.name==='NotAllowedError'||e.name==='SecurityError');slog('cal-attempt',{note:PT.label(midi),midi,status:'error',reason:denied?'mic-denied':'mic-unavailable',tapToMicMs:Date.now()-tapAt});setCalResult(denied?'Microphone not allowed.':'No microphone available.');setHear('rejected');paintCalKeys()}finally{if(gen===G.calGen){G.calBusy=false;G.calCancel=null;refreshCalUse();syncCalNav()}}}
+async function captureCal(){const midi=PT.CAL_NOTES[G.calI];if(midi==null||G.calBusy)return;const gen=G.calGen=(G.calGen||0)+1;G.calBusy=true;setHear('opening');syncCalNav();if($g('gtCalUse'))$g('gtCalUse').disabled=true;setCalResult('Opening the microphone for '+PT.label(midi)+'.');paintCalKeys();const tapAt=Date.now();let micAt=0,listAt=0,firstBufAt=0;let stream=null;try{if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia))throw new Error('no-mic');stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false},video:false});if(gen!==G.calGen){stopOwnedStream(stream);return}G.calStream=stream;micAt=Date.now();const ctx=tuneAudio();if(ctx.state!=='running'&&ctx.resume)await ctx.resume();if(gen!==G.calGen){stopOwnedStream(stream);return}setHear('listening');listAt=Date.now();setCalResult('Play '+PT.label(midi)+' now and hold it.');const src=ctx.createMediaStreamSource(stream);const chunks=[];const mute=ctx.createGain();mute.gain.value=0;let proc=null,capturePath='worklet',total=0;const sr0=ctx.sampleRate||48000;const det=PT.makeCaptureOnset(sr0);try{if(!(ctx.audioWorklet&&ctx.audioWorklet.addModule&&window.AudioWorkletNode))throw new Error('no-worklet');await ctx.audioWorklet.addModule('partial-lock-worklet.js');proc=new AudioWorkletNode(ctx,'partial-lock');src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);proc.port.postMessage({capture:true,targetHz:PT.etFreq(midi,activeA4())});proc.port.onmessage=ev=>{const d=ev.data||{};if(!d.samples)return;if(!firstBufAt)firstBufAt=Date.now();const c=d.samples instanceof Float32Array?d.samples:new Float32Array(d.samples);chunks.push(c);det.push(c);total+=c.length}}catch(err){capturePath='script';G.simpleMeter=true;proc=ctx.createScriptProcessor(4096,1,1);src.connect(proc);proc.connect(mute);mute.connect(ctx.destination);proc.onaudioprocess=e=>{if(!firstBufAt)firstBufAt=Date.now();const c=new Float32Array(e.inputBuffer.getChannelData(0));chunks.push(c);det.push(c);total+=c.length}}const nodes={proc,src,mute};G.calNodes=nodes;const holdSec=midi>=93?0.3:0.75;const t0=Date.now();await new Promise(resolve=>{const tick=()=>{const waited=Date.now()-t0;const after=det.attackAt>=0?(total-det.attackAt)/sr0:0;if($g('gtCalStatus')&&det.attackAt<0)$g('gtCalStatus').textContent='Play '+PT.label(midi)+' now. '+Math.max(0,Math.ceil((10000-waited)/1000))+' s left to strike.'+(capturePath==='script'?' Simple meter mode.':'');if((det.attackAt>=0&&after>=holdSec)||waited>=10000){resolve();return}G.calTimer=setTimeout(tick,40)};G.calCancel=()=>{clearTimeout(G.calTimer);resolve()};tick()});if(gen!==G.calGen)return;try{proc.disconnect();src.disconnect();mute.disconnect()}catch(e){}if(G.calNodes===nodes)G.calNodes=null;stopOwnedStream(stream);stream=null;if(gen!==G.calGen)return;let n=0;chunks.forEach(c=>n+=c.length);const x=new Float32Array(n);let o=0;chunks.forEach(c=>{x.set(c,o);o+=c.length});const r=PT.analyzeCalibrationNote(x,ctx.sampleRate,{midi,a4:activeA4()});if(gen!==G.calGen)return;G.calMeta={sr:sr0,capturePath:capturePath,holdSec:holdSec,takeSec:+(x.length/sr0).toFixed(3),buffers:det.buffers,attackDetected:det.attackDetected,attackAtSec:det.attackAt>=0?+(det.attackAt/sr0).toFixed(3):null,startedHot:det.startedHot,maxChunkRms:+det.maxChunkRms.toFixed(5),maxSubRms:+det.maxSubRms.toFixed(5),onsetFloor:+det.floor.toFixed(5),tapToMicMs:micAt?micAt-tapAt:null,micToListenMs:micAt&&listAt?listAt-micAt:null,listenToFirstBufferMs:firstBufAt&&listAt?firstBufAt-listAt:null};applyCalResult(midi,r)}catch(e){if(gen!==G.calGen)return;stopOwnedStream(stream);const denied=e&&(e.name==='NotAllowedError'||e.name==='SecurityError');slog('cal-attempt',{note:PT.label(midi),midi,status:'error',reason:denied?'mic-denied':'mic-unavailable',tapToMicMs:Date.now()-tapAt});setCalResult(denied?'Microphone not allowed.':'No microphone available.');setHear('rejected');paintCalKeys()}finally{if(gen===G.calGen){G.calBusy=false;G.calCancel=null;refreshCalUse();syncCalNav()}}}
 function skipCal(){const m=PT.CAL_NOTES[G.calI];if(m==null)return;const label=PT.label(m);dropCalCapture();slog('cal-skip',{note:label,midi:m});G.calI++;calPrompt();const next=PT.CAL_NOTES[G.calI];setCalResult(next!=null?label+' skipped. Now play '+PT.label(next)+'.':label+' skipped. That is the last sample note.');setHear('idle');refreshCalUse();syncCalNav()}
 function retryCal(){const m=PT.CAL_NOTES[G.calI];if(m==null)return;dropCalCapture();captureCal()}
 function stopCalListen(){const m=PT.CAL_NOTES[G.calI];dropCalCapture();setHear('idle');setCalResult(m!=null?('Stopped. The microphone is off. Tap Start to listen for '+PT.label(m)+'.'):'Stopped. The microphone is off.');refreshCalUse();syncCalNav()}
@@ -1252,6 +1270,9 @@ function returnFromHelp(){
   try{if(window.Tuner)Tuner.leave()}catch(e){}
   $g('gtune').hidden=false;document.body.classList.add('gtOpen');syncA4Field();
   if(G.paused&&G.pauseWhy==='help')resumeTune();else if(G.wasListening)listen()}
+function shiftStep(dir){const n=G.seq?G.seq.length:0;const i=(G.sess&&G.sess.step||0)+dir;if(i>=0&&i<n)jumpTo(i)}
+function shiftOctave(dir){const s=stepNow();if(!s||!s.midi||!G.seq){shiftStep(dir*12);return}const want=s.midi+dir*12;let best=-1,score=1e9;for(let i=0;i<G.seq.length;i++){const m=G.seq[i].midi;if(!m)continue;const d=Math.abs(m-want)+Math.abs(i-(G.sess.step||0))*0.02;if(d<score){score=d;best=i}}if(best>=0)jumpTo(best)}
+function bumpTrim(dir){const now=Date.now();if(!G.trimTap||now-G.trimTap>450)G.trimStep=0.5;else G.trimStep=Math.min(5,(G.trimStep||0.5)*2);G.trimTap=now;G.trimCents=+(((G.trimCents||0)+dir*G.trimStep).toFixed(2));slog('meter-trim',{cents:G.trimCents,step:G.trimStep});render()}
 function askClose(){const scanning=!!(G.sess&&G.sess.ready&&$g('gtune')&&!$g('gtune').classList.contains('setup'));if(!scanning||G.closing){finishClose();return}if($g('gtCloseAsk')){$g('gtCloseAsk').hidden=false;return}finishClose()}
 function finishClose(){if($g('gtCloseAsk'))$g('gtCloseAsk').hidden=true;slog('session-end',{});G.holdHelp=false;G.wasListening=false;G.closing=false;helpChrome(false);G.on=false;dropCalCapture();stopListen();G.sounding=false;$g('gtune').hidden=true;document.body.classList.remove('gtOpen');saveSess()}
 function closeTune(){askClose()}
@@ -1306,6 +1327,13 @@ function init(){
   if($g('gtMissSkip'))$g('gtMissSkip').onclick=skipMiss;
   if($g('gtClosePause'))$g('gtClosePause').onclick=()=>{if($g('gtCloseAsk'))$g('gtCloseAsk').hidden=true;pauseTune('close')};
   if($g('gtCloseGo'))$g('gtCloseGo').onclick=()=>{G.closing=true;finishClose()};
+  if($g('gtNoteDown'))$g('gtNoteDown').onclick=()=>shiftStep(-1);
+  if($g('gtNoteUp'))$g('gtNoteUp').onclick=()=>shiftStep(1);
+  if($g('gtOctDown'))$g('gtOctDown').onclick=()=>shiftOctave(-1);
+  if($g('gtOctUp'))$g('gtOctUp').onclick=()=>shiftOctave(1);
+  if($g('gtTrimDown'))$g('gtTrimDown').onclick=()=>bumpTrim(-1);
+  if($g('gtTrimUp'))$g('gtTrimUp').onclick=()=>bumpTrim(1);
+  if($g('gtAutoStep'))$g('gtAutoStep').onclick=()=>{G.autoStep=G.autoStep===false;slog('auto-step',{on:G.autoStep!==false});render()};
   if($g('gtHold'))$g('gtHold').onclick=()=>{G.holdRing=!G.holdRing;slog('meter-hold',{on:!!G.holdRing,cents:G.lastCents});$g('gtHold').textContent=G.holdRing?'Release':'Hold'};
   if($g('gtZero'))$g('gtZero').onclick=()=>{G.zeroCents=typeof G.lastCents==='number'?G.lastCents:0;slog('meter-zero',{cents:G.zeroCents});render()};
   if($g('gtPartMinus'))$g('gtPartMinus').onclick=()=>{const s=stepNow();if(!s||!s.midi)return;const cur=partialFor(s.midi);setPartial(s.midi,Math.max(1,cur-1));postLockTarget();render()};

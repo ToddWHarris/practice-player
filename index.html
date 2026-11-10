@@ -494,6 +494,20 @@
 <div class="pdLeft">
 <p id="pdSim" class="pdSim" hidden>Simulated preview. Not a live microphone.</p>
 <div id="pdTarget" class="pdTarget" hidden><span class="pdKicker">Tune</span><div id="pdTargetName"></div></div>
+<div class="gtMeterBar" id="gtMeterBar">
+<button type="button" id="gtNoteDown" class="btn">Note down</button>
+<button type="button" id="gtNoteUp" class="btn">Note up</button>
+<button type="button" id="gtOctDown" class="btn">Octave down</button>
+<button type="button" id="gtOctUp" class="btn">Octave up</button>
+<button type="button" id="gtTrimDown" class="btn">Trim down</button>
+<button type="button" id="gtTrimUp" class="btn">Trim up</button>
+<button type="button" id="gtAutoStep" class="btn">Auto step on</button>
+<button type="button" id="gtHold" class="btn">Hold</button>
+<button type="button" id="gtZero" class="btn">Zero</button>
+<button type="button" id="gtPartMinus" class="btn">Partial down</button>
+<button type="button" id="gtPartAuto" class="btn">Auto</button>
+<button type="button" id="gtPartPlus" class="btn">Partial up</button>
+</div>
 </div>
 <div class="pdStage">
 <div class="pdDialWrap" id="gtNeedleWrap">
@@ -501,13 +515,6 @@
 <p id="gtGuide" class="gtGuide"></p>
 <p id="gtPartialLine" class="gtPartialLine"></p>
 <p id="gtSimple" class="gtSimple" hidden>Simple meter mode</p>
-<div class="gtMeterBar">
-<button type="button" id="gtHold" class="btn">Hold</button>
-<button type="button" id="gtZero" class="btn">Zero</button>
-<button type="button" id="gtPartMinus" class="btn" aria-label="Partial down">Partial down</button>
-<button type="button" id="gtPartAuto" class="btn">Auto</button>
-<button type="button" id="gtPartPlus" class="btn" aria-label="Partial up">Partial up</button>
-</div>
 <svg id="pdSvg" viewBox="0 0 320 320" aria-hidden="true">
 <rect width="320" height="320" fill="none"/>
 <g id="pdTicks"></g>

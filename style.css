@@ -210,8 +210,12 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 #gtune.prescan .gtMeterBar{display:none}
 .gtGuide{position:absolute;left:0;right:0;top:0;margin:0;text-align:center;font-size:12px;color:#e5e7eb;z-index:4;pointer-events:none}
 .gtSimple{margin:0;text-align:center;color:#fde68a;font-weight:800}
-.gtMeterBar{position:absolute;left:0;right:0;bottom:16px;z-index:5;display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
-.gtMeterBar .btn{min-height:28px;font-size:12px;padding:2px 6px}
+.gtMeterBar{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-width:100%}
+.gtMeterBar .btn{min-height:26px;font-size:12px;padding:2px 6px}
+@media (max-width:500px) and (orientation:portrait){
+ .pdDialWrap{width:min(62vw,250px)}
+ .gtMeterBar .btn{font-size:11px;padding:1px 4px}
+}
 .gtMiss{position:absolute;left:8px;right:8px;bottom:98px;z-index:8;background:#111827;border:1px solid #374151;border-radius:12px;padding:8px;text-align:center;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
 .gtMiss[hidden]{display:none!important}
 .gtMiss p{flex:1 1 100%;margin:0}
@@ -245,7 +249,9 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 .pdFlag{position:absolute;bottom:2px;transform:translateX(-50%);background:#0369a1;color:#fff;font-size:13px;font-weight:800;line-height:1.1;padding:1px 4px;border-radius:4px;z-index:7;pointer-events:none;white-space:nowrap}
 @media (orientation:landscape) and (max-height:560px){
  #gtune .gtBody{display:block;padding:0;height:100%}
- .pdLeft{position:absolute;z-index:5;left:max(4px,env(safe-area-inset-left));top:0;width:22%;max-height:calc(100% - 180px);overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:4px}
+ .pdLeft{position:absolute;z-index:5;left:max(4px,env(safe-area-inset-left));top:0;width:22%;max-height:calc(100% - 180px);overflow:auto;display:flex;flex-direction:column;align-items:center;gap:4px}
+ .gtMeterBar{display:grid;grid-template-columns:1fr 1fr;width:100%}
+ .gtMeterBar .btn{min-height:22px;font-size:11px;padding:1px 3px}
  .pdSim{flex:0 0 auto;font-size:12px;text-align:center}
  #pdTarget:not([hidden]){display:flex}
  #pdTargetName{font-size:42px}
@@ -320,8 +326,9 @@ nav button{flex:0 0 auto;padding:12px 10px;font-size:15px;letter-spacing:0;white
 @media (orientation:portrait) and (max-width:699px){
  #gtune .pdPanel{flex:0 0 auto;min-height:0;overflow:visible}
  #gtune .pdStage{flex:0 0 auto;min-height:0;overflow:visible}
- #gtune .pdDialWrap{width:min(44vw,170px)}
+ #gtune .pdDialWrap{width:min(40vw,160px)}
  #gtune .gtKeys{flex:0 0 92px;height:92px}
+ #gtune:not(.prescan) .gtKeys{flex-basis:80px;height:80px}
 }
 @media (max-height:560px){
  #gtDetail{display:none}
